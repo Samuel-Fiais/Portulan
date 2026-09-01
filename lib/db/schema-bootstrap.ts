@@ -5,10 +5,11 @@ import path from "node:path";
 import { sql } from "drizzle-orm";
 import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import * as schema from "@/lib/db/schema";
+import { PORTULAN_PG_SCHEMA } from "@/lib/db/schema";
 
 type Db = NeonHttpDatabase<typeof schema>;
 
-/** Required public tables and columns for a healthy Portulan schema. */
+/** Required Portulan tables and columns inside the dedicated Postgres schema. */
 export const PORTULAN_TABLE_COLUMNS = {
   users: ["id", "github_id", "login", "name", "avatar_url", "created_at"],
   documents: [
@@ -89,7 +90,7 @@ async function loadTableColumns(db: Db): Promise<Map<string, Set<string>>> {
   const rows = await db.execute<{ table_name: string; column_name: string }>(sql`
     SELECT table_name, column_name
     FROM information_schema.columns
-    WHERE table_schema = 'public'
+    WHERE table_schema = ${PORTULAN_PG_SCHEMA}
       AND table_name IN ('users', 'documents', 'document_releases')
   `);
 
@@ -116,52 +117,30 @@ export async function isPortulanSchemaReady(db: Db): Promise<boolean> {
   );
 }
 
-async function documentsNameConflict(db: Db): Promise<string | null> {
-  const result = await db.execute<{
-    type_exists: boolean;
-    table_exists: boolean;
-  }>(sql`
-    SELECT
-      EXISTS (
-        SELECT 1
-        FROM pg_type t
-        JOIN pg_namespace n ON n.oid = t.typnamespace
-        WHERE n.nspname = 'public'
-          AND t.typname = 'documents'
-          AND t.typtype = 'c'
-      ) AS type_exists,
-      EXISTS (
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public'
-          AND table_name = 'documents'
-      ) AS table_exists
+async function portulanTableSchemaConflict(db: Db, table: PortulanTable): Promise<string | null> {
+  const result = await db.execute<{ table_exists: boolean }>(sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = ${PORTULAN_PG_SCHEMA}
+        AND table_name = ${table}
+    ) AS table_exists
   `);
 
-  const { type_exists: typeExists, table_exists: tableExists } = result.rows[0] ?? {
-    type_exists: false,
-    table_exists: false,
-  };
-
-  if (typeExists && !tableExists) {
-    return (
-      'A PostgreSQL composite type named "documents" already exists in the public schema, but it is not the Portulan documents table. ' +
-      "Another application may own this Neon database. Use a dedicated database or rename the conflicting type before deploying Portulan."
-    );
+  const tableExists = result.rows[0]?.table_exists ?? false;
+  if (!tableExists) {
+    return null;
   }
 
-  if (tableExists) {
-    const columnsByTable = await loadTableColumns(db);
-    const documentsColumns = columnsByTable.get("documents");
-    if (documentsColumns && !tableHasExpectedColumns("documents", documentsColumns)) {
-      const expected = PORTULAN_TABLE_COLUMNS.documents.join(", ");
-      const found = documentsColumns.size > 0 ? [...documentsColumns].sort().join(", ") : "(none)";
-      return (
-        'A table named "documents" exists but does not match the Portulan schema. ' +
-        `Expected columns: ${expected}. Found: ${found}. ` +
-        "Use a dedicated database or migrate/rename the existing table before deploying Portulan."
-      );
-    }
+  const columnsByTable = await loadTableColumns(db);
+  const columns = columnsByTable.get(table);
+  if (columns && !tableHasExpectedColumns(table, columns)) {
+    const expected = PORTULAN_TABLE_COLUMNS[table].join(", ");
+    const found = columns.size > 0 ? [...columns].sort().join(", ") : "(none)";
+    return (
+      `A table named "${PORTULAN_PG_SCHEMA}.${table}" exists but does not match the Portulan schema. ` +
+      `Expected columns: ${expected}. Found: ${found}.`
+    );
   }
 
   return null;
@@ -182,39 +161,27 @@ function parseSchemaStatements(ddl: string): string[] {
 }
 
 function statementTargetsTable(statement: string, table: PortulanTable): boolean {
-  const pattern = new RegExp(`\\b${table}\\b`, "i");
+  const pattern = new RegExp(`\\b${PORTULAN_PG_SCHEMA}\\.${table}\\b`, "i");
   return /\bCREATE\s+TABLE\b/i.test(statement) && pattern.test(statement);
 }
 
 async function verifyStatementOutcome(db: Db, statement: string): Promise<void> {
-  if (statementTargetsTable(statement, "users")) {
-    if (!(await tableExistsWithColumns(db, "users"))) {
-      throw new PortulanSchemaConflictError(
-        'Schema bootstrap failed while creating the "users" table: duplicate-object error occurred but the Portulan users table is still missing.',
-      );
+  for (const table of Object.keys(PORTULAN_TABLE_COLUMNS) as PortulanTable[]) {
+    if (!statementTargetsTable(statement, table)) {
+      continue;
     }
-    return;
-  }
 
-  if (statementTargetsTable(statement, "documents")) {
-    const conflict = await documentsNameConflict(db);
+    const conflict = await portulanTableSchemaConflict(db, table);
     if (conflict) {
       throw new PortulanSchemaConflictError(conflict);
     }
-    if (!(await tableExistsWithColumns(db, "documents"))) {
+
+    if (!(await tableExistsWithColumns(db, table))) {
       throw new PortulanSchemaConflictError(
-        'Schema bootstrap failed while creating the "documents" table: duplicate-object error occurred but the Portulan documents table is still missing.',
+        `Schema bootstrap failed while creating "${PORTULAN_PG_SCHEMA}.${table}": duplicate-object error occurred but the Portulan table is still missing.`,
       );
     }
     return;
-  }
-
-  if (statementTargetsTable(statement, "document_releases")) {
-    if (!(await tableExistsWithColumns(db, "document_releases"))) {
-      throw new PortulanSchemaConflictError(
-        'Schema bootstrap failed while creating the "document_releases" table: duplicate-object error occurred but the Portulan document_releases table is still missing.',
-      );
-    }
   }
 }
 
@@ -239,10 +206,7 @@ export async function applyPortulanSchema(db: Db): Promise<void> {
     return;
   }
 
-  const conflict = await documentsNameConflict(db);
-  if (conflict) {
-    throw new PortulanSchemaConflictError(conflict);
-  }
+  await db.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS ${PORTULAN_PG_SCHEMA}`));
 
   const schemaPath = path.join(process.cwd(), "schema.sql");
   const ddl = readFileSync(schemaPath, "utf8");
@@ -254,7 +218,7 @@ export async function applyPortulanSchema(db: Db): Promise<void> {
 
   if (!(await isPortulanSchemaReady(db))) {
     throw new PortulanSchemaConflictError(
-      "Schema bootstrap finished but the Portulan tables are still incomplete. Check database permissions and existing objects in the public schema.",
+      `Schema bootstrap finished but the Portulan tables in "${PORTULAN_PG_SCHEMA}" are still incomplete. Check database permissions and existing objects in the Portulan schema.`,
     );
   }
 }
