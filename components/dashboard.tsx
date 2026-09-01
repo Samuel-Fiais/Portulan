@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Bot, Copy, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -27,11 +27,18 @@ export function Dashboard({
 }) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
+  const [mcpOrigin, setMcpOrigin] = useState("");
   const filtered = useMemo(() => documents.filter((document) => {
     const matchesType = type === "all" || document.type === type;
     const haystack = `${document.title} ${document.summary} ${document.tags.join(" ")}`.toLowerCase();
     return matchesType && haystack.includes(query.toLowerCase());
   }), [documents, query, type]);
+
+  useEffect(() => {
+    setMcpOrigin(`${window.location.origin}/api/mcp`);
+  }, []);
+
+  const mcpEndpoint = mcpOrigin || "/api/mcp";
 
   return (
     <AppShell>
@@ -74,7 +81,7 @@ export function Dashboard({
           </div>
           <div className="document-list">
             {filtered.map((document) => (
-              <Link href={`/documents/${document.id}`} key={document.id} className="document-row group">
+              <Link href={`/documents/${document.slug}`} key={document.id} className="document-row group">
                 <span className={`document-accent type-${document.type}`} />
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap items-center gap-2"><TypeBadge type={document.type} /><StatusBadge status={document.status} /></div>
@@ -118,7 +125,7 @@ export function Dashboard({
               <span className="eyebrow">Endpoint ativo no projeto</span>
               <h3>Uma biblioteca que agentes também conseguem manter.</h3>
               <p>Conecte qualquer cliente MCP ao endpoint abaixo para listar, ler, criar, editar e excluir documentos usando a mesma base SQLite.</p>
-              <code>http://localhost:3000/api/mcp</code>
+              <code>{mcpEndpoint}</code>
             </div>
             <div className="tool-list"><span>list_documents</span><span>get_document</span><span>create_document</span><span>update_document</span><span>publish_document</span><span>list_document_releases</span><span>delete_document</span></div>
           </div>

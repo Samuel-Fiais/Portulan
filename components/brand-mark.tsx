@@ -7,9 +7,9 @@ export function BrandMark({ compact = false, className }: { compact?: boolean; c
       <Image
         src="/portulan-logo.png"
         alt="Portulan"
-        width={compact ? 120 : 250}
-        height={compact ? 48 : 100}
-        className={cn("w-auto", compact ? "h-8" : "h-10")}
+        width={1536}
+        height={1024}
+        className={cn("brand-logo w-auto max-w-none object-contain", compact ? "h-9 sm:h-10" : "h-11 sm:h-14")}
         priority
       />
     </div>
