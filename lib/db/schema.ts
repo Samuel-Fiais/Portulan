@@ -1,6 +1,10 @@
-import { index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { index, integer, pgSchema, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
-export const users = pgTable("users", {
+export const PORTULAN_PG_SCHEMA = "portulan";
+
+export const portulanSchema = pgSchema(PORTULAN_PG_SCHEMA);
+
+export const users = portulanSchema.table("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   githubId: text("github_id").notNull().unique(),
   login: text("login").notNull(),
@@ -9,7 +13,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });
 
-export const documents = pgTable(
+export const documents = portulanSchema.table(
   "documents",
   {
     id: text("id").primaryKey(),
@@ -36,7 +40,7 @@ export const documents = pgTable(
   ],
 );
 
-export const documentReleases = pgTable(
+export const documentReleases = portulanSchema.table(
   "document_releases",
   {
     id: text("id").primaryKey(),
