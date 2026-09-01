@@ -8,22 +8,22 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-<!-- BEGIN:festpay-agent-rules -->
+<!-- BEGIN:portulan-agent-rules -->
 
-## Festpay Docs — skill e MCP
+## Portulan — skill e MCP
 
-Este projeto inclui a skill **festpay-docs-mcp** em `.cursor/skills/festpay-docs-mcp/`.
+Este projeto inclui a skill **portulan-mcp** em `.cursor/skills/portulan-mcp/`.
 
-Quando a tarefa envolver documentos da biblioteca, MCP, publicação com link `/p/{id}`, ou ferramentas `list_documents` / `create_document` / `publish_document`, **leia e siga** `.cursor/skills/festpay-docs-mcp/SKILL.md` antes de agir.
+Quando a tarefa envolver documentos da biblioteca, MCP, publicação com link `/p/{id}`, ou ferramentas `list_documents` / `create_document` / `publish_document`, **leia e siga** `.cursor/skills/portulan-mcp/SKILL.md` antes de agir.
 
 | Recurso | Caminho |
 |---|---|
-| Skill (agente) | `.cursor/skills/festpay-docs-mcp/SKILL.md` |
-| Referência MCP | `.cursor/skills/festpay-docs-mcp/reference.md` |
-| Guia completo | `festpay-docs-mcp-skill.md` |
+| Skill (agente) | `.cursor/skills/portulan-mcp/SKILL.md` |
+| Referência MCP | `.cursor/skills/portulan-mcp/reference.md` |
+| Guia completo | `portulan-skill.md` |
 | Config MCP Cursor | `.cursor/mcp.json` |
 | Endpoint (dev) | `http://localhost:3000/api/mcp` |
 
 Requisito: `npm run dev` rodando para o MCP responder.
 
-<!-- END:festpay-agent-rules -->
+<!-- END:portulan-agent-rules -->

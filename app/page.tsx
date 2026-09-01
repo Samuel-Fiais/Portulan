@@ -1,6 +1,6 @@
 import { Dashboard } from "@/components/dashboard";
 import { getDocumentStats, listDocuments } from "@/lib/db";
-import { getFestpayDocsSkillMarkdown } from "@/lib/skill";
+import { getPortulanSkillMarkdown } from "@/lib/skill";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export default function HomePage() {
     <Dashboard
       documents={documents}
       stats={getDocumentStats()}
-      skillMarkdown={getFestpayDocsSkillMarkdown()}
+      skillMarkdown={getPortulanSkillMarkdown()}
     />
   );
 }

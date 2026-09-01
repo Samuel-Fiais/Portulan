@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { FestpayLogo } from "@/components/festpay-logo";
+import { PortulanLogo } from "@/components/portulan-logo";
 import { RichMarkdown } from "@/components/rich-markdown";
 import { typeMeta, statusMeta, type DocumentRecord } from "@/lib/documents";
 import { formatDate } from "@/lib/utils";
@@ -15,7 +15,7 @@ export function ReportPreview({ document, publicView = false }: { document: Docu
       <table className="template-document-table">
       <thead><tr><th>
       <div className="tmpl-doc-header">
-        <span className="tmpl-logo-slot"><FestpayLogo type={document.type} /></span>
+        <span className="tmpl-logo-slot"><PortulanLogo type={document.type} /></span>
         <div className="tmpl-doc-right">
           <span className="tmpl-doc-type">{typeMeta[document.type].label}</span>
           <span className="tmpl-doc-date">v{document.version} · {formatDate(document.updatedAt)}</span>
@@ -46,7 +46,7 @@ export function ReportPreview({ document, publicView = false }: { document: Docu
       </tbody>
       <tfoot><tr><td>
       <footer className="tmpl-footer keep-together">
-        <span className="tmpl-footer-logo"><FestpayLogo type={document.type} /></span>
+        <span className="tmpl-footer-logo"><PortulanLogo type={document.type} /></span>
         <span className="tmpl-footer-text">
           {publicView ? `Festpay · v${document.version} · ${formatDate(document.updatedAt)}` : `Festpay · Confidencial · ${formatDate(document.updatedAt)}`}
         </span>

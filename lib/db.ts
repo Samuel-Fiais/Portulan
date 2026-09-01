@@ -2,7 +2,7 @@ import "server-only";
 
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { DocumentInput, DocumentRecord, DocumentRelease, DocumentStatus, DocumentType } from "@/lib/documents";
 
@@ -37,15 +37,24 @@ type DocumentReleaseRow = {
   published_at: string;
 };
 
-const defaultPath = path.join(process.cwd(), "data", "festpay-docs.sqlite");
-const databasePath = process.env.DATABASE_PATH || defaultPath;
+function getDatabasePath(): string {
+  if (process.env.DATABASE_PATH) return process.env.DATABASE_PATH;
+  const legacyPath = path.join(process.cwd(), "data", "festpay-docs.sqlite");
+  const newPath = path.join(process.cwd(), "data", "portulan.sqlite");
+  try {
+    if (existsSync(legacyPath)) return legacyPath;
+  } catch {}
+  return newPath;
+}
+
+const databasePath = getDatabasePath();
 
 mkdirSync(path.dirname(databasePath), { recursive: true });
 
-const globalForDb = globalThis as unknown as { festpayDocsDb?: Database.Database };
-const db = globalForDb.festpayDocsDb ?? new Database(databasePath);
+const globalForDb = globalThis as unknown as { portulanDb?: Database.Database };
+const db = globalForDb.portulanDb ?? new Database(databasePath);
 
-if (process.env.NODE_ENV !== "production") globalForDb.festpayDocsDb = db;
+if (process.env.NODE_ENV !== "production") globalForDb.portulanDb = db;
 
 db.pragma("busy_timeout = 10000");
 if (db.pragma("journal_mode", { simple: true }) !== "wal") {
@@ -576,10 +585,10 @@ const ensureComponentCatalog = db.transaction(() => {
   if (getDocument("catalogo-de-componentes-qa-visual")) return;
   createDocument({
     title: "Catálogo de componentes — QA visual",
-    summary: "Documento de referência para validar hierarquia, espaçamento e renderização de todos os componentes disponíveis no Festpay Docs.",
+    summary: "Documento de referência para validar hierarquia, espaçamento e renderização de todos os componentes disponíveis no Portulan.",
     type: "reference",
     status: "draft",
-    author: "Festpay Design System",
+    author: "Portulan Design System",
     team: "Plataforma",
     tags: ["qa", "design-system", "componentes"],
     content: `## 01 — Texto e hierarquia

@@ -7,7 +7,7 @@ function readTheme(): "light" | "dark" {
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
-export function FestpayToaster() {
+export function PortulanToaster() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -24,9 +24,9 @@ export function FestpayToaster() {
       position="bottom-right"
       toastOptions={{
         classNames: {
-          toast: "festpay-toast",
-          title: "festpay-toast-title",
-          description: "festpay-toast-description",
+          toast: "portulan-toast",
+          title: "portulan-toast-title",
+          description: "portulan-toast-description",
         },
       }}
     />

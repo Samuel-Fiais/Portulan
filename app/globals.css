@@ -4,8 +4,10 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --navy: #1a2847;
+  --burgundy: #8b2735;
+  --gold: #c5a572;
   --coral: #f04e37;
-  --navy: #1a1750;
   --purple: #7c2be3;
   --indigo: #3d3580;
   --teal: #00d4b4;
@@ -16,30 +18,33 @@
   --card-foreground: #111111;
   --popover: #ffffff;
   --popover-foreground: #111111;
-  --primary: #7c2be3;
+  --primary: #1a2847;
   --primary-foreground: #ffffff;
   --secondary: #f3f3f3;
   --secondary-foreground: #242424;
   --muted: #f5f5f5;
   --muted-foreground: #6b6b6b;
-  --accent: #f3edfd;
-  --accent-foreground: #5e1db3;
+  --accent: #c5a572;
+  --accent-foreground: #ffffff;
   --destructive: #dc2626;
   --border: #dedede;
   --input: #d4d4d4;
-  --ring: #7c2be3;
+  --ring: #1a2847;
   --sidebar: #f7f7f7;
   --sidebar-foreground: #181818;
-  --sidebar-primary: #7c2be3;
+  --sidebar-primary: #1a2847;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #efefef;
   --sidebar-accent-foreground: #181818;
   --sidebar-border: #dedede;
-  --sidebar-ring: #7c2be3;
+  --sidebar-ring: #1a2847;
   --radius: 0.5rem;
 }
 
 .dark {
+  --navy: #2c3e5f;
+  --burgundy: #b8394b;
+  --gold: #d4b686;
   --teal-ink: #25dec4;
   --background: #111111;
   --foreground: #efefef;
@@ -47,18 +52,18 @@
   --card-foreground: #efefef;
   --popover: #1c1c1c;
   --popover-foreground: #efefef;
-  --primary: #a86df0;
-  --primary-foreground: #16051e;
+  --primary: #2c3e5f;
+  --primary-foreground: #ffffff;
   --secondary: #262626;
   --secondary-foreground: #efefef;
   --muted: #222222;
   --muted-foreground: #a0a0a0;
-  --accent: #2d1e3e;
-  --accent-foreground: #d6b7ff;
+  --accent: #d4b686;
+  --accent-foreground: #0a0a0a;
   --destructive: #ff6b5c;
   --border: #303030;
   --input: #3b3b3b;
-  --ring: #a86df0;
+  --ring: #2c3e5f;
   --sidebar: #171717;
   --sidebar-foreground: #efefef;
   --sidebar-accent: #242424;
@@ -111,16 +116,16 @@
 
 .brand-symbol { position: relative; display: inline-flex; width: 22px; height: 22px; transform: rotate(-9deg); }
 .brand-symbol i { position: absolute; display: block; width: 8px; border-radius: 1px; }
-.brand-symbol i:nth-child(1) { height: 17px; left: 1px; top: 3px; background: var(--coral); }
-.brand-symbol i:nth-child(2) { height: 13px; left: 8px; top: 1px; background: var(--purple); }
-.brand-symbol i:nth-child(3) { height: 10px; left: 15px; top: 9px; background: var(--teal); }
+.brand-symbol i:nth-child(1) { height: 17px; left: 1px; top: 3px; background: var(--navy); }
+.brand-symbol i:nth-child(2) { height: 13px; left: 8px; top: 1px; background: var(--burgundy); }
+.brand-symbol i:nth-child(3) { height: 10px; left: 15px; top: 9px; background: var(--gold); }
 .theme-icon-sun { display: none; }
 .theme-icon-moon { display: block; }
 .dark .theme-icon-sun { display: block; }
 .dark .theme-icon-moon { display: none; }
 
 [data-sonner-toaster] [data-sonner-toast],
-[data-sonner-toast].festpay-toast {
+[data-sonner-toast].portulan-toast {
   border: 0 !important;
   border-radius: 0;
   box-shadow: none !important;
@@ -144,13 +149,13 @@
   box-shadow: none !important;
 }
 
-.festpay-toast-title {
+.portulan-toast-title {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
-.festpay-toast-description {
+.portulan-toast-description {
   font-family: var(--font-sans);
   font-size: 13px;
 }
@@ -453,11 +458,11 @@
 .template-document-table > tbody > tr > td,
 .template-document-table > tfoot > tr > td { padding: 0; border: 0; color: inherit; font: inherit; text-align: inherit; vertical-align: top; }
 .global-print-header { display: none; }
-.report-paper.report-feature, .global-print-header.report-feature { --report-accent: var(--purple); --print-logo: url("/api/brand/purple"); --print-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 45'%3E%3Ctext x='120' y='27' fill='%237C2BE3' font-family='monospace' font-size='10' font-weight='700' letter-spacing='1'%3ENOVA FEATURE%3C/text%3E%3Ctext x='800' y='27' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EFestpay Docs · Documento interno%3C/text%3E%3C/svg%3E"); }
-.report-paper.report-incident, .global-print-header.report-incident { --report-accent: var(--coral); --print-logo: url("/api/brand/coral"); --print-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 45'%3E%3Ctext x='120' y='27' fill='%23F04E37' font-family='monospace' font-size='10' font-weight='700' letter-spacing='1'%3EINCIDENTE / ERRO%3C/text%3E%3Ctext x='800' y='27' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EFestpay Docs · Documento interno%3C/text%3E%3C/svg%3E"); }
-.report-paper.report-report, .global-print-header.report-report { --report-accent: var(--teal); --print-logo: url("/api/brand/teal"); --print-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 45'%3E%3Ctext x='120' y='27' fill='%2300A891' font-family='monospace' font-size='10' font-weight='700' letter-spacing='1'%3ERELATORIO%3C/text%3E%3Ctext x='800' y='27' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EFestpay Docs · Documento interno%3C/text%3E%3C/svg%3E"); }
-.report-paper.report-reference, .global-print-header.report-reference { --report-accent: var(--indigo); --print-logo: url("/api/brand/indigo"); --print-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 45'%3E%3Ctext x='120' y='27' fill='%233D3580' font-family='monospace' font-size='10' font-weight='700' letter-spacing='1'%3EREFERENCIA TECNICA%3C/text%3E%3Ctext x='800' y='27' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EFestpay Docs · Documento interno%3C/text%3E%3C/svg%3E"); }
-.festpay-real-logo { display: block; width: auto; height: 100%; object-fit: contain; }
+.report-paper.report-feature, .global-print-header.report-feature { --report-accent: var(--navy); --print-logo: url("/api/brand/navy"); --print-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 45'%3E%3Ctext x='120' y='27' fill='%231a2847' font-family='monospace' font-size='10' font-weight='700' letter-spacing='1'%3ENOVA FEATURE%3C/text%3E%3Ctext x='800' y='27' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EPortulan · Documento interno%3C/text%3E%3C/svg%3E"); }
+.report-paper.report-incident, .global-print-header.report-incident { --report-accent: var(--burgundy); --print-logo: url("/api/brand/burgundy"); --print-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 45'%3E%3Ctext x='120' y='27' fill='%238b2735' font-family='monospace' font-size='10' font-weight='700' letter-spacing='1'%3EINCIDENTE / ERRO%3C/text%3E%3Ctext x='800' y='27' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EPortulan · Documento interno%3C/text%3E%3C/svg%3E"); }
+.report-paper.report-report, .global-print-header.report-report { --report-accent: var(--gold); --print-logo: url("/api/brand/gold"); --print-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 45'%3E%3Ctext x='120' y='27' fill='%23c5a572' font-family='monospace' font-size='10' font-weight='700' letter-spacing='1'%3ERELATORIO%3C/text%3E%3Ctext x='800' y='27' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EPortulan · Documento interno%3C/text%3E%3C/svg%3E"); }
+.report-paper.report-reference, .global-print-header.report-reference { --report-accent: var(--navy); --print-logo: url("/api/brand/navy"); --print-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 45'%3E%3Ctext x='120' y='27' fill='%231a2847' font-family='monospace' font-size='10' font-weight='700' letter-spacing='1'%3EREFERENCIA TECNICA%3C/text%3E%3Ctext x='800' y='27' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EPortulan · Documento interno%3C/text%3E%3C/svg%3E"); }
+.portulan-real-logo { display: block; width: auto; height: 100%; object-fit: contain; }
 .tmpl-doc-header { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) var(--sp-5); border-bottom: 1px solid var(--border); background: var(--surface); }
 .tmpl-logo-slot { display: flex; height: 20px; align-items: center; }
 .tmpl-doc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
@@ -640,7 +645,7 @@ html:has(.pdf-export-page), body:has(.pdf-export-page) { margin: 0; background: 
   .tmpl-block + .tmpl-block { margin-top: 3mm; }
   .tmpl-label { margin-bottom: 2.5mm; font-size: 7pt; }
   .tmpl-section p { margin-bottom: 3mm; font-size: 9pt; line-height: 1.5; }
-  .tmpl-footer { display: block; height: 8mm; padding: 0; background-color: var(--surface); background-image: var(--print-logo), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 30'%3E%3Ctext x='800' y='19' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EFestpay · Confidencial%3C/text%3E%3C/svg%3E"); background-repeat: no-repeat, no-repeat; background-position: 0 center, center center; background-size: auto 4mm, 100% 8mm; }
+  .tmpl-footer { display: block; height: 8mm; padding: 0; background-color: var(--surface); background-image: var(--print-logo), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 30'%3E%3Ctext x='800' y='19' text-anchor='end' fill='%23A3A3A3' font-family='monospace' font-size='9'%3EPortulan · Confidencial%3C/text%3E%3C/svg%3E"); background-repeat: no-repeat, no-repeat; background-position: 0 center, center center; background-size: auto 4mm, 100% 8mm; }
   .tmpl-footer > * { display: none !important; }
   .report-brand-row { display: none; }
   .report-color-bar { height: 3px; margin: 0; }
