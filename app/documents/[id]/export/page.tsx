@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function DocumentExportPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
-  const document = await getDocument(id, { userId: session?.user?.id ?? null, bypassOwnership: true });
+  const document = await getDocument(id, { userId: session!.user!.id! });
   if (!document) notFound();
 
   return (

@@ -8,7 +8,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, { params }: Context) {
   const session = await auth();
-  const ctx = { userId: session?.user?.id ?? null };
+  if (!session?.user?.id) {
+    return Response.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const ctx = { userId: session.user.id };
   const { id } = await params;
   const document = await getDocument(id, ctx);
   if (!document) return Response.json({ error: "Documento não encontrado" }, { status: 404 });

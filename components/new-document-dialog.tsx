@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { ArrowRight, FilePlus2 } from "lucide-react";
 import { toast } from "sonner";
 import { createDocumentAction } from "@/app/actions";
@@ -14,13 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { templates, typeMeta, type DocumentType } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 
-export function NewDocumentDialog({
-  trigger,
-  isLoggedIn,
-}: {
-  trigger?: React.ReactNode;
-  isLoggedIn: boolean;
-}) {
+export function NewDocumentDialog({ trigger }: { trigger?: React.ReactNode }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -29,19 +22,10 @@ export function NewDocumentDialog({
   const [summary, setSummary] = useState("");
 
   function handleOpenChange(nextOpen: boolean) {
-    if (nextOpen && !isLoggedIn) {
-      void signIn("github");
-      return;
-    }
     setOpen(nextOpen);
   }
 
   function submit() {
-    if (!isLoggedIn) {
-      void signIn("github");
-      return;
-    }
-
     startTransition(async () => {
       const template = templates[type];
       const result = await createDocumentAction({

@@ -19,12 +19,10 @@ export function Dashboard({
   documents,
   stats,
   skillMarkdown,
-  isLoggedIn,
 }: {
   documents: DocumentSummary[];
   stats: Stats;
   skillMarkdown: string;
-  isLoggedIn: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
@@ -49,7 +47,7 @@ export function Dashboard({
             <h1 className="fp-h1">Documentos que sustentam <span>decisões.</span></h1>
             <p className="fp-lead">Crie, revise e publique relatórios técnicos em um sistema visual consistente — por pessoas ou agentes.</p>
           </div>
-          <NewDocumentDialog isLoggedIn={isLoggedIn} />
+          <NewDocumentDialog />
         </div>
 
         <div className="fp-stat-grid dashboard-stats" aria-label="Resumo da biblioteca">

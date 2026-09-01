@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import { PDFDocument, StandardFonts, rgb, type RGB } from "pdf-lib";
+import { auth } from "@/auth";
 import { getBrandLogo, type BrandTone } from "@/lib/brand-assets";
 import { getDocument } from "@/lib/db";
 import { typeMeta, type DocumentType } from "@/lib/documents";
@@ -19,13 +20,19 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: Request, { params }: Context) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   const { id } = await params;
-  const document = await getDocument(id);
+  const document = await getDocument(id, { userId: session.user.id });
   if (!document) return Response.json({ error: "Documento não encontrado" }, { status: 404 });
 
   const { primary: accent, secondary: accent2 } = typeMeta[document.type];
   const logo = await getBrandLogo(toneByType[document.type]);
   const date = formatDate(document.updatedAt);
+  const sessionCookie = request.headers.get("cookie");
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -34,6 +41,9 @@ export async function GET(request: Request, { params }: Context) {
 
   try {
     const page = await browser.newPage();
+    if (sessionCookie) {
+      await page.setExtraHTTPHeaders({ cookie: sessionCookie });
+    }
     await page.emulateMediaType("print");
     const origin = new URL(request.url).origin;
     await page.goto(`${origin}/documents/${encodeURIComponent(document.id)}/export`, {
