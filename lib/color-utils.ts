@@ -78,3 +78,30 @@ export function normalizeHex(value: string, fallback: string) {
   const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
   return /^#[0-9A-Fa-f]{6}$/.test(withHash) ? withHash.toLowerCase() : fallback;
 }
+
+function channelToLinear(channel: number) {
+  const normalized = channel / 255;
+  return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+}
+
+export function relativeLuminance(hex: string) {
+  const [red, green, blue] = hexToRgb(normalizeHex(hex, "#000000"));
+  return 0.2126 * channelToLinear(red) + 0.7152 * channelToLinear(green) + 0.0722 * channelToLinear(blue);
+}
+
+/** Ink color for text on a solid or gradient badge background (white on dark, near-black on light). */
+export function pickContrastInkColor(...colors: string[]) {
+  const normalized = colors.map((color) => normalizeHex(color, "#000000"));
+  const [avgRed, avgGreen, avgBlue] = normalized.reduce<[number, number, number]>(
+    (totals, color) => {
+      const [red, green, blue] = hexToRgb(color);
+      return [totals[0] + red, totals[1] + green, totals[2] + blue];
+    },
+    [0, 0, 0],
+  ).map((total) => total / normalized.length) as [number, number, number];
+
+  const luminance =
+    0.2126 * channelToLinear(avgRed) + 0.7152 * channelToLinear(avgGreen) + 0.0722 * channelToLinear(avgBlue);
+
+  return luminance >= 0.45 ? "#0a0a0a" : "#ffffff";
+}
