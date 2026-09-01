@@ -6,7 +6,7 @@ const LOGO_HEIGHT = 657;
 
 export function BrandMark({ compact = false, className }: { compact?: boolean; className?: string }) {
   return (
-    <div className={cn("flex items-center", className)} aria-label="Portulan">
+    <div className={cn("brand-mark flex items-center", className)} aria-label="Portulan">
       <Image
         src="/portulan-logo.png"
         alt="Portulan"
