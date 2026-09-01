@@ -105,4 +105,25 @@ O build usa Webpack para funcionar também em ambientes gerenciados que bloqueia
 
 ## Persistência em produção
 
-O arquivo SQLite local requer um processo Node com disco persistente. Em plataformas serverless com filesystem efêmero, use um volume persistente ou migre a camada de banco para um serviço compatível com SQLite/libSQL antes de publicar dados reais.
+### Modo atual: SQLite efêmero
+
+A app detecta automaticamente se o filesystem é somente leitura (como em Vercel/serverless) e usa `/tmp` para o banco SQLite. Isso permite que o app funcione, mas **os dados são perdidos entre deploys e podem variar entre instâncias**.
+
+### Opção 1: Filesystem persistente
+
+Use uma plataforma com disco persistente (Railway, Fly.io, VPS) ou monte um volume para o diretório `data/`.
+
+### Opção 2: Turso/libSQL (recomendado para serverless)
+
+Para persistência durável em Vercel, migre para [Turso](https://turso.tech):
+
+1. Crie um database: `turso db create festpay-docs`
+2. Obtenha a URL: `turso db show festpay-docs --url`
+3. Crie um token: `turso db tokens create festpay-docs`
+4. Configure em Vercel:
+   ```bash
+   vercel env add TURSO_DATABASE_URL
+   vercel env add TURSO_AUTH_TOKEN
+   ```
+
+**Nota**: A migração para Turso requer refatoração das queries para serem async (libsql é async, better-sqlite3 é sync). O suporte está preparado mas não ativado por padrão.

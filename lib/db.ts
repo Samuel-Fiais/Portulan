@@ -2,7 +2,11 @@ import "server-only";
 
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
+<<<<<<< HEAD
 import { existsSync, mkdirSync } from "node:fs";
+=======
+import { mkdirSync, existsSync, accessSync, constants } from "node:fs";
+>>>>>>> origin/main
 import path from "node:path";
 import type { DocumentInput, DocumentRecord, DocumentRelease, DocumentStatus, DocumentType } from "@/lib/documents";
 
@@ -37,6 +41,7 @@ type DocumentReleaseRow = {
   published_at: string;
 };
 
+<<<<<<< HEAD
 function getDatabasePath(): string {
   if (process.env.DATABASE_PATH) return process.env.DATABASE_PATH;
   const legacyPath = path.join(process.cwd(), "data", "festpay-docs.sqlite");
@@ -48,8 +53,43 @@ function getDatabasePath(): string {
 }
 
 const databasePath = getDatabasePath();
+=======
+// Determine the database path
+// On Vercel (or other serverless with read-only filesystem), use /tmp (ephemeral)
+// In development, use ./data (persistent)
+function getDatabasePath(): string {
+  if (process.env.DATABASE_PATH) {
+    return process.env.DATABASE_PATH;
+  }
+>>>>>>> origin/main
 
-mkdirSync(path.dirname(databasePath), { recursive: true });
+  // Check if current working directory is writable
+  const cwd = process.cwd();
+  let isWritable = false;
+  try {
+    accessSync(cwd, constants.W_OK);
+    isWritable = true;
+  } catch {
+    isWritable = false;
+  }
+
+  if (isWritable) {
+    // Development: use ./data directory
+    return path.join(cwd, "data", "festpay-docs.sqlite");
+  } else {
+    // Production/serverless: use /tmp (ephemeral but writable)
+    return path.join("/tmp", "festpay-docs.sqlite");
+  }
+}
+
+const databasePath = getDatabasePath();
+
+// Ensure the directory exists (only if parent is writable)
+try {
+  mkdirSync(path.dirname(databasePath), { recursive: true });
+} catch (error) {
+  console.warn(`Could not create database directory: ${error}`);
+}
 
 const globalForDb = globalThis as unknown as { portulanDb?: Database.Database };
 const db = globalForDb.portulanDb ?? new Database(databasePath);
