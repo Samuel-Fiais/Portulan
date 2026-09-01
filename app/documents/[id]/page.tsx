@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { canMutateDocument, getDocument, listDocumentReleases } from "@/lib/db";
+import { canMutateDocument, getDocument, listDocumentReleases, listTemplates } from "@/lib/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DocumentEditor } from "@/components/document-editor";
@@ -22,6 +22,7 @@ export default async function DocumentPage({ params }: Props) {
   if (!document) notFound();
   const releases = await listDocumentReleases(document.id);
   const canEdit = canMutateDocument(document, ctx);
+  const templates = await listTemplates(ctx.userId);
 
-  return <DocumentEditor initialDocument={document} initialReleases={releases} canEdit={canEdit} />;
+  return <DocumentEditor initialDocument={document} initialReleases={releases} templates={templates} canEdit={canEdit} />;
 }

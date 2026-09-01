@@ -10,30 +10,42 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { templates, typeMeta, type DocumentType } from "@/lib/documents";
+import { DEFAULT_TEMPLATE_ID, type TemplateRecord } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 
-export function NewDocumentDialog({ trigger }: { trigger?: React.ReactNode }) {
+export function NewDocumentDialog({
+  templates,
+  trigger,
+}: {
+  templates: TemplateRecord[];
+  trigger?: React.ReactNode;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [type, setType] = useState<DocumentType>("report");
+  const defaultTemplate = templates.find((item) => item.id === DEFAULT_TEMPLATE_ID) ?? templates[0];
+  const [templateId, setTemplateId] = useState(defaultTemplate?.id ?? DEFAULT_TEMPLATE_ID);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
 
-  function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
-  }
+  const selectedTemplate = templates.find((item) => item.id === templateId) ?? defaultTemplate;
 
   function submit() {
+    if (!selectedTemplate) {
+      toast.error("Selecione um template.");
+      return;
+    }
+
     startTransition(async () => {
-      const template = templates[type];
       const result = await createDocumentAction({
-        ...template,
         title,
-        summary: summary || template.summary,
-        author: "Samuel Fiais",
-        team: "Festlab",
+        summary: summary || "Resumo do documento.",
+        templateId: selectedTemplate.id,
+        status: "draft",
+        tags: [],
+        content: selectedTemplate.content,
+        author: "",
+        team: "",
       });
       if (!result.ok) {
         toast.error(result.error);
@@ -46,24 +58,27 @@ export function NewDocumentDialog({ trigger }: { trigger?: React.ReactNode }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger ?? <Button><FilePlus2 />Novo documento</Button>}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Novo documento</DialogTitle>
-          <DialogDescription>Comece com uma estrutura pensada para o tipo de comunicação.</DialogDescription>
+          <DialogDescription>Escolha um template com as cores editoriais do documento.</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-2 py-2 sm:grid-cols-4">
-          {(Object.keys(typeMeta) as DocumentType[]).map((item) => (
+        <div className="grid grid-cols-2 gap-2 py-2 sm:grid-cols-3">
+          {templates.map((item) => (
             <button
               type="button"
-              key={item}
-              onClick={() => setType(item)}
-              className={cn("template-choice", type === item && "active")}
+              key={item.id}
+              onClick={() => setTemplateId(item.id)}
+              className={cn("template-choice", templateId === item.id && "active")}
             >
-              <span className={cn("template-choice-line", `type-${item}`)} />
-              <strong>{typeMeta[item].short}</strong>
-              <small>{templates[item].tags.slice(0, 2).join(" · ")}</small>
+              <span
+                className="template-choice-line"
+                style={{ background: `linear-gradient(90deg, ${item.primaryColor}, ${item.secondaryColor})` }}
+              />
+              <strong>{item.name}</strong>
+              <small>{item.isBuiltin ? "Padrão Portulan" : "Template personalizado"}</small>
             </button>
           ))}
         </div>
@@ -73,11 +88,11 @@ export function NewDocumentDialog({ trigger }: { trigger?: React.ReactNode }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="new-summary">Resumo <span className="text-muted-foreground">(opcional)</span></Label>
-          <Textarea id="new-summary" value={summary} onChange={(event) => setSummary(event.target.value)} placeholder={templates[type].summary} rows={3} />
+          <Textarea id="new-summary" value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Resumo executivo do documento…" rows={3} />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={pending || title.trim().length < 3}>
+          <Button onClick={submit} disabled={pending || title.trim().length < 3 || !selectedTemplate}>
             {pending ? "Criando…" : "Criar e editar"}<ArrowRight />
           </Button>
         </DialogFooter>

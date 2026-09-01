@@ -2,8 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { createDocument, deleteDocument, publishDocument, updateDocument } from "@/lib/db";
-import { documentInputSchema, documentUpdateSchema } from "@/lib/validation";
+import {
+  createDocument,
+  createMcpToken,
+  createTemplate,
+  deleteDocument,
+  deleteTemplate,
+  listMcpTokens,
+  publishDocument,
+  revokeMcpToken,
+  updateDocument,
+  updateTemplate,
+} from "@/lib/db";
+import { documentInputSchema, documentUpdateSchema, mcpTokenInputSchema, templateInputSchema } from "@/lib/validation";
 
 function accessContext(userId?: string) {
   return { userId: userId ?? null };
@@ -74,4 +85,80 @@ export async function publishDocumentAction(id: string, input: unknown) {
   revalidatePath(`/documents/${result.document.slug}`);
   revalidatePath(`/p/${result.release.id}`);
   return { ok: true as const, document: result.document, release: result.release };
+}
+
+export async function createTemplateAction(input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para criar templates." };
+  }
+
+  const parsed = templateInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Revise nome e cores do template." };
+
+  const template = await createTemplate(session.user.id, parsed.data);
+  revalidatePath("/");
+  return { ok: true as const, template };
+}
+
+export async function updateTemplateAction(id: string, input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para editar templates." };
+  }
+
+  const parsed = templateInputSchema.partial().safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Não foi possível validar o template." };
+
+  const template = await updateTemplate(session.user.id, id, parsed.data);
+  if (!template) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
+  revalidatePath("/");
+  return { ok: true as const, template };
+}
+
+export async function deleteTemplateAction(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para excluir templates." };
+  }
+
+  const deleted = await deleteTemplate(session.user.id, id);
+  if (!deleted) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
+  revalidatePath("/");
+  return { ok: true as const };
+}
+
+export async function createMcpTokenAction(input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para gerar tokens MCP." };
+  }
+
+  const parsed = mcpTokenInputSchema.safeParse(input ?? {});
+  if (!parsed.success) return { ok: false as const, error: "Nome do token inválido." };
+
+  const result = await createMcpToken(session.user.id, parsed.data.name);
+  revalidatePath("/");
+  return { ok: true as const, token: result.token, record: result.record };
+}
+
+export async function listMcpTokensAction() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para listar tokens MCP." };
+  }
+
+  return { ok: true as const, tokens: await listMcpTokens(session.user.id) };
+}
+
+export async function revokeMcpTokenAction(tokenId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para revogar tokens MCP." };
+  }
+
+  const revoked = await revokeMcpToken(session.user.id, tokenId);
+  if (!revoked) return { ok: false as const, error: "Token não encontrado." };
+  revalidatePath("/");
+  return { ok: true as const };
 }

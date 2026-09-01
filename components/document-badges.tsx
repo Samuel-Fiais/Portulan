@@ -1,12 +1,31 @@
 import { Badge } from "@/components/ui/badge";
-import { statusMeta, typeMeta, type DocumentStatus, type DocumentType } from "@/lib/documents";
+import { statusMeta, type DocumentStatus } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 
-export function TypeBadge({ type }: { type: DocumentType }) {
+export function TemplateBadge({
+  name,
+  primaryColor,
+  secondaryColor,
+}: {
+  name: string;
+  primaryColor: string;
+  secondaryColor?: string;
+}) {
   return (
-    <Badge variant="outline" className={cn("type-badge", `type-${type}`)}>
-      <span className="size-1.5 rounded-full bg-current" />
-      {typeMeta[type].short}
+    <Badge
+      variant="outline"
+      className={cn("template-badge")}
+      style={
+        {
+          "--template-primary": primaryColor,
+          "--template-secondary": secondaryColor ?? primaryColor,
+          color: primaryColor,
+          borderColor: primaryColor,
+        } as React.CSSProperties
+      }
+    >
+      <span className="template-badge-dot" />
+      {name}
     </Badge>
   );
 }
