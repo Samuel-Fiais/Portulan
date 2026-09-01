@@ -24,6 +24,7 @@ import {
   type DocumentRecord,
   type TemplateRecord,
 } from "@/lib/documents";
+import { pickContrastInkColor } from "@/lib/color-utils";
 import { formatRelativeDate } from "@/lib/utils";
 
 type Stats = { total: number; published: number; review: number; draft: number };
@@ -202,9 +203,12 @@ function TemplateCard({ template, index }: { template: TemplateRecord; index: nu
       <div className="fp-card template-card">
         <div
           className="template-index"
-          style={{ background: `linear-gradient(135deg, ${template.primaryColor}, ${template.secondaryColor})` }}
+          style={{
+            background: `linear-gradient(135deg, ${template.primaryColor}, ${template.secondaryColor})`,
+            color: pickContrastInkColor(template.primaryColor, template.secondaryColor),
+          }}
         >
-          0{index + 1}
+          {(index + 1).toString().padStart(2, "0")}
         </div>
         <h3>{template.name}</h3>
         <p>{template.isBuiltin ? "Template padrão Portulan (navy + burgundy)." : "Template personalizado com cores próprias."}</p>
