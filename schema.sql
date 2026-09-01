@@ -56,6 +56,24 @@ CREATE TABLE IF NOT EXISTS portulan.documents (
   published_at TIMESTAMPTZ
 );
 
+-- Migrations for databases created before template-based documents (must run before template_id indexes)
+INSERT INTO portulan.templates (id, user_id, name, primary_color, secondary_color, content, is_builtin)
+VALUES (
+  'portulan-default',
+  NULL,
+  'Default',
+  '#1a2847',
+  '#8b2735',
+  E'## Visão geral\n\nDescreva o contexto, objetivo e público deste documento.\n\n## Conteúdo principal\n\nDesenvolva o assunto com clareza e evidências.\n\n:::callout{title="Destaque"}\nInformação relevante para o leitor.\n:::\n\n## Próximos passos\n\n- Ação ou decisão pendente\n- Responsável e prazo',
+  TRUE
+)
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS template_id TEXT;
+UPDATE portulan.documents SET template_id = 'portulan-default' WHERE template_id IS NULL;
+DROP INDEX IF EXISTS portulan.idx_documents_type;
+ALTER TABLE portulan.documents DROP COLUMN IF EXISTS type;
+
 CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON portulan.documents (updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_documents_template_id ON portulan.documents (template_id);
 CREATE INDEX IF NOT EXISTS idx_documents_status ON portulan.documents (status);
@@ -79,28 +97,10 @@ CREATE TABLE IF NOT EXISTS portulan.document_releases (
   UNIQUE (document_id, version)
 );
 
-CREATE INDEX IF NOT EXISTS idx_document_releases_document ON portulan.document_releases (document_id, version DESC);
-
--- Migrations for databases created before template-based documents
-ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS template_id TEXT;
 ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS template_id TEXT;
 ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS template_name TEXT;
 ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS primary_color TEXT;
 ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS secondary_color TEXT;
-
-INSERT INTO portulan.templates (id, user_id, name, primary_color, secondary_color, content, is_builtin)
-VALUES (
-  'portulan-default',
-  NULL,
-  'Default',
-  '#1a2847',
-  '#8b2735',
-  E'## Visão geral\n\nDescreva o contexto, objetivo e público deste documento.\n\n## Conteúdo principal\n\nDesenvolva o assunto com clareza e evidências.\n\n:::callout{title="Destaque"}\nInformação relevante para o leitor.\n:::\n\n## Próximos passos\n\n- Ação ou decisão pendente\n- Responsável e prazo',
-  TRUE
-)
-ON CONFLICT (id) DO NOTHING;
-
-UPDATE portulan.documents SET template_id = 'portulan-default' WHERE template_id IS NULL;
 
 UPDATE portulan.document_releases AS r
 SET
@@ -110,5 +110,6 @@ SET
   secondary_color = COALESCE(r.secondary_color, '#8b2735')
 WHERE r.template_id IS NULL OR r.template_name IS NULL OR r.primary_color IS NULL OR r.secondary_color IS NULL;
 
-ALTER TABLE portulan.documents DROP COLUMN IF EXISTS type;
 ALTER TABLE portulan.document_releases DROP COLUMN IF EXISTS type;
+
+CREATE INDEX IF NOT EXISTS idx_document_releases_document ON portulan.document_releases (document_id, version DESC);
