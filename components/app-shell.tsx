@@ -8,7 +8,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="site-header no-print">
         <div className="header-inner">
           <BrandMark />
-          <span className="header-tag">Sistema de documentos</span>
           <span className="header-divider" />
           <nav className="site-nav" aria-label="Navegação principal">
             <Link href="/#documents">Biblioteca</Link>

@@ -46,7 +46,6 @@ export function Dashboard({
         <section className="doc-section hero-section">
         <div className="page-heading">
           <div>
-            <span className="eyebrow">Portulan · Knowledge base</span>
             <h1 className="fp-h1">Documentos que sustentam <span>decisões.</span></h1>
             <p className="fp-lead">Crie, revise e publique relatórios técnicos em um sistema visual consistente — por pessoas ou agentes.</p>
           </div>
@@ -63,7 +62,7 @@ export function Dashboard({
 
         <section id="documents" className="doc-section">
           <div className="section-header">
-            <span className="section-index">01</span><h2 className="section-title">Biblioteca</h2>
+            <h2 className="section-title">Biblioteca</h2>
             <span className="section-desc">{filtered.length} documento{filtered.length === 1 ? "" : "s"}</span>
           </div>
           <div className="filter-bar">
@@ -104,7 +103,7 @@ export function Dashboard({
         </section>
 
         <section id="templates" className="doc-section">
-          <div className="section-header"><span className="section-index">02</span><h2 className="section-title">Templates editoriais</h2><span className="section-desc">Estruturas prontas</span></div>
+          <div className="section-header"><h2 className="section-title">Templates editoriais</h2></div>
           <div className="fp-card-grid template-grid">
             {(Object.keys(templates) as DocumentType[]).map((item, index) => (
               <div key={item} className="fp-card template-card">
@@ -118,11 +117,10 @@ export function Dashboard({
         </section>
 
         <section id="integrations" className="doc-section">
-          <div className="section-header"><span className="section-index">03</span><h2 className="section-title">Agentes e integrações</h2><span className="section-desc">MCP Streamable HTTP</span></div>
+          <div className="section-header"><h2 className="section-title">Agentes e integrações</h2></div>
           <div className="integration-panel">
             <div className="integration-icon"><Bot /></div>
             <div className="flex-1">
-              <span className="eyebrow">Endpoint ativo no projeto</span>
               <h3>Uma biblioteca que agentes também conseguem manter.</h3>
               <p>Conecte qualquer cliente MCP ao endpoint abaixo para listar, ler, criar, editar e excluir documentos usando a mesma base SQLite.</p>
               <code>{mcpEndpoint}</code>
