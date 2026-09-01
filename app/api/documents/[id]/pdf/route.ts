@@ -101,7 +101,7 @@ async function decoratePdf(source: Uint8Array, input: { logo: Buffer; accent: st
   const inset = mm(7);
   const type = input.type.toUpperCase();
   const version = `v${input.version} · ${input.date}`;
-  const footerCopy = `Festpay · Confidencial · ${input.date}`;
+  const footerCopy = `Portulan · Confidencial · ${input.date}`;
 
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();

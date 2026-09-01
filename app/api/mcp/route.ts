@@ -15,7 +15,7 @@ const mcpHandler = createMcpHandler((server) => {
     "list_documents",
     {
       title: "Listar documentos",
-      description: "Lista e pesquisa documentos técnicos no Festpay Docs.",
+      description: "Lista e pesquisa documentos técnicos no Portulan.",
       inputSchema: z.object({
         query: z.string().optional().describe("Busca por título, resumo ou tag"),
         type: z.enum(documentTypes).optional(),
@@ -138,8 +138,8 @@ const mcpHandler = createMcpHandler((server) => {
     },
   );
 }, {
-  serverInfo: { name: "festpay-docs", version: "0.2.0" },
-  instructions: "Use estas ferramentas para consultar e manter a biblioteca técnica Festpay Docs. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão.",
+  serverInfo: { name: "portulan", version: "0.2.0" },
+  instructions: "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão.",
 });
 
 async function handler(request: Request) {

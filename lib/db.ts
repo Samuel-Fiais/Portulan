@@ -2,11 +2,7 @@ import "server-only";
 
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-<<<<<<< HEAD
-import { existsSync, mkdirSync } from "node:fs";
-=======
 import { mkdirSync, existsSync, accessSync, constants } from "node:fs";
->>>>>>> origin/main
 import path from "node:path";
 import type { DocumentInput, DocumentRecord, DocumentRelease, DocumentStatus, DocumentType } from "@/lib/documents";
 
@@ -41,19 +37,6 @@ type DocumentReleaseRow = {
   published_at: string;
 };
 
-<<<<<<< HEAD
-function getDatabasePath(): string {
-  if (process.env.DATABASE_PATH) return process.env.DATABASE_PATH;
-  const legacyPath = path.join(process.cwd(), "data", "festpay-docs.sqlite");
-  const newPath = path.join(process.cwd(), "data", "portulan.sqlite");
-  try {
-    if (existsSync(legacyPath)) return legacyPath;
-  } catch {}
-  return newPath;
-}
-
-const databasePath = getDatabasePath();
-=======
 // Determine the database path
 // On Vercel (or other serverless with read-only filesystem), use /tmp (ephemeral)
 // In development, use ./data (persistent)
@@ -61,7 +44,6 @@ function getDatabasePath(): string {
   if (process.env.DATABASE_PATH) {
     return process.env.DATABASE_PATH;
   }
->>>>>>> origin/main
 
   // Check if current working directory is writable
   const cwd = process.cwd();
@@ -74,11 +56,16 @@ function getDatabasePath(): string {
   }
 
   if (isWritable) {
-    // Development: use ./data directory
-    return path.join(cwd, "data", "festpay-docs.sqlite");
+    // Development: prefer ./data/portulan.sqlite, fallback to legacy festpay-docs.sqlite
+    const legacyPath = path.join(cwd, "data", "festpay-docs.sqlite");
+    const newPath = path.join(cwd, "data", "portulan.sqlite");
+    try {
+      if (existsSync(legacyPath)) return legacyPath;
+    } catch {}
+    return newPath;
   } else {
     // Production/serverless: use /tmp (ephemeral but writable)
-    return path.join("/tmp", "festpay-docs.sqlite");
+    return path.join("/tmp", "portulan.sqlite");
   }
 }
 
@@ -506,7 +493,7 @@ Com a consolidação do Pix no Brasil, criar um fluxo de débito automático via
 ## 02 — O que foi construído
 
 :::steps
-- Fluxo de adesão via QR Code | O cliente escaneia um QR Code de autorização uma única vez. O Festpay armazena a permissão e realiza as cobranças subsequentes automaticamente na data configurada.
+- Fluxo de adesão via QR Code | O cliente escaneia um QR Code de autorização uma única vez. O Portulan armazena a permissão e realiza as cobranças subsequentes automaticamente na data configurada.
 - Retry automático com backoff | Em caso de falha, o sistema tenta novamente em 24h, 48h e 72h antes de notificar o cliente. Taxa de sucesso esperada no retry: 78%.
 - Notificações e gestão de mandato | Push + email D-3, D-1 e D0. O cliente pode cancelar ou pausar o mandato a qualquer momento pelo app, sem precisar falar com o suporte.
 :::
@@ -633,7 +620,7 @@ const ensureComponentCatalog = db.transaction(() => {
     tags: ["qa", "design-system", "componentes"],
     content: `## 01 — Texto e hierarquia
 
-Este parágrafo valida **negrito**, *itálico*, [link](https://festpay.com) e \`código inline\` dentro do fluxo editorial.
+Este parágrafo valida **negrito**, *itálico*, [link](https://portulan.com) e \`código inline\` dentro do fluxo editorial.
 
 ### Subtítulo com respiro
 

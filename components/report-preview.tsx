@@ -48,7 +48,7 @@ export function ReportPreview({ document, publicView = false }: { document: Docu
       <footer className="tmpl-footer keep-together">
         <span className="tmpl-footer-logo"><PortulanLogo type={document.type} /></span>
         <span className="tmpl-footer-text">
-          {publicView ? `Festpay · v${document.version} · ${formatDate(document.updatedAt)}` : `Festpay · Confidencial · ${formatDate(document.updatedAt)}`}
+          {publicView ? `Portulan · v${document.version} · ${formatDate(document.updatedAt)}` : `Portulan · Confidencial · ${formatDate(document.updatedAt)}`}
         </span>
       </footer>
       </td></tr></tfoot>
