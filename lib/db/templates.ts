@@ -66,9 +66,26 @@ export async function createTemplate(userId: string, input: TemplateInput) {
 
 export async function updateTemplate(userId: string, id: string, input: Partial<TemplateInput>) {
   const current = await getTemplate(id);
-  if (!current || current.isBuiltin || current.userId !== userId) return null;
+  if (!current) return null;
 
   const db = await getDb();
+
+  if (current.isBuiltin) {
+    const [row] = await db
+      .update(templates)
+      .set({
+        name: input.name ?? current.name,
+        primaryColor: input.primaryColor ?? current.primaryColor,
+        secondaryColor: input.secondaryColor ?? current.secondaryColor,
+      })
+      .where(eq(templates.id, id))
+      .returning();
+
+    return row ? mapRow(row) : null;
+  }
+
+  if (current.userId !== userId) return null;
+
   const [row] = await db
     .update(templates)
     .set({
