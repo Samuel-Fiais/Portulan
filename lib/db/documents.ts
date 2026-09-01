@@ -3,14 +3,9 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { and, count, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { documentReleases, documents } from "@/lib/db/schema";
-import type {
-  DocumentInput,
-  DocumentRecord,
-  DocumentRelease,
-  DocumentStatus,
-  DocumentType,
-} from "@/lib/documents";
+import { documentReleases, documents, templates } from "@/lib/db/schema";
+import { getDefaultTemplate, resolveTemplateForUser } from "@/lib/db/templates";
+import type { DocumentInput, DocumentRecord, DocumentRelease, DocumentStatus } from "@/lib/documents";
 
 export type DocumentAccessContext = {
   userId?: string | null;
@@ -18,23 +13,18 @@ export type DocumentAccessContext = {
 };
 
 type DocumentRow = typeof documents.$inferSelect;
+type TemplateRow = typeof templates.$inferSelect;
 
-function slugify(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "documento";
-}
-
-function mapRow(row: DocumentRow): DocumentRecord {
+function mapRow(row: DocumentRow, template: Pick<TemplateRow, "name" | "primaryColor" | "secondaryColor">): DocumentRecord {
   return {
     id: row.id,
     slug: row.slug,
     title: row.title,
     summary: row.summary,
-    type: row.type as DocumentType,
+    templateId: row.templateId,
+    templateName: template.name,
+    primaryColor: template.primaryColor,
+    secondaryColor: template.secondaryColor,
     status: row.status as DocumentStatus,
     author: row.author,
     team: row.team,
@@ -55,7 +45,10 @@ function mapReleaseRow(row: typeof documentReleases.$inferSelect): DocumentRelea
     version: row.version,
     title: row.title,
     summary: row.summary,
-    type: row.type as DocumentType,
+    templateId: row.templateId,
+    templateName: row.templateName,
+    primaryColor: row.primaryColor,
+    secondaryColor: row.secondaryColor,
     author: row.author,
     team: row.team,
     tags: JSON.parse(row.tags) as string[],
@@ -97,8 +90,32 @@ async function uniqueSlug(title: string, currentId?: string) {
   }
 }
 
+function slugify(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "documento";
+}
+
+async function fetchDocumentRow(idOrSlug: string) {
+  const db = await getDb();
+  return db
+    .select({
+      document: documents,
+      templateName: templates.name,
+      primaryColor: templates.primaryColor,
+      secondaryColor: templates.secondaryColor,
+    })
+    .from(documents)
+    .innerJoin(templates, eq(documents.templateId, templates.id))
+    .where(or(eq(documents.id, idOrSlug), eq(documents.slug, idOrSlug)))
+    .limit(1);
+}
+
 export async function listDocuments(
-  filters?: { query?: string; type?: DocumentType; status?: DocumentStatus },
+  filters?: { query?: string; templateId?: string; status?: DocumentStatus },
   ctx: DocumentAccessContext = {},
 ) {
   const db = await getDb();
@@ -114,28 +131,35 @@ export async function listDocuments(
       sql`(${documents.title} ILIKE ${query} OR ${documents.summary} ILIKE ${query} OR ${documents.tags} ILIKE ${query})`,
     );
   }
-  if (filters?.type) clauses.push(eq(documents.type, filters.type));
+  if (filters?.templateId) clauses.push(eq(documents.templateId, filters.templateId));
   if (filters?.status) clauses.push(eq(documents.status, filters.status));
 
   const rows = await db
-    .select()
+    .select({
+      document: documents,
+      templateName: templates.name,
+      primaryColor: templates.primaryColor,
+      secondaryColor: templates.secondaryColor,
+    })
     .from(documents)
+    .innerJoin(templates, eq(documents.templateId, templates.id))
     .where(clauses.length ? and(...clauses) : undefined)
     .orderBy(desc(documents.updatedAt));
 
-  return rows.map(mapRow);
+  return rows.map(({ document, templateName, primaryColor, secondaryColor }) =>
+    mapRow(document, { name: templateName, primaryColor, secondaryColor }),
+  );
 }
 
 export async function getDocument(idOrSlug: string, ctx: DocumentAccessContext = {}) {
-  const db = await getDb();
-  const [row] = await db
-    .select()
-    .from(documents)
-    .where(or(eq(documents.id, idOrSlug), eq(documents.slug, idOrSlug)))
-    .limit(1);
-
+  const [row] = await fetchDocumentRow(idOrSlug);
   if (!row) return null;
-  const document = mapRow(row);
+
+  const document = mapRow(row.document, {
+    name: row.templateName,
+    primaryColor: row.primaryColor,
+    secondaryColor: row.secondaryColor,
+  });
   return canReadDocument(document, ctx) ? document : null;
 }
 
@@ -144,6 +168,11 @@ export async function createDocument(
   options?: { id?: string; slug?: string; userId?: string | null },
 ) {
   const db = await getDb();
+  const userId = options?.userId ?? null;
+  const template =
+    userId != null
+      ? (await resolveTemplateForUser(input.templateId, userId)) ?? (await getDefaultTemplate())
+      : (await getDefaultTemplate());
   const id = options?.id ?? randomUUID();
   const now = new Date().toISOString();
   const slug = options?.slug ?? (await uniqueSlug(input.title, id));
@@ -154,20 +183,20 @@ export async function createDocument(
     slug,
     title: input.title,
     summary: input.summary,
-    type: input.type,
+    templateId: template.id,
     status: input.status,
     author: input.author,
     team: input.team,
     tags: JSON.stringify(input.tags),
     content: input.content,
     version: 1,
-    userId: options?.userId ?? null,
+    userId,
     createdAt: now,
     updatedAt: now,
     publishedAt,
   });
 
-  return (await getDocument(id, { bypassOwnership: true }))!;
+  return (await getDocument(id, { userId, bypassOwnership: true }))!;
 }
 
 export async function updateDocument(
@@ -178,7 +207,13 @@ export async function updateDocument(
   const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
   if (!current || !canMutateDocument(current, ctx)) return null;
 
-  const next = { ...current, ...input };
+  let templateId = current.templateId;
+  if (input.templateId && ctx.userId) {
+    const template = await resolveTemplateForUser(input.templateId, ctx.userId);
+    if (template) templateId = template.id;
+  }
+
+  const next = { ...current, ...input, templateId };
   const now = new Date().toISOString();
   const publishedAt = next.status === "published" ? current.publishedAt ?? now : null;
   const slug = input.title ? await uniqueSlug(input.title, id) : current.slug;
@@ -190,7 +225,7 @@ export async function updateDocument(
       slug,
       title: next.title,
       summary: next.summary,
-      type: next.type,
+      templateId: next.templateId,
       status: next.status,
       author: next.author,
       team: next.team,
@@ -217,7 +252,7 @@ export async function deleteDocument(id: string, ctx: DocumentAccessContext = {}
 function documentContentChanged(current: DocumentRecord, input: Partial<DocumentInput>) {
   const title = input.title ?? current.title;
   const summary = input.summary ?? current.summary;
-  const type = input.type ?? current.type;
+  const templateId = input.templateId ?? current.templateId;
   const author = input.author ?? current.author;
   const team = input.team ?? current.team;
   const tags = input.tags ?? current.tags;
@@ -225,7 +260,7 @@ function documentContentChanged(current: DocumentRecord, input: Partial<Document
   return (
     title !== current.title ||
     summary !== current.summary ||
-    type !== current.type ||
+    templateId !== current.templateId ||
     author !== current.author ||
     team !== current.team ||
     JSON.stringify(tags) !== JSON.stringify(current.tags) ||
@@ -258,10 +293,16 @@ export async function publishDocument(
   if (!current || !canMutateDocument(current, ctx)) return null;
 
   const db = await getDb();
+  let templateId = current.templateId;
+  if (input.templateId && ctx.userId) {
+    const template = await resolveTemplateForUser(input.templateId, ctx.userId);
+    if (template) templateId = template.id;
+  }
+
   const merged = {
     title: input.title ?? current.title,
     summary: input.summary ?? current.summary,
-    type: input.type ?? current.type,
+    templateId,
     author: input.author ?? current.author,
     team: input.team ?? current.team,
     tags: input.tags ?? current.tags,
@@ -278,7 +319,7 @@ export async function publishDocument(
         slug,
         title: merged.title,
         summary: merged.summary,
-        type: merged.type,
+        templateId: merged.templateId,
         status: "published",
         author: merged.author,
         team: merged.team,
@@ -318,7 +359,10 @@ export async function publishDocument(
     version: document.version,
     title: document.title,
     summary: document.summary,
-    type: document.type,
+    templateId: document.templateId,
+    templateName: document.templateName,
+    primaryColor: document.primaryColor,
+    secondaryColor: document.secondaryColor,
     author: document.author,
     team: document.team,
     tags: JSON.stringify(document.tags),

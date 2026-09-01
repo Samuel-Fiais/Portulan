@@ -1,19 +1,11 @@
 import puppeteer from "puppeteer";
 import { PDFDocument, StandardFonts, rgb, type RGB } from "pdf-lib";
 import { auth } from "@/auth";
-import { getBrandLogo, type BrandTone } from "@/lib/brand-assets";
+import { getBrandLogo } from "@/lib/brand-assets";
 import { getDocument } from "@/lib/db";
-import { typeMeta, type DocumentType } from "@/lib/documents";
 import { formatDate } from "@/lib/utils";
 
 type Context = { params: Promise<{ id: string }> };
-
-const toneByType: Record<DocumentType, BrandTone> = {
-  feature: "purple",
-  incident: "coral",
-  report: "teal",
-  reference: "indigo",
-};
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,8 +21,9 @@ export async function GET(request: Request, { params }: Context) {
   const document = await getDocument(id, { userId: session.user.id });
   if (!document) return Response.json({ error: "Documento não encontrado" }, { status: 404 });
 
-  const { primary: accent, secondary: accent2 } = typeMeta[document.type];
-  const logo = await getBrandLogo(toneByType[document.type]);
+  const accent = document.primaryColor;
+  const accent2 = document.secondaryColor;
+  const logo = await getBrandLogo("navy");
   const date = formatDate(document.updatedAt);
   const sessionCookie = request.headers.get("cookie");
 
@@ -63,7 +56,7 @@ export async function GET(request: Request, { params }: Context) {
       logo,
       accent,
       accent2,
-      type: typeMeta[document.type].label,
+      type: document.templateName,
       version: document.version,
       date,
     });
@@ -120,7 +113,7 @@ async function decoratePdf(source: Uint8Array, input: { logo: Buffer; accent: st
 
     const headerLogoHeight = mm(5);
     const headerLogoWidth = logo.width * (headerLogoHeight / logo.height);
-    page.drawImage(logo, { x: inset, y: height - (headerHeight + headerLogoHeight) / 2, width: headerLogoWidth, height: headerLogoHeight });
+    page.drawImage(logo, { x: inset, y: height - (headerLogoHeight + headerLogoHeight) / 2, width: headerLogoWidth, height: headerLogoHeight });
     drawRightText(page, type, width - inset, height - mm(3.2), bold, 6.7, accent);
     drawRightText(page, version, width - inset, height - mm(6.8), regular, 6.2, muted);
 

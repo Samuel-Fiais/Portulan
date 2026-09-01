@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { createDocumentAction, deleteDocumentAction, publishDocumentAction, updateDocumentAction } from "@/app/actions";
 import { BrandMark } from "@/components/brand-mark";
 import { ReportPreview } from "@/components/report-preview";
-import { StatusBadge, TypeBadge } from "@/components/document-badges";
+import { StatusBadge, TemplateBadge } from "@/components/document-badges";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -17,16 +17,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { documentStatuses, documentTypes, statusMeta, typeMeta, type DocumentRecord, type DocumentRelease } from "@/lib/documents";
+import { documentStatuses, statusMeta, type DocumentRecord, type DocumentRelease, type TemplateRecord } from "@/lib/documents";
 import { cn, formatRelativeDate } from "@/lib/utils";
 
 export function DocumentEditor({
   initialDocument,
   initialReleases = [],
+  templates,
   canEdit = true,
 }: {
   initialDocument: DocumentRecord;
   initialReleases?: DocumentRelease[];
+  templates: TemplateRecord[];
   canEdit?: boolean;
 }) {
   const router = useRouter();
@@ -43,18 +45,34 @@ export function DocumentEditor({
     setDocument((current) => ({ ...current, [key]: value }));
   }
 
+  function changeTemplate(templateId: string) {
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) return;
+    setDocument((current) => ({
+      ...current,
+      templateId: template.id,
+      templateName: template.name,
+      primaryColor: template.primaryColor,
+      secondaryColor: template.secondaryColor,
+    }));
+  }
+
+  function savePayload() {
+    return {
+      title: document.title,
+      summary: document.summary,
+      templateId: document.templateId,
+      status: document.status,
+      author: document.author,
+      team: document.team,
+      tags: document.tags,
+      content: document.content,
+    };
+  }
+
   function save() {
     startTransition(async () => {
-      const result = await updateDocumentAction(document.id, {
-        title: document.title,
-        summary: document.summary,
-        type: document.type,
-        status: document.status,
-        author: document.author,
-        team: document.team,
-        tags: document.tags,
-        content: document.content,
-      });
+      const result = await updateDocumentAction(document.id, savePayload());
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -70,16 +88,7 @@ export function DocumentEditor({
     try {
       let current = document;
       if (dirty) {
-        const result = await updateDocumentAction(document.id, {
-          title: document.title,
-          summary: document.summary,
-          type: document.type,
-          status: document.status,
-          author: document.author,
-          team: document.team,
-          tags: document.tags,
-          content: document.content,
-        });
+        const result = await updateDocumentAction(document.id, savePayload());
         if (!result.ok) {
           toast.error(result.error);
           return;
@@ -109,8 +118,14 @@ export function DocumentEditor({
   function duplicate() {
     startTransition(async () => {
       const result = await createDocumentAction({
-        title: `${document.title} — cópia`, summary: document.summary, type: document.type,
-        status: "draft", author: document.author, team: document.team, tags: document.tags, content: document.content,
+        title: `${document.title} — cópia`,
+        summary: document.summary,
+        templateId: document.templateId,
+        status: "draft",
+        author: document.author,
+        team: document.team,
+        tags: document.tags,
+        content: document.content,
       });
       if (!result.ok) {
         toast.error(result.error);
@@ -135,15 +150,7 @@ export function DocumentEditor({
 
   function publish() {
     startTransition(async () => {
-      const result = await publishDocumentAction(document.id, {
-        title: document.title,
-        summary: document.summary,
-        type: document.type,
-        author: document.author,
-        team: document.team,
-        tags: document.tags,
-        content: document.content,
-      });
+      const result = await publishDocumentAction(document.id, savePayload());
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -213,7 +220,10 @@ export function DocumentEditor({
       <main className={cn("editor-workspace", !previewVisible && "preview-hidden")}>
         <section className="editor-pane no-print">
           <div className="editor-document-heading">
-            <div className="flex flex-wrap items-center gap-2"><TypeBadge type={document.type} /><StatusBadge status={document.status} /></div>
+            <div className="flex flex-wrap items-center gap-2">
+              <TemplateBadge name={document.templateName} primaryColor={document.primaryColor} secondaryColor={document.secondaryColor} />
+              <StatusBadge status={document.status} />
+            </div>
             <Textarea className="editor-title-input" value={document.title} onChange={(event) => patch("title", event.target.value)} aria-label="Título do documento" readOnly={!canEdit} />
             <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo do documento…" aria-label="Resumo do documento" readOnly={!canEdit} />
           </div>
@@ -224,7 +234,16 @@ export function DocumentEditor({
               <Textarea className="markdown-editor" value={document.content} onChange={(event) => patch("content", event.target.value)} spellCheck={false} aria-label="Conteúdo em Markdown" readOnly={!canEdit} />
             </TabsContent>
             <TabsContent value="metadata" className="editor-tab-content metadata-form">
-              <Field label="Tipo"><Select value={document.type} onValueChange={(value: DocumentRecord["type"]) => patch("type", value)} disabled={!canEdit}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentTypes.map((type) => <SelectItem key={type} value={type}>{typeMeta[type].label}</SelectItem>)}</SelectContent></Select></Field>
+              <Field label="Template">
+                <Select value={document.templateId} onValueChange={changeTemplate} disabled={!canEdit}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
               <Field label="Status"><Select value={document.status} onValueChange={(value: DocumentRecord["status"]) => patch("status", value)} disabled={!canEdit}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentStatuses.map((status) => <SelectItem key={status} value={status}>{statusMeta[status].label}</SelectItem>)}</SelectContent></Select></Field>
               <Field label="Responsável"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} readOnly={!canEdit} /></Field>
               <Field label="Time"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>

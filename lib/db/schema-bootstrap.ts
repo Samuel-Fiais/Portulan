@@ -12,12 +12,23 @@ type Db = NeonHttpDatabase<typeof schema>;
 /** Required Portulan tables and columns inside the dedicated Postgres schema. */
 export const PORTULAN_TABLE_COLUMNS = {
   users: ["id", "github_id", "login", "name", "avatar_url", "created_at"],
+  templates: [
+    "id",
+    "user_id",
+    "name",
+    "primary_color",
+    "secondary_color",
+    "content",
+    "is_builtin",
+    "created_at",
+  ],
+  mcp_tokens: ["id", "user_id", "name", "token_hash", "token_prefix", "created_at", "last_used_at"],
   documents: [
     "id",
     "slug",
     "title",
     "summary",
-    "type",
+    "template_id",
     "status",
     "author",
     "team",
@@ -35,7 +46,10 @@ export const PORTULAN_TABLE_COLUMNS = {
     "version",
     "title",
     "summary",
-    "type",
+    "template_id",
+    "template_name",
+    "primary_color",
+    "secondary_color",
     "author",
     "team",
     "tags",
@@ -91,7 +105,7 @@ async function loadTableColumns(db: Db): Promise<Map<string, Set<string>>> {
     SELECT table_name, column_name
     FROM information_schema.columns
     WHERE table_schema = ${PORTULAN_PG_SCHEMA}
-      AND table_name IN ('users', 'documents', 'document_releases')
+      AND table_name IN ('users', 'templates', 'mcp_tokens', 'documents', 'document_releases')
   `);
 
   const byTable = new Map<string, Set<string>>();

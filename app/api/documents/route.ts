@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { createDocument, listDocuments } from "@/lib/db";
 import { documentInputSchema } from "@/lib/validation";
-import { documentStatuses, documentTypes } from "@/lib/documents";
+import { documentStatuses } from "@/lib/documents";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +13,17 @@ export async function GET(request: Request) {
 
   const ctx = { userId: session.user.id };
   const params = new URL(request.url).searchParams;
-  const typeValue = params.get("type");
   const statusValue = params.get("status");
-  const type = documentTypes.find((item) => item === typeValue);
   const status = documentStatuses.find((item) => item === statusValue);
   return Response.json({
-    documents: await listDocuments({ query: params.get("q") || undefined, type, status }, ctx),
+    documents: await listDocuments(
+      {
+        query: params.get("q") || undefined,
+        templateId: params.get("template_id") || undefined,
+        status,
+      },
+      ctx,
+    ),
   });
 }
 

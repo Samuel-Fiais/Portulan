@@ -1,30 +1,63 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
-import { createDocument, deleteDocument, getDocument, listDocumentReleases, listDocuments, publishDocument, updateDocument } from "@/lib/db";
-import { documentStatuses, documentTypes } from "@/lib/documents";
+import {
+  createDocument,
+  deleteDocument,
+  getDocument,
+  listDocumentReleases,
+  listDocuments,
+  listTemplates,
+  publishDocument,
+  updateDocument,
+  validateMcpToken,
+} from "@/lib/db";
+import { documentStatuses } from "@/lib/documents";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const serviceContext = { bypassOwnership: true } as const;
+const mcpUserStore = new AsyncLocalStorage<{ userId: string }>();
 
 const textResult = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
+function requireUserId() {
+  const userId = mcpUserStore.getStore()?.userId;
+  if (!userId) throw new Error("Não autorizado");
+  return userId;
+}
+
 const mcpHandler = createMcpHandler((server) => {
+  server.registerTool(
+    "list_templates",
+    {
+      title: "Listar templates",
+      description: "Lista os templates disponíveis para o usuário autenticado (inclui o template Default).",
+      inputSchema: z.object({}),
+    },
+    async () => textResult({ templates: await listTemplates(requireUserId()) }),
+  );
+
   server.registerTool(
     "list_documents",
     {
       title: "Listar documentos",
-      description: "Lista e pesquisa documentos técnicos no Portulan. Operação em nível de serviço (sem identidade por usuário).",
+      description: "Lista e pesquisa documentos técnicos do usuário autenticado.",
       inputSchema: z.object({
         query: z.string().optional().describe("Busca por título, resumo ou tag"),
-        type: z.enum(documentTypes).optional(),
+        template_id: z.string().optional(),
         status: z.enum(documentStatuses).optional(),
       }),
     },
-    async (filters) => textResult({ documents: await listDocuments(filters, serviceContext) }),
+    async (filters) =>
+      textResult({
+        documents: await listDocuments(
+          { query: filters.query, templateId: filters.template_id, status: filters.status },
+          { userId: requireUserId() },
+        ),
+      }),
   );
 
   server.registerTool(
@@ -35,7 +68,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1).describe("ID ou slug do documento") }),
     },
     async ({ id }) => {
-      const document = await getDocument(id, serviceContext);
+      const document = await getDocument(id, { userId: requireUserId() });
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -44,11 +77,11 @@ const mcpHandler = createMcpHandler((server) => {
     "create_document",
     {
       title: "Criar documento",
-      description: "Cria um documento Markdown (user_id nulo — nível de serviço até suporte a identidade MCP).",
+      description: "Cria um documento Markdown associado ao usuário autenticado.",
       inputSchema: z.object({
         title: z.string().min(3).max(180),
         summary: z.string().max(500).default(""),
-        type: z.enum(documentTypes),
+        template_id: z.string().min(1).describe("ID do template (use list_templates)"),
         status: z.enum(documentStatuses).default("draft"),
         author: z.string().max(100).default("Agente de IA"),
         team: z.string().max(100).default(""),
@@ -56,7 +89,22 @@ const mcpHandler = createMcpHandler((server) => {
         content: z.string().max(250_000).default(""),
       }),
     },
-    async (input) => textResult({ document: await createDocument(input, { userId: null }) }),
+    async (input) => {
+      const document = await createDocument(
+        {
+          title: input.title,
+          summary: input.summary,
+          templateId: input.template_id,
+          status: input.status,
+          author: input.author,
+          team: input.team,
+          tags: input.tags,
+          content: input.content,
+        },
+        { userId: requireUserId() },
+      );
+      return textResult({ document });
+    },
   );
 
   server.registerTool(
@@ -68,7 +116,7 @@ const mcpHandler = createMcpHandler((server) => {
         id: z.string().min(1),
         title: z.string().min(3).max(180).optional(),
         summary: z.string().max(500).optional(),
-        type: z.enum(documentTypes).optional(),
+        template_id: z.string().min(1).optional(),
         status: z.enum(documentStatuses).optional(),
         author: z.string().max(100).optional(),
         team: z.string().max(100).optional(),
@@ -76,8 +124,8 @@ const mcpHandler = createMcpHandler((server) => {
         content: z.string().max(250_000).optional(),
       }),
     },
-    async ({ id, ...changes }) => {
-      const document = await updateDocument(id, changes, serviceContext);
+    async ({ id, template_id, ...changes }) => {
+      const document = await updateDocument(id, { ...changes, templateId: template_id }, { userId: requireUserId() });
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -90,7 +138,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().uuid() }),
     },
     async ({ id }) => {
-      const deleted = await deleteDocument(id, serviceContext);
+      const deleted = await deleteDocument(id, { userId: requireUserId() });
       return deleted ? textResult({ deleted: true, id }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -104,15 +152,15 @@ const mcpHandler = createMcpHandler((server) => {
         id: z.string().min(1),
         title: z.string().min(3).max(180).optional(),
         summary: z.string().max(500).optional(),
-        type: z.enum(documentTypes).optional(),
+        template_id: z.string().min(1).optional(),
         author: z.string().max(100).optional(),
         team: z.string().max(100).optional(),
         tags: z.array(z.string().min(1).max(40)).max(12).optional(),
         content: z.string().max(250_000).optional(),
       }),
     },
-    async ({ id, ...changes }) => {
-      const result = await publishDocument(id, changes, serviceContext);
+    async ({ id, template_id, ...changes }) => {
+      const result = await publishDocument(id, { ...changes, templateId: template_id }, { userId: requireUserId() });
       if (!result) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
       return textResult({
         document: result.document,
@@ -130,7 +178,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1).describe("ID ou slug do documento") }),
     },
     async ({ id }) => {
-      const document = await getDocument(id, serviceContext);
+      const document = await getDocument(id, { userId: requireUserId() });
       if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
       const releases = (await listDocumentReleases(document.id)).map((release) => ({
         ...release,
@@ -140,16 +188,33 @@ const mcpHandler = createMcpHandler((server) => {
     },
   );
 }, {
-  serverInfo: { name: "portulan", version: "0.3.0" },
-  instructions: "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan. Com MCP_API_KEY, as operações são em nível de serviço (sem identidade por usuário). Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão.",
+  serverInfo: { name: "portulan", version: "0.4.0" },
+  instructions:
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão.",
 });
 
-async function handler(request: Request) {
-  const apiKey = process.env.MCP_API_KEY;
-  if (apiKey && request.headers.get("authorization") !== `Bearer ${apiKey}`) {
-    return Response.json({ error: "Não autorizado" }, { status: 401 });
+async function authenticateMcpRequest(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return Response.json(
+      { error: "Token MCP ausente. Gere um token pessoal no dashboard Portulan (Integrações → MCP)." },
+      { status: 401 },
+    );
   }
-  return mcpHandler(request);
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  const userId = await validateMcpToken(token);
+  if (!userId) {
+    return Response.json({ error: "Token MCP inválido ou revogado." }, { status: 401 });
+  }
+
+  return { userId };
+}
+
+async function handler(request: Request) {
+  const authResult = await authenticateMcpRequest(request);
+  if (authResult instanceof Response) return authResult;
+  return mcpUserStore.run({ userId: authResult.userId }, () => mcpHandler(request));
 }
 
 export { handler as GET, handler as POST, handler as DELETE };

@@ -1,4 +1,4 @@
-import { index, integer, pgSchema, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgSchema, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 export const PORTULAN_PG_SCHEMA = "portulan";
 
@@ -13,6 +13,37 @@ export const users = portulanSchema.table("users", {
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });
 
+export const templates = portulanSchema.table(
+  "templates",
+  {
+    id: text("id").primaryKey(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    primaryColor: text("primary_color").notNull(),
+    secondaryColor: text("secondary_color").notNull(),
+    content: text("content").notNull().default(""),
+    isBuiltin: boolean("is_builtin").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [index("idx_templates_user_id").on(table.userId)],
+);
+
+export const mcpTokens = portulanSchema.table(
+  "mcp_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull().default("Token MCP"),
+    tokenHash: text("token_hash").notNull().unique(),
+    tokenPrefix: text("token_prefix").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true, mode: "string" }),
+  },
+  (table) => [index("idx_mcp_tokens_user_id").on(table.userId)],
+);
+
 export const documents = portulanSchema.table(
   "documents",
   {
@@ -20,7 +51,9 @@ export const documents = portulanSchema.table(
     slug: text("slug").notNull().unique(),
     title: text("title").notNull(),
     summary: text("summary").notNull().default(""),
-    type: text("type").notNull(),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => templates.id),
     status: text("status").notNull(),
     author: text("author").notNull().default(""),
     team: text("team").notNull().default(""),
@@ -34,7 +67,7 @@ export const documents = portulanSchema.table(
   },
   (table) => [
     index("idx_documents_updated_at").on(table.updatedAt),
-    index("idx_documents_type").on(table.type),
+    index("idx_documents_template_id").on(table.templateId),
     index("idx_documents_status").on(table.status),
     index("idx_documents_user_id").on(table.userId),
   ],
@@ -50,7 +83,10 @@ export const documentReleases = portulanSchema.table(
     version: integer("version").notNull(),
     title: text("title").notNull(),
     summary: text("summary").notNull().default(""),
-    type: text("type").notNull(),
+    templateId: text("template_id").notNull(),
+    templateName: text("template_name").notNull(),
+    primaryColor: text("primary_color").notNull(),
+    secondaryColor: text("secondary_color").notNull(),
     author: text("author").notNull().default(""),
     team: text("team").notNull().default(""),
     tags: text("tags").notNull().default("[]"),

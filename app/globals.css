@@ -397,6 +397,23 @@
 .header-inner { max-width: 1100px; margin: 0 auto; padding: 7px var(--sp-6); display: flex; align-items: center; gap: var(--sp-5); }
 .header-divider { flex: 1; }
 .auth-controls { display: flex; align-items: center; gap: 8px; }
+.auth-menu-trigger { border: 1px solid transparent; background: transparent; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.auth-menu-trigger:hover { border-color: var(--border); background: var(--selection-bg); }
+.auth-menu-chevron { width: 14px; height: 14px; opacity: .6; flex-shrink: 0; }
+.auth-sign-in { border: 1px solid var(--border); background: transparent; padding: 6px 10px; font: 500 11px/1 var(--font-mono); cursor: pointer; }
+.auth-sign-in:hover { background: var(--selection-bg); }
+.auth-menu-content { min-width: 10rem; }
+.template-badge { font: 600 9px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.template-badge-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--template-primary, var(--primary)); }
+.template-filter-select { width: 100%; max-width: 11rem; border: 1px solid var(--border); background: var(--background); padding: 8px 10px; font: 500 12px/1 var(--font-mono); }
+.template-color-row { display: flex; align-items: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.template-swatch { width: 18px; height: 18px; border-radius: 2px; border: 1px solid var(--border); }
+.template-color-code { font: 500 10px/1 var(--font-mono); color: var(--text-3); }
+.mcp-token-panel { margin-top: var(--sp-4); }
+.mcp-token-reveal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding: 10px; border: 1px solid var(--border); background: var(--surface); }
+.mcp-token-reveal code { word-break: break-all; font-size: 11px; }
+.mcp-token-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.mcp-token-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
 .auth-avatar { width: 28px; height: 28px; border-radius: 999px; object-fit: cover; border: 1px solid var(--border); }
 .auth-login { font: 500 12px/1 var(--font-mono); color: var(--text-2); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .login-page { min-height: 100dvh; display: flex; flex-direction: column; background: var(--background); }

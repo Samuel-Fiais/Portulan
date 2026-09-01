@@ -15,14 +15,13 @@ Acesse `http://localhost:3000`. O banco é criado automaticamente em `data/portu
 
 ## Configuração
 
-Copie `.env.example` para `.env.local` quando precisar alterar o caminho do SQLite ou proteger o MCP:
+Copie `.env.example` para `.env.local` e configure `DATABASE_URL` (Neon Postgres) e as variáveis Auth.js (`AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, `AUTH_URL`).
 
-```dotenv
-DATABASE_PATH=/caminho/absoluto/portulan.sqlite
-MCP_API_KEY=uma-chave-segura
-```
+### Autenticação MCP (por usuário)
 
-Quando `MCP_API_KEY` estiver definida, envie `Authorization: Bearer <chave>` ao endpoint MCP.
+1. Faça login no Portulan com GitHub
+2. Abra **Integrações → MCP** e clique em **Gerar token MCP**
+3. Envie o token em toda requisição ao endpoint MCP: `Authorization: Bearer ptl_<seu-token>`
 
 ## MCP para agentes
 
