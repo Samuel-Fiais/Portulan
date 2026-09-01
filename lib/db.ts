@@ -81,7 +81,7 @@ try {
 const globalForDb = globalThis as unknown as { portulanDb?: Database.Database };
 const db = globalForDb.portulanDb ?? new Database(databasePath);
 
-if (process.env.NODE_ENV !== "production") globalForDb.portulanDb = db;
+globalForDb.portulanDb = db;
 
 db.pragma("busy_timeout = 10000");
 if (db.pragma("journal_mode", { simple: true }) !== "wal") {
@@ -207,10 +207,10 @@ export function getDocument(idOrSlug: string) {
   return row ? mapRow(row) : null;
 }
 
-export function createDocument(input: DocumentInput) {
-  const id = randomUUID();
+export function createDocument(input: DocumentInput, options?: { id?: string; slug?: string }) {
+  const id = options?.id ?? randomUUID();
   const now = new Date().toISOString();
-  const slug = uniqueSlug(input.title);
+  const slug = options?.slug ?? uniqueSlug(input.title, id);
   const publishedAt = input.status === "published" ? now : null;
   db.prepare(`
     INSERT INTO documents (id, slug, title, summary, type, status, author, team, tags, content, version, created_at, updated_at, published_at)
@@ -355,10 +355,10 @@ export function getDocumentStats() {
   return { total: result.total, published: result.published ?? 0, review: result.review ?? 0, draft: result.draft ?? 0 };
 }
 
-const seedDatabase = db.transaction(() => {
-  const count = (db.prepare("SELECT COUNT(*) AS count FROM documents").get() as { count: number }).count;
-  if (count > 0) return;
-  createDocument({
+const SEED_DOCUMENTS = [
+  {
+    id: "seed-checkout-recorrente-via-pix",
+    slug: "checkout-recorrente-via-pix",
     title: "Checkout Recorrente via Pix",
     summary: "Rollout do novo fluxo de cobranças automáticas via Pix para clientes com planos recorrentes.",
     type: "feature",
@@ -400,8 +400,10 @@ O cliente autoriza o mandato uma única vez por QR Code. As cobranças seguintes
 - [x] Dashboard de mandatos
 - [ ] Rollout para 10% da base
 - [ ] Documentação no portal do cliente`,
-  });
-  createDocument({
+  },
+  {
+    id: "seed-inc-2024-08-webhook",
+    slug: "inc-2024-08-falha-no-webhook-de-pagamentos",
     title: "INC-2024-08 · Falha no Webhook de Pagamentos",
     summary: "Postmortem do timeout no parceiro bancário que afetou confirmações em tempo real por 47 minutos.",
     type: "incident",
@@ -439,8 +441,10 @@ O certificado TLS do endpoint do parceiro expirou sem alerta prévio. A ausênci
 - [x] Alerta de latência p95 acima de 2s
 - [ ] Monitor de expiração de certificados em D-30
 - [ ] Atualizar runbook de incidentes`,
-  });
-  createDocument({
+  },
+  {
+    id: "seed-sprint-32-plataforma",
+    slug: "sprint-32-plataforma-de-pagamentos",
     title: "Sprint 32 — Plataforma de Pagamentos",
     summary: "Entregas, indicadores de performance e riscos do ciclo finalizado em 26 de agosto.",
     type: "report",
@@ -476,7 +480,17 @@ O time concluiu 92% do escopo planejado, com redução de 14% no lead time e nen
 - Expandir observabilidade do fluxo de pagamentos
 - Concluir documentação para clientes
 - Preparar rollout para 50% da base`,
-  });
+  },
+] as const;
+
+const seedDatabase = db.transaction(() => {
+  const count = (db.prepare("SELECT COUNT(*) AS count FROM documents").get() as { count: number }).count;
+  if (count > 0) return;
+
+  for (const seed of SEED_DOCUMENTS) {
+    const { id, slug, ...input } = seed;
+    createDocument({ ...input, tags: [...input.tags] }, { id, slug });
+  }
 });
 
 seedDatabase.immediate();
@@ -741,6 +755,9 @@ Banner de alto contraste para comunicar uma conclusão prioritária.
 \`\`\`
 
 Texto final para validar o espaçamento depois de um bloco de código.`,
+  }, {
+    id: "seed-catalogo-componentes-qa-visual",
+    slug: "catalogo-de-componentes-qa-visual",
   });
 });
 
