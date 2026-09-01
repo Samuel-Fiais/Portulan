@@ -6,6 +6,8 @@ import { documentStatuses, documentTypes } from "@/lib/documents";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const serviceContext = { bypassOwnership: true } as const;
+
 const textResult = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
@@ -15,14 +17,14 @@ const mcpHandler = createMcpHandler((server) => {
     "list_documents",
     {
       title: "Listar documentos",
-      description: "Lista e pesquisa documentos técnicos no Portulan.",
+      description: "Lista e pesquisa documentos técnicos no Portulan. Operação em nível de serviço (sem identidade por usuário).",
       inputSchema: z.object({
         query: z.string().optional().describe("Busca por título, resumo ou tag"),
         type: z.enum(documentTypes).optional(),
         status: z.enum(documentStatuses).optional(),
       }),
     },
-    async (filters) => textResult({ documents: listDocuments(filters) }),
+    async (filters) => textResult({ documents: await listDocuments(filters, serviceContext) }),
   );
 
   server.registerTool(
@@ -33,7 +35,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1).describe("ID ou slug do documento") }),
     },
     async ({ id }) => {
-      const document = getDocument(id);
+      const document = await getDocument(id, serviceContext);
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -42,7 +44,7 @@ const mcpHandler = createMcpHandler((server) => {
     "create_document",
     {
       title: "Criar documento",
-      description: "Cria um documento Markdown e o disponibiliza imediatamente na biblioteca.",
+      description: "Cria um documento Markdown (user_id nulo — nível de serviço até suporte a identidade MCP).",
       inputSchema: z.object({
         title: z.string().min(3).max(180),
         summary: z.string().max(500).default(""),
@@ -54,7 +56,7 @@ const mcpHandler = createMcpHandler((server) => {
         content: z.string().max(250_000).default(""),
       }),
     },
-    async (input) => textResult({ document: createDocument(input) }),
+    async (input) => textResult({ document: await createDocument(input, { userId: null }) }),
   );
 
   server.registerTool(
@@ -75,7 +77,7 @@ const mcpHandler = createMcpHandler((server) => {
       }),
     },
     async ({ id, ...changes }) => {
-      const document = updateDocument(id, changes);
+      const document = await updateDocument(id, changes, serviceContext);
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -88,7 +90,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().uuid() }),
     },
     async ({ id }) => {
-      const deleted = deleteDocument(id);
+      const deleted = await deleteDocument(id, serviceContext);
       return deleted ? textResult({ deleted: true, id }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -110,7 +112,7 @@ const mcpHandler = createMcpHandler((server) => {
       }),
     },
     async ({ id, ...changes }) => {
-      const result = publishDocument(id, changes);
+      const result = await publishDocument(id, changes, serviceContext);
       if (!result) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
       return textResult({
         document: result.document,
@@ -128,9 +130,9 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1).describe("ID ou slug do documento") }),
     },
     async ({ id }) => {
-      const document = getDocument(id);
+      const document = await getDocument(id, serviceContext);
       if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
-      const releases = listDocumentReleases(document.id).map((release) => ({
+      const releases = (await listDocumentReleases(document.id)).map((release) => ({
         ...release,
         publicPath: `/p/${release.id}`,
       }));
@@ -138,8 +140,8 @@ const mcpHandler = createMcpHandler((server) => {
     },
   );
 }, {
-  serverInfo: { name: "portulan", version: "0.2.0" },
-  instructions: "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão.",
+  serverInfo: { name: "portulan", version: "0.3.0" },
+  instructions: "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan. Com MCP_API_KEY, as operações são em nível de serviço (sem identidade por usuário). Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão.",
 });
 
 async function handler(request: Request) {

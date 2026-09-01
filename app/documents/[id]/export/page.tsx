@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import { ReportPreview } from "@/components/report-preview";
 import { getDocument } from "@/lib/db";
@@ -8,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 export default async function DocumentExportPage({ params }: Props) {
   const { id } = await params;
-  const document = getDocument(id);
+  const session = await auth();
+  const document = await getDocument(id, { userId: session?.user?.id ?? null, bypassOwnership: true });
   if (!document) notFound();
 
   return (

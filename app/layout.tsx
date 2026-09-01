@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { auth } from "@/auth";
+import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { PortulanToaster } from "@/components/portulan-toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -12,7 +14,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const session = await auth();
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
@@ -23,7 +27,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body>
-        <TooltipProvider>{children}</TooltipProvider>
+        <AuthSessionProvider session={session}>
+          <TooltipProvider>{children}</TooltipProvider>
+        </AuthSessionProvider>
         <PortulanToaster />
       </body>
     </html>

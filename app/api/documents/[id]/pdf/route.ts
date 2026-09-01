@@ -20,7 +20,7 @@ export const maxDuration = 60;
 
 export async function GET(request: Request, { params }: Context) {
   const { id } = await params;
-  const document = getDocument(id);
+  const document = await getDocument(id);
   if (!document) return Response.json({ error: "Documento não encontrado" }, { status: 404 });
 
   const { primary: accent, secondary: accent2 } = typeMeta[document.type];

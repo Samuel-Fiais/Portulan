@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { auth } from "@/auth";
+import { AuthControls } from "@/components/auth-controls";
 import { BrandMark } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export async function AppShell({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+
   return (
     <div className="app-shell">
       <header className="site-header no-print">
@@ -14,6 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link href="/#templates">Templates</Link>
             <Link href="/#integrations">MCP</Link>
           </nav>
+          <AuthControls session={session} />
           <ThemeToggle />
         </div>
       </header>
