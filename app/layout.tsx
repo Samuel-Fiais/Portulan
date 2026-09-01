@@ -6,6 +6,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "Portulan", template: "%s · Portulan" },
   description: "Workspace para documentos e relatórios técnicos navegáveis.",
+  icons: {
+    icon: "/portulan-logo.png",
+    apple: "/portulan-logo.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
