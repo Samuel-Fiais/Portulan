@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Bot, Copy, Search } from "lucide-react";
 import { toast } from "sonner";
-import { AppShell } from "@/components/app-shell";
 import { NewDocumentDialog } from "@/components/new-document-dialog";
 import { StatusBadge, TypeBadge } from "@/components/document-badges";
 import { Button } from "@/components/ui/button";
@@ -20,10 +19,12 @@ export function Dashboard({
   documents,
   stats,
   skillMarkdown,
+  isLoggedIn,
 }: {
   documents: DocumentSummary[];
   stats: Stats;
   skillMarkdown: string;
+  isLoggedIn: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
@@ -41,15 +42,14 @@ export function Dashboard({
   const mcpEndpoint = mcpOrigin || "/api/mcp";
 
   return (
-    <AppShell>
-      <main className="page-wrap dashboard-main">
-        <section className="doc-section hero-section">
+    <main className="page-wrap dashboard-main">
+      <section className="doc-section hero-section">
         <div className="page-heading">
           <div>
             <h1 className="fp-h1">Documentos que sustentam <span>decisões.</span></h1>
             <p className="fp-lead">Crie, revise e publique relatórios técnicos em um sistema visual consistente — por pessoas ou agentes.</p>
           </div>
-          <NewDocumentDialog />
+          <NewDocumentDialog isLoggedIn={isLoggedIn} />
         </div>
 
         <div className="fp-stat-grid dashboard-stats" aria-label="Resumo da biblioteca">
@@ -58,79 +58,78 @@ export function Dashboard({
           <StatCard label="Em revisão" value={stats.review} note="aguardando validação" />
           <StatCard label="Rascunhos" value={stats.draft} note="em construção" />
         </div>
-        </section>
+      </section>
 
-        <section id="documents" className="doc-section">
-          <div className="section-header">
-            <h2 className="section-title">Biblioteca</h2>
-            <span className="section-desc">{filtered.length} documento{filtered.length === 1 ? "" : "s"}</span>
+      <section id="documents" className="doc-section">
+        <div className="section-header">
+          <h2 className="section-title">Biblioteca</h2>
+          <span className="section-desc">{filtered.length} documento{filtered.length === 1 ? "" : "s"}</span>
+        </div>
+        <div className="filter-bar">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por título, tema ou tag…" className="pl-9" />
           </div>
-          <div className="filter-bar">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por título, tema ou tag…" className="pl-9" />
-            </div>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os tipos</SelectItem>
-                {(Object.keys(typeMeta) as DocumentType[]).map((item) => <SelectItem key={item} value={item}>{typeMeta[item].short}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="document-list">
-            {filtered.map((document) => (
-              <Link href={`/documents/${document.slug}`} key={document.id} className="document-row group">
-                <span className={`document-accent type-${document.type}`} />
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex flex-wrap items-center gap-2"><TypeBadge type={document.type} /><StatusBadge status={document.status} /></div>
-                  <h3>{document.title}</h3>
-                  <p>{document.summary}</p>
-                  <div className="document-meta">
-                    <span>{document.team || "Sem time"}</span><i />
-                    <span>{document.author || "Sem autor"}</span><i />
-                    <span>v{document.version}</span><i />
-                    <span>{formatRelativeDate(document.updatedAt)}</span>
-                  </div>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              {(Object.keys(typeMeta) as DocumentType[]).map((item) => <SelectItem key={item} value={item}>{typeMeta[item].short}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="document-list">
+          {filtered.map((document) => (
+            <Link href={`/documents/${document.slug}`} key={document.id} className="document-row group">
+              <span className={`document-accent type-${document.type}`} />
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-wrap items-center gap-2"><TypeBadge type={document.type} /><StatusBadge status={document.status} /></div>
+                <h3>{document.title}</h3>
+                <p>{document.summary}</p>
+                <div className="document-meta">
+                  <span>{document.team || "Sem time"}</span><i />
+                  <span>{document.author || "Sem autor"}</span><i />
+                  <span>v{document.version}</span><i />
+                  <span>{formatRelativeDate(document.updatedAt)}</span>
                 </div>
-                <ArrowRight className="mt-2 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-              </Link>
-            ))}
-            {filtered.length === 0 && (
-              <div className="empty-state"><Search /><h3>Nenhum documento encontrado</h3><p>Ajuste a busca ou crie um novo documento.</p></div>
-            )}
-          </div>
-        </section>
-
-        <section id="templates" className="doc-section">
-          <div className="section-header"><h2 className="section-title">Templates editoriais</h2></div>
-          <div className="fp-card-grid template-grid">
-            {(Object.keys(templates) as DocumentType[]).map((item, index) => (
-              <div key={item} className="fp-card template-card">
-                  <div className={`template-index type-${item}`}>0{index + 1}</div>
-                  <h3>{typeMeta[item].label}</h3>
-                  <p>{templates[item].summary}</p>
-                  <div className="mt-5 flex flex-wrap gap-1.5">{templates[item].tags.map((tag) => <span key={tag} className="mini-tag">{tag}</span>)}</div>
               </div>
-            ))}
-          </div>
-        </section>
+              <ArrowRight className="mt-2 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </Link>
+          ))}
+          {filtered.length === 0 && (
+            <div className="empty-state"><Search /><h3>Nenhum documento encontrado</h3><p>Ajuste a busca ou crie um novo documento.</p></div>
+          )}
+        </div>
+      </section>
 
-        <section id="integrations" className="doc-section">
-          <div className="section-header"><h2 className="section-title">Agentes e integrações</h2></div>
-          <div className="integration-panel">
-            <div className="integration-icon"><Bot /></div>
-            <div className="flex-1">
-              <h3>Uma biblioteca que agentes também conseguem manter.</h3>
-              <p>Conecte qualquer cliente MCP ao endpoint abaixo para listar, ler, criar, editar e excluir documentos usando a mesma base SQLite.</p>
-              <code>{mcpEndpoint}</code>
+      <section id="templates" className="doc-section">
+        <div className="section-header"><h2 className="section-title">Templates editoriais</h2></div>
+        <div className="fp-card-grid template-grid">
+          {(Object.keys(templates) as DocumentType[]).map((item, index) => (
+            <div key={item} className="fp-card template-card">
+              <div className={`template-index type-${item}`}>0{index + 1}</div>
+              <h3>{typeMeta[item].label}</h3>
+              <p>{templates[item].summary}</p>
+              <div className="mt-5 flex flex-wrap gap-1.5">{templates[item].tags.map((tag) => <span key={tag} className="mini-tag">{tag}</span>)}</div>
             </div>
-            <div className="tool-list"><span>list_documents</span><span>get_document</span><span>create_document</span><span>update_document</span><span>publish_document</span><span>list_document_releases</span><span>delete_document</span></div>
+          ))}
+        </div>
+      </section>
+
+      <section id="integrations" className="doc-section">
+        <div className="section-header"><h2 className="section-title">Agentes e integrações</h2></div>
+        <div className="integration-panel">
+          <div className="integration-icon"><Bot /></div>
+          <div className="flex-1">
+            <h3>Uma biblioteca que agentes também conseguem manter.</h3>
+            <p>Conecte qualquer cliente MCP ao endpoint abaixo para listar, ler, criar, editar e excluir documentos. Com API key, o MCP opera em nível de serviço (sem identidade por usuário).</p>
+            <code>{mcpEndpoint}</code>
           </div>
-          <IntegrationSkillCopy skillMarkdown={skillMarkdown} />
-        </section>
-      </main>
-    </AppShell>
+          <div className="tool-list"><span>list_documents</span><span>get_document</span><span>create_document</span><span>update_document</span><span>publish_document</span><span>list_document_releases</span><span>delete_document</span></div>
+        </div>
+        <IntegrationSkillCopy skillMarkdown={skillMarkdown} />
+      </section>
+    </main>
   );
 }
 

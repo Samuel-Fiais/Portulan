@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { ArrowRight, FilePlus2 } from "lucide-react";
 import { toast } from "sonner";
 import { createDocumentAction } from "@/app/actions";
@@ -13,7 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { templates, typeMeta, type DocumentType } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 
-export function NewDocumentDialog({ trigger }: { trigger?: React.ReactNode }) {
+export function NewDocumentDialog({
+  trigger,
+  isLoggedIn,
+}: {
+  trigger?: React.ReactNode;
+  isLoggedIn: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -21,7 +28,20 @@ export function NewDocumentDialog({ trigger }: { trigger?: React.ReactNode }) {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen && !isLoggedIn) {
+      void signIn("github");
+      return;
+    }
+    setOpen(nextOpen);
+  }
+
   function submit() {
+    if (!isLoggedIn) {
+      void signIn("github");
+      return;
+    }
+
     startTransition(async () => {
       const template = templates[type];
       const result = await createDocumentAction({
@@ -42,7 +62,7 @@ export function NewDocumentDialog({ trigger }: { trigger?: React.ReactNode }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger ?? <Button><FilePlus2 />Novo documento</Button>}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>

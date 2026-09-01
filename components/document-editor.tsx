@@ -23,9 +23,11 @@ import { cn, formatRelativeDate } from "@/lib/utils";
 export function DocumentEditor({
   initialDocument,
   initialReleases = [],
+  canEdit = true,
 }: {
   initialDocument: DocumentRecord;
   initialReleases?: DocumentRelease[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [document, setDocument] = useState(initialDocument);
@@ -184,22 +186,26 @@ export function DocumentEditor({
         <div className="editor-actions flex items-center gap-1.5">
           <Button variant="outline" size="sm" className="hidden md:flex" onClick={() => setPreviewVisible(!previewVisible)}><PanelRight />{previewVisible ? "Ocultar preview" : "Mostrar preview"}</Button>
           <Button variant="outline" size="sm" onClick={exportPdf} disabled={exporting || pending}>{exporting ? <LoaderCircle className="animate-spin" /> : <Download />}<span className="hidden sm:inline">{exporting ? "Gerando PDF" : "Exportar PDF"}</span></Button>
-          <Button variant="outline" size="sm" onClick={publish} disabled={pending}><Globe /><span className="hidden sm:inline">Publicar</span></Button>
-          <Button size="sm" onClick={save} disabled={!dirty || pending}>{pending ? <span className="saving-dot" /> : dirty ? <Save /> : <Check />}<span className="hidden sm:inline">{pending ? "Salvando" : dirty ? "Salvar" : "Salvo"}</span></Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={duplicate}><Copy />Duplicar documento</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <AlertDialog>
-                <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive"><Trash2 />Excluir documento</DropdownMenuItem></AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader><AlertDialogTitle>Excluir este documento?</AlertDialogTitle><AlertDialogDescription>“{document.title}” será removido do SQLite. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
-                  <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove}>Excluir definitivamente</AlertDialogAction></AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canEdit ? (
+            <>
+              <Button variant="outline" size="sm" onClick={publish} disabled={pending}><Globe /><span className="hidden sm:inline">Publicar</span></Button>
+              <Button size="sm" onClick={save} disabled={!dirty || pending}>{pending ? <span className="saving-dot" /> : dirty ? <Save /> : <Check />}<span className="hidden sm:inline">{pending ? "Salvando" : dirty ? "Salvar" : "Salvo"}</span></Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={duplicate}><Copy />Duplicar documento</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive"><Trash2 />Excluir documento</DropdownMenuItem></AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader><AlertDialogTitle>Excluir este documento?</AlertDialogTitle><AlertDialogDescription>“{document.title}” será removido permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
+                      <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove}>Excluir definitivamente</AlertDialogAction></AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : null}
         </div>
         </div>
       </header>
@@ -208,21 +214,21 @@ export function DocumentEditor({
         <section className="editor-pane no-print">
           <div className="editor-document-heading">
             <div className="flex flex-wrap items-center gap-2"><TypeBadge type={document.type} /><StatusBadge status={document.status} /></div>
-            <Textarea className="editor-title-input" value={document.title} onChange={(event) => patch("title", event.target.value)} aria-label="Título do documento" />
-            <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo do documento…" aria-label="Resumo do documento" />
+            <Textarea className="editor-title-input" value={document.title} onChange={(event) => patch("title", event.target.value)} aria-label="Título do documento" readOnly={!canEdit} />
+            <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo do documento…" aria-label="Resumo do documento" readOnly={!canEdit} />
           </div>
           <Tabs defaultValue="content" className="editor-tabs">
             <TabsList><TabsTrigger value="content"><FileText />Conteúdo</TabsTrigger><TabsTrigger value="metadata">Metadados</TabsTrigger></TabsList>
             <TabsContent value="content" className="editor-tab-content">
               <div className="markdown-hint"><span>Markdown</span></div>
-              <Textarea className="markdown-editor" value={document.content} onChange={(event) => patch("content", event.target.value)} spellCheck={false} aria-label="Conteúdo em Markdown" />
+              <Textarea className="markdown-editor" value={document.content} onChange={(event) => patch("content", event.target.value)} spellCheck={false} aria-label="Conteúdo em Markdown" readOnly={!canEdit} />
             </TabsContent>
             <TabsContent value="metadata" className="editor-tab-content metadata-form">
-              <Field label="Tipo"><Select value={document.type} onValueChange={(value: DocumentRecord["type"]) => patch("type", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentTypes.map((type) => <SelectItem key={type} value={type}>{typeMeta[type].label}</SelectItem>)}</SelectContent></Select></Field>
-              <Field label="Status"><Select value={document.status} onValueChange={(value: DocumentRecord["status"]) => patch("status", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentStatuses.map((status) => <SelectItem key={status} value={status}>{statusMeta[status].label}</SelectItem>)}</SelectContent></Select></Field>
-              <Field label="Responsável"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} /></Field>
-              <Field label="Time"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} /></Field>
-              <Field label="Tags"><Input value={document.tags.join(", ")} onChange={(event) => patch("tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean))} placeholder="pagamentos, api, arquitetura" /><p>Separe as tags por vírgula.</p></Field>
+              <Field label="Tipo"><Select value={document.type} onValueChange={(value: DocumentRecord["type"]) => patch("type", value)} disabled={!canEdit}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentTypes.map((type) => <SelectItem key={type} value={type}>{typeMeta[type].label}</SelectItem>)}</SelectContent></Select></Field>
+              <Field label="Status"><Select value={document.status} onValueChange={(value: DocumentRecord["status"]) => patch("status", value)} disabled={!canEdit}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentStatuses.map((status) => <SelectItem key={status} value={status}>{statusMeta[status].label}</SelectItem>)}</SelectContent></Select></Field>
+              <Field label="Responsável"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} readOnly={!canEdit} /></Field>
+              <Field label="Time"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
+              <Field label="Tags"><Input value={document.tags.join(", ")} onChange={(event) => patch("tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean))} placeholder="pagamentos, api, arquitetura" readOnly={!canEdit} /><p>Separe as tags por vírgula.</p></Field>
               {releases.length > 0 ? (
                 <div className="metadata-summary">
                   <span>Links públicos</span>

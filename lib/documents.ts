@@ -16,6 +16,7 @@ export type DocumentRecord = {
   tags: string[];
   content: string;
   version: number;
+  userId: string | null;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
@@ -48,6 +49,7 @@ export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecor
     tags: release.tags,
     content: release.content,
     version: release.version,
+    userId: null,
     createdAt: release.publishedAt,
     updatedAt: release.publishedAt,
     publishedAt: release.publishedAt,
