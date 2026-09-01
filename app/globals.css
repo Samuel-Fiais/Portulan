@@ -396,12 +396,15 @@
 .site-header::after, .editor-topbar::after { content: ""; display: block; height: 3px; background: linear-gradient(90deg, var(--navy) 55%, var(--burgundy) 100%); }
 .header-inner { max-width: 1100px; margin: 0 auto; padding: 7px var(--sp-6); display: flex; align-items: center; gap: var(--sp-5); }
 .header-divider { flex: 1; }
-.header-tag { font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); border-left: 1px solid var(--border); padding-left: var(--sp-5); }
 .site-nav { display: flex; gap: 2px; }
 .site-nav a { padding: var(--sp-1) var(--sp-2); border: 1px solid transparent; color: var(--text); font: 500 11px/1.4 var(--font-mono); letter-spacing: .04em; text-decoration: none; }
 .site-nav a:hover { color: var(--primary); border-color: var(--border); }
 .brand-mark { position: relative; flex-shrink: 0; }
-.brand-logo { display: block; flex-shrink: 0; width: auto; max-width: none; height: auto; }
+.brand-logo { flex-shrink: 0; width: auto; max-width: none; height: auto; object-fit: contain; object-position: left; }
+.brand-logo--light { display: block; }
+.brand-logo--dark { display: none; }
+.dark .brand-logo--light { display: none; }
+.dark .brand-logo--dark { display: block; }
 .brand-logo--header { height: 2.5rem; }
 .brand-logo--compact { height: 2rem; }
 .page-wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: var(--sp-7) var(--sp-6); }
@@ -414,7 +417,6 @@
 .fp-h1 span { color: var(--burgundy); }
 .fp-lead { max-width: 64ch; color: var(--text-2); font-size: 17px; line-height: 1.7; }
 .section-header { display: flex; align-items: baseline; gap: var(--sp-4); margin-bottom: var(--sp-6); }
-.section-index { min-width: 28px; color: var(--gold); font: 600 11px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
 .section-title { color: var(--text); font: 600 18px/1.2 var(--font-mono); letter-spacing: -.01em; }
 .section-desc { margin-left: auto; color: var(--text-3); font: 400 12px/1 var(--font-mono); letter-spacing: .02em; }
 .dashboard-stats { margin: 0; }
@@ -591,7 +593,7 @@ html:has(.pdf-export-page), body:has(.pdf-export-page) { margin: 0; background: 
 .pdf-export-page .tmpl-section { break-inside: avoid-page; page-break-inside: avoid; }
 
 @media (max-width: 760px) {
-  .header-inner { padding-inline: 18px; gap: 12px; } .header-tag { display: none; } .site-nav { display: none; }
+  .header-inner { padding-inline: 18px; gap: 12px; } .site-nav { display: none; }
   .dashboard-main { padding: 32px 18px; } .doc-section { padding: 32px 0; }
   .template-grid { grid-template-columns: 1fr 1fr; }
 }

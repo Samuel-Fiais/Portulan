@@ -1,8 +1,10 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-const LOGO_WIDTH = 1421;
-const LOGO_HEIGHT = 657;
+const LOGO_LIGHT_WIDTH = 1702;
+const LOGO_LIGHT_HEIGHT = 494;
+const LOGO_DARK_WIDTH = 1693;
+const LOGO_DARK_HEIGHT = 494;
 
 export function BrandMark({ compact = false, className }: { compact?: boolean; className?: string }) {
   const sizeClass = compact ? "brand-logo--compact" : "brand-logo--header";
@@ -12,17 +14,17 @@ export function BrandMark({ compact = false, className }: { compact?: boolean; c
       <Image
         src="/portulan-logo.png"
         alt="Portulan"
-        width={LOGO_WIDTH}
-        height={LOGO_HEIGHT}
-        className={cn("brand-logo object-contain object-left dark:hidden", sizeClass)}
+        width={LOGO_LIGHT_WIDTH}
+        height={LOGO_LIGHT_HEIGHT}
+        className={cn("brand-logo brand-logo--light", sizeClass)}
         priority
       />
       <Image
         src="/portulan-logo-on-dark.png"
         alt="Portulan"
-        width={LOGO_WIDTH}
-        height={LOGO_HEIGHT}
-        className={cn("brand-logo hidden object-contain object-left dark:block", sizeClass)}
+        width={LOGO_DARK_WIDTH}
+        height={LOGO_DARK_HEIGHT}
+        className={cn("brand-logo brand-logo--dark", sizeClass)}
         priority
       />
     </div>
