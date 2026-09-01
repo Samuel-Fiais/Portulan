@@ -7,7 +7,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const session = await auth();
-  const ctx = { userId: session?.user?.id ?? null };
+  if (!session?.user?.id) {
+    return Response.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const ctx = { userId: session.user.id };
   const params = new URL(request.url).searchParams;
   const typeValue = params.get("type");
   const statusValue = params.get("status");

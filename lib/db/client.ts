@@ -4,7 +4,6 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
 import * as schema from "@/lib/db/schema";
 import { applyPortulanSchema } from "@/lib/db/schema-bootstrap";
-import { seedDatabaseIfEmpty } from "@/lib/db/seed";
 
 type Db = NeonHttpDatabase<typeof schema>;
 
@@ -26,7 +25,6 @@ async function bootstrap() {
   }
 
   await applyPortulanSchema(dbInstance);
-  await seedDatabaseIfEmpty(dbInstance);
 }
 
 export async function getDb(): Promise<Db> {

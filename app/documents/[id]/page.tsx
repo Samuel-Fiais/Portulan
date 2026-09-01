@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function DocumentPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
-  const ctx = { userId: session?.user?.id ?? null };
+  const ctx = { userId: session!.user!.id! };
   const document = await getDocument(id, ctx);
   if (!document) notFound();
   const releases = await listDocumentReleases(document.id);
