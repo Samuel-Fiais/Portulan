@@ -215,12 +215,166 @@ async function executeSchemaStatement(db: Db, statement: string): Promise<void> 
   }
 }
 
+const DEFAULT_TEMPLATE_ID = "portulan-default";
+
+const DEFAULT_TEMPLATE_CONTENT =
+  "## Visão geral\n\nDescreva o contexto, objetivo e público deste documento.\n\n## Conteúdo principal\n\nDesenvolva o assunto com clareza e evidências.\n\n:::callout{title=\"Destaque\"}\nInformação relevante para o leitor.\n:::\n\n## Próximos passos\n\n- Ação ou decisão pendente\n- Responsável e prazo";
+
+async function portulanTableExists(db: Db, table: string): Promise<boolean> {
+  const result = await db.execute<{ table_exists: boolean }>(sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = ${PORTULAN_PG_SCHEMA}
+        AND table_name = ${table}
+    ) AS table_exists
+  `);
+  return result.rows[0]?.table_exists ?? false;
+}
+
+/**
+ * Ensures templates/mcp_tokens exist and migrates legacy documents tables
+ * (pre-template `type` column) before index creation from schema.sql.
+ */
+export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
+  await db.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS ${PORTULAN_PG_SCHEMA}`));
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      github_id TEXT NOT NULL UNIQUE,
+      login TEXT NOT NULL,
+      name TEXT,
+      avatar_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+  );
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.templates (
+      id TEXT PRIMARY KEY,
+      user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      primary_color TEXT NOT NULL,
+      secondary_color TEXT NOT NULL,
+      content TEXT NOT NULL DEFAULT '',
+      is_builtin BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+  );
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.mcp_tokens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL DEFAULT 'Token MCP',
+      token_hash TEXT NOT NULL UNIQUE,
+      token_prefix TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_used_at TIMESTAMPTZ
+    )`,
+  );
+
+  await db.execute(sql`
+    INSERT INTO ${sql.raw(`${PORTULAN_PG_SCHEMA}.templates`)} (
+      id, user_id, name, primary_color, secondary_color, content, is_builtin
+    )
+    VALUES (
+      ${DEFAULT_TEMPLATE_ID},
+      NULL,
+      'Default',
+      '#1a2847',
+      '#8b2735',
+      ${DEFAULT_TEMPLATE_CONTENT},
+      TRUE
+    )
+    ON CONFLICT (id) DO NOTHING
+  `);
+
+  if (await portulanTableExists(db, "documents")) {
+    const columns = (await loadTableColumns(db)).get("documents") ?? new Set<string>();
+
+    if (!columns.has("template_id")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.documents ADD COLUMN IF NOT EXISTS template_id TEXT`,
+      );
+    }
+
+    await executeSchemaStatement(
+      db,
+      `UPDATE ${PORTULAN_PG_SCHEMA}.documents SET template_id = '${DEFAULT_TEMPLATE_ID}' WHERE template_id IS NULL`,
+    );
+
+    await executeSchemaStatement(
+      db,
+      `DROP INDEX IF EXISTS ${PORTULAN_PG_SCHEMA}.idx_documents_type`,
+    );
+
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.documents DROP COLUMN IF EXISTS type`,
+    );
+  }
+
+  if (await portulanTableExists(db, "document_releases")) {
+    const columns = (await loadTableColumns(db)).get("document_releases") ?? new Set<string>();
+
+    if (!columns.has("template_id")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS template_id TEXT`,
+      );
+    }
+    if (!columns.has("template_name")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS template_name TEXT`,
+      );
+    }
+    if (!columns.has("primary_color")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS primary_color TEXT`,
+      );
+    }
+    if (!columns.has("secondary_color")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS secondary_color TEXT`,
+      );
+    }
+
+    await executeSchemaStatement(
+      db,
+      `UPDATE ${PORTULAN_PG_SCHEMA}.document_releases AS r
+       SET
+         template_id = COALESCE(r.template_id, '${DEFAULT_TEMPLATE_ID}'),
+         template_name = COALESCE(r.template_name, 'Default'),
+         primary_color = COALESCE(r.primary_color, '#1a2847'),
+         secondary_color = COALESCE(r.secondary_color, '#8b2735')
+       WHERE r.template_id IS NULL
+          OR r.template_name IS NULL
+          OR r.primary_color IS NULL
+          OR r.secondary_color IS NULL`,
+    );
+
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases DROP COLUMN IF EXISTS type`,
+    );
+  }
+}
+
 export async function applyPortulanSchema(db: Db): Promise<void> {
   if (await isPortulanSchemaReady(db)) {
     return;
   }
 
-  await db.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS ${PORTULAN_PG_SCHEMA}`));
+  await migrateLegacyPortulanTables(db);
 
   const schemaPath = path.join(process.cwd(), "schema.sql");
   const ddl = readFileSync(schemaPath, "utf8");
