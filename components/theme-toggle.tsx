@@ -8,7 +8,9 @@ export function ThemeToggle() {
   function toggle() {
     const next = !document.documentElement.classList.contains("dark");
     document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("festpay-docs-theme", next ? "dark" : "light");
+    const theme = next ? "dark" : "light";
+    localStorage.setItem("portulan-theme", theme);
+    localStorage.removeItem("festpay-docs-theme");
   }
 
   return (

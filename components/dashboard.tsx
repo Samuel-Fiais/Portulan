@@ -136,14 +136,14 @@ function StatCard({ label, value, note }: { label: string; value: number; note: 
 function IntegrationSkillCopy({ skillMarkdown }: { skillMarkdown: string }) {
   async function copySkill() {
     if (!skillMarkdown.trim()) {
-      toast.error("Skill não encontrada", { description: "Arquivo portulan-skill.md ausente no projeto." });
+      toast.error("Skill não encontrada", { description: "Arquivo .cursor/skills/portulan-mcp/SKILL.md ausente no projeto." });
       return;
     }
     try {
       await navigator.clipboard.writeText(skillMarkdown);
       toast.success("Skill copiada", { description: "Cole em ~/.cursor/skills/ ou no skill do seu agente." });
     } catch {
-      toast.message("Copie manualmente", { description: "Use portulan-skill.md na raiz do projeto." });
+      toast.message("Copie manualmente", { description: "Use .cursor/skills/portulan-mcp/SKILL.md do projeto." });
     }
   }
 

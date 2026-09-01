@@ -20,7 +20,6 @@ Quando a tarefa envolver documentos da biblioteca, MCP, publicação com link `/
 |---|---|
 | Skill (agente) | `.cursor/skills/portulan-mcp/SKILL.md` |
 | Referência MCP | `.cursor/skills/portulan-mcp/reference.md` |
-| Guia completo | `portulan-skill.md` |
 | Config MCP Cursor | `.cursor/mcp.json` |
 | Endpoint (dev) | `http://localhost:3000/api/mcp` |
 

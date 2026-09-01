@@ -18,7 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('portulan-theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d)}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('portulan-theme')||localStorage.getItem('festpay-docs-theme');if(t&&localStorage.getItem('festpay-docs-theme')){localStorage.setItem('portulan-theme',t);localStorage.removeItem('festpay-docs-theme')}var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d)}catch(e){}})()`,
           }}
         />
       </head>
