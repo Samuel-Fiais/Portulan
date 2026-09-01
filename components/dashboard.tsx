@@ -39,7 +39,7 @@ export function Dashboard({
         <section className="doc-section hero-section">
         <div className="page-heading">
           <div>
-            <span className="eyebrow">Festpay Docs · Knowledge base</span>
+            <span className="eyebrow">Portulan · Knowledge base</span>
             <h1 className="fp-h1">Documentos que sustentam <span>decisões.</span></h1>
             <p className="fp-lead">Crie, revise e publique relatórios técnicos em um sistema visual consistente — por pessoas ou agentes.</p>
           </div>
@@ -136,14 +136,14 @@ function StatCard({ label, value, note }: { label: string; value: number; note: 
 function IntegrationSkillCopy({ skillMarkdown }: { skillMarkdown: string }) {
   async function copySkill() {
     if (!skillMarkdown.trim()) {
-      toast.error("Skill não encontrada", { description: "Arquivo festpay-docs-mcp-skill.md ausente no projeto." });
+      toast.error("Skill não encontrada", { description: "Arquivo portulan-skill.md ausente no projeto." });
       return;
     }
     try {
       await navigator.clipboard.writeText(skillMarkdown);
       toast.success("Skill copiada", { description: "Cole em ~/.cursor/skills/ ou no skill do seu agente." });
     } catch {
-      toast.message("Copie manualmente", { description: "Use festpay-docs-mcp-skill.md na raiz do projeto." });
+      toast.message("Copie manualmente", { description: "Use portulan-skill.md na raiz do projeto." });
     }
   }
 
@@ -151,10 +151,10 @@ function IntegrationSkillCopy({ skillMarkdown }: { skillMarkdown: string }) {
     <div className="integration-skill">
       <div className="integration-skill-meta">
         <span className="eyebrow">Skill para agentes</span>
-        <h3>festpay-docs-mcp</h3>
+        <h3>portulan-mcp</h3>
         <p>
           Markdown completo com instruções MCP, templates e diretivas. Instale em{" "}
-          <code>.cursor/skills/festpay-docs-mcp/</code> ou cole no cliente do agente.
+          <code>.cursor/skills/portulan-mcp/</code> ou cole no cliente do agente.
         </p>
       </div>
       <div className="integration-skill-actions">

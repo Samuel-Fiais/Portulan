@@ -56,11 +56,16 @@ function getDatabasePath(): string {
   }
 
   if (isWritable) {
-    // Development: use ./data directory
-    return path.join(cwd, "data", "festpay-docs.sqlite");
+    // Development: prefer ./data/portulan.sqlite, fallback to legacy festpay-docs.sqlite
+    const legacyPath = path.join(cwd, "data", "festpay-docs.sqlite");
+    const newPath = path.join(cwd, "data", "portulan.sqlite");
+    try {
+      if (existsSync(legacyPath)) return legacyPath;
+    } catch {}
+    return newPath;
   } else {
     // Production/serverless: use /tmp (ephemeral but writable)
-    return path.join("/tmp", "festpay-docs.sqlite");
+    return path.join("/tmp", "portulan.sqlite");
   }
 }
 
@@ -73,10 +78,10 @@ try {
   console.warn(`Could not create database directory: ${error}`);
 }
 
-const globalForDb = globalThis as unknown as { festpayDocsDb?: Database.Database };
-const db = globalForDb.festpayDocsDb ?? new Database(databasePath);
+const globalForDb = globalThis as unknown as { portulanDb?: Database.Database };
+const db = globalForDb.portulanDb ?? new Database(databasePath);
 
-if (process.env.NODE_ENV !== "production") globalForDb.festpayDocsDb = db;
+if (process.env.NODE_ENV !== "production") globalForDb.portulanDb = db;
 
 db.pragma("busy_timeout = 10000");
 if (db.pragma("journal_mode", { simple: true }) !== "wal") {
@@ -488,7 +493,7 @@ Com a consolidação do Pix no Brasil, criar um fluxo de débito automático via
 ## 02 — O que foi construído
 
 :::steps
-- Fluxo de adesão via QR Code | O cliente escaneia um QR Code de autorização uma única vez. O Festpay armazena a permissão e realiza as cobranças subsequentes automaticamente na data configurada.
+- Fluxo de adesão via QR Code | O cliente escaneia um QR Code de autorização uma única vez. O Portulan armazena a permissão e realiza as cobranças subsequentes automaticamente na data configurada.
 - Retry automático com backoff | Em caso de falha, o sistema tenta novamente em 24h, 48h e 72h antes de notificar o cliente. Taxa de sucesso esperada no retry: 78%.
 - Notificações e gestão de mandato | Push + email D-3, D-1 e D0. O cliente pode cancelar ou pausar o mandato a qualquer momento pelo app, sem precisar falar com o suporte.
 :::
@@ -607,15 +612,15 @@ const ensureComponentCatalog = db.transaction(() => {
   if (getDocument("catalogo-de-componentes-qa-visual")) return;
   createDocument({
     title: "Catálogo de componentes — QA visual",
-    summary: "Documento de referência para validar hierarquia, espaçamento e renderização de todos os componentes disponíveis no Festpay Docs.",
+    summary: "Documento de referência para validar hierarquia, espaçamento e renderização de todos os componentes disponíveis no Portulan.",
     type: "reference",
     status: "draft",
-    author: "Festpay Design System",
+    author: "Portulan Design System",
     team: "Plataforma",
     tags: ["qa", "design-system", "componentes"],
     content: `## 01 — Texto e hierarquia
 
-Este parágrafo valida **negrito**, *itálico*, [link](https://festpay.com) e \`código inline\` dentro do fluxo editorial.
+Este parágrafo valida **negrito**, *itálico*, [link](https://portulan.com) e \`código inline\` dentro do fluxo editorial.
 
 ### Subtítulo com respiro
 

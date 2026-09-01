@@ -1,4 +1,4 @@
-# Festpay Docs
+# Portulan
 
 Workspace editorial para criar, revisar, publicar e imprimir documentos técnicos. Construído com Next.js App Router, React, Tailwind CSS, shadcn/ui, SQLite e MCP Streamable HTTP.
 
@@ -11,14 +11,14 @@ npm install
 npm run dev
 ```
 
-Acesse `http://localhost:3000`. O banco é criado automaticamente em `data/festpay-docs.sqlite` e recebe três documentos de exemplo na primeira execução.
+Acesse `http://localhost:3000`. O banco é criado automaticamente em `data/portulan.sqlite` (ou `data/festpay-docs.sqlite` se já existir) e recebe três documentos de exemplo na primeira execução.
 
 ## Configuração
 
 Copie `.env.example` para `.env.local` quando precisar alterar o caminho do SQLite ou proteger o MCP:
 
 ```dotenv
-DATABASE_PATH=/caminho/absoluto/festpay-docs.sqlite
+DATABASE_PATH=/caminho/absoluto/portulan.sqlite
 MCP_API_KEY=uma-chave-segura
 ```
 
@@ -59,7 +59,7 @@ Configuração no Cursor (já incluída em `.cursor/mcp.json` do projeto):
 ```json
 {
   "mcpServers": {
-    "festpay-docs": {
+    "portulan": {
       "url": "http://localhost:3000/api/mcp"
     }
   }
@@ -74,12 +74,12 @@ Guia para agentes operarem a biblioteca via MCP:
 
 | Arquivo | Uso |
 |---|---|
-| `.cursor/skills/festpay-docs-mcp/SKILL.md` | Instruções da skill (Cursor) |
-| `.cursor/skills/festpay-docs-mcp/reference.md` | Schemas e exemplos detalhados |
-| `festpay-docs-mcp-skill.md` | Guia completo consolidado (download) |
-| `festpay-docs-mcp-skill.zip` | Pacote com os três arquivos acima |
+| `.cursor/skills/portulan-mcp/SKILL.md` | Instruções da skill (Cursor) |
+| `.cursor/skills/portulan-mcp/reference.md` | Schemas e exemplos detalhados |
+| `portulan-mcp-skill.md` | Guia completo consolidado (download) |
+| `portulan-mcp-skill.zip` | Pacote com os três arquivos acima |
 
-No chat do Cursor: *“use a skill festpay-docs-mcp”*.
+No chat do Cursor: *“use a skill portulan-mcp”*.
 
 ## API HTTP
 

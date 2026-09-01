@@ -1,17 +1,17 @@
 ---
-name: festpay-docs-mcp
-description: Operates the Festpay Docs MCP server (festpay-docs) to list, read, create, update, publish, and delete technical documents in SQLite. Use when the user mentions Festpay Docs MCP, /api/mcp, document library agents, publishing share links, or maintaining Markdown docs via MCP in Cursor or Claude Code.
+name: portulan-mcp
+description: Operates the Portulan MCP server (portulan) to list, read, create, update, publish, and delete technical documents in SQLite. Use when the user mentions Portulan MCP, /api/mcp, document library agents, publishing share links, or maintaining Markdown docs via MCP in Cursor or Claude Code.
 ---
 
-# Festpay Docs MCP
+# Portulan MCP
 
-Guia para agentes operarem a biblioteca técnica **Festpay Docs** via MCP Streamable HTTP.
+Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable HTTP.
 
 ## Pré-requisitos
 
-1. App rodando: `npm run dev` (Node 20+) no repo Festpay Docs
+1. App rodando: `npm run dev` (Node 20+) no repo Portulan
 2. Endpoint: `http://localhost:3000/api/mcp`
-3. Servidor MCP: `festpay-docs` v0.2.0
+3. Servidor MCP: `portulan` v0.2.0
 
 Sem o dev server, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
 
@@ -19,12 +19,12 @@ Sem o dev server, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
 
 ### Cursor
 
-No projeto Festpay Docs, use `.cursor/mcp.json`. Em outros workspaces, adicione ao MCP global ou ao `mcp.json` do projeto:
+No projeto Portulan Docs, use `.cursor/mcp.json`. Em outros workspaces, adicione ao MCP global ou ao `mcp.json` do projeto:
 
 ```json
 {
   "mcpServers": {
-    "festpay-docs": {
+    "portulan": {
       "url": "http://localhost:3000/api/mcp"
     }
   }
@@ -38,7 +38,7 @@ Recarregue MCPs em Settings → MCP após subir o app.
 ```json
 {
   "mcpServers": {
-    "festpay-docs": {
+    "portulan": {
       "url": "http://localhost:3000/api/mcp"
     }
   }
@@ -50,7 +50,7 @@ Se o cliente só suporta stdio, use `mcp-remote`:
 ```json
 {
   "mcpServers": {
-    "festpay-docs": {
+    "portulan": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "http://localhost:3000/api/mcp"]
     }
@@ -253,5 +253,5 @@ Use MCP quando o agente precisa de ferramentas tipadas; use HTTP para integraç�
 ## Referência detalhada
 
 - Schemas e exemplos: [reference.md](reference.md)
-- Guia completo (download): [festpay-docs-mcp-skill.md](../../../festpay-docs-mcp-skill.md)
+- Guia completo (download): [portulan-mcp-skill.md](../../../portulan-mcp-skill.md)
 - Índice da skill: [INDEX.md](INDEX.md)

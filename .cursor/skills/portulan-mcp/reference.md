@@ -1,11 +1,11 @@
-# Festpay Docs MCP — Referência
+# Portulan Docs MCP — Referência
 
 ## Implementação no projeto
 
 | Item | Caminho |
 |---|---|
 | Handler MCP | `app/api/mcp/route.ts` |
-| Banco SQLite | `lib/db.ts` → `data/festpay-docs.sqlite` |
+| Banco SQLite | `lib/db.ts` → `data/portulan.sqlite` |
 | Tipos e templates | `lib/documents.ts` |
 | Validação Zod | `lib/validation.ts` |
 | Config Cursor | `.cursor/mcp.json` |
@@ -326,7 +326,7 @@ Tons opcionais: `ok`, `warn`, `err`, `a2`.
 
 - Transporte: Streamable HTTP (POST/GET/DELETE em `/api/mcp`)
 - Spec: MCP SDK v2 via `mcp-handler`
-- Initialize retorna `serverInfo.name: "festpay-docs"`
+- Initialize retorna `serverInfo.name: "portulan"`
 - Instruções do servidor: preferir atualizar documentos existentes; usar `publish_document` para links públicos
 
 ---
