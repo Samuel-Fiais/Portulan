@@ -2,20 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowRight, Bot, Copy, KeyRound, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowRight, Bot, Copy, KeyRound, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   createMcpTokenAction,
   createTemplateAction,
   deleteTemplateAction,
   revokeMcpTokenAction,
+  updateTemplateAction,
 } from "@/app/actions";
+import { ColorPicker } from "@/components/color-picker";
 import { NewDocumentDialog } from "@/components/new-document-dialog";
 import { StatusBadge, TemplateBadge } from "@/components/document-badges";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DEFAULT_TEMPLATE_COLORS,
   type DocumentRecord,
@@ -90,17 +93,17 @@ export function Dashboard({
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por título, tema ou tag…" className="pl-9" />
           </div>
-          <select
-            value={templateFilter}
-            onChange={(event) => setTemplateFilter(event.target.value)}
-            className="template-filter-select"
-            aria-label="Filtrar por template"
-          >
-            <option value="all">Todos os templates</option>
-            {templates.map((template) => (
-              <option key={template.id} value={template.id}>{template.name}</option>
-            ))}
-          </select>
+          <Select value={templateFilter} onValueChange={setTemplateFilter}>
+            <SelectTrigger className="template-filter-select" aria-label="Filtrar por template">
+              <SelectValue placeholder="Todos os templates" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os templates</SelectItem>
+              {templates.map((template) => (
+                <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="document-list">
           {filtered.map((document) => (
@@ -135,7 +138,7 @@ export function Dashboard({
       <section id="templates" className="doc-section">
         <div className="section-header">
           <h2 className="section-title">Templates editoriais</h2>
-          <TemplateDialog />
+          <TemplateFormDialog />
         </div>
         <div className="fp-card-grid template-grid">
           {templates.map((template, index) => (
@@ -179,6 +182,7 @@ function StatCard({ label, value, note }: { label: string; value: number; note: 
 }
 
 function TemplateCard({ template, index }: { template: TemplateRecord; index: number }) {
+  const [editOpen, setEditOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function remove() {
@@ -194,80 +198,135 @@ function TemplateCard({ template, index }: { template: TemplateRecord; index: nu
   }
 
   return (
-    <div className="fp-card template-card">
-      <div
-        className="template-index"
-        style={{ background: `linear-gradient(135deg, ${template.primaryColor}, ${template.secondaryColor})` }}
-      >
-        0{index + 1}
+    <>
+      <div className="fp-card template-card">
+        <div
+          className="template-index"
+          style={{ background: `linear-gradient(135deg, ${template.primaryColor}, ${template.secondaryColor})` }}
+        >
+          0{index + 1}
+        </div>
+        <h3>{template.name}</h3>
+        <p>{template.isBuiltin ? "Template padrão Portulan (navy + burgundy)." : "Template personalizado com cores próprias."}</p>
+        <div className="template-color-row">
+          <span className="template-swatch" style={{ backgroundColor: template.primaryColor }} title="Cor primária" />
+          <span className="template-swatch" style={{ backgroundColor: template.secondaryColor }} title="Cor secundária" />
+          <code className="template-color-code">{template.primaryColor}</code>
+          <code className="template-color-code">{template.secondaryColor}</code>
+        </div>
+        <div className="template-card-actions">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil />
+            Editar
+          </Button>
+          {!template.isBuiltin ? (
+            <Button type="button" variant="ghost" size="sm" onClick={remove} disabled={pending}>
+              <Trash2 />
+              Excluir
+            </Button>
+          ) : null}
+        </div>
       </div>
-      <h3>{template.name}</h3>
-      <p>{template.isBuiltin ? "Template padrão Portulan (navy + burgundy)." : "Template personalizado com cores próprias."}</p>
-      <div className="template-color-row">
-        <span className="template-swatch" style={{ backgroundColor: template.primaryColor }} title="Cor primária" />
-        <span className="template-swatch" style={{ backgroundColor: template.secondaryColor }} title="Cor secundária" />
-        <code className="template-color-code">{template.primaryColor}</code>
-        <code className="template-color-code">{template.secondaryColor}</code>
-      </div>
-      {!template.isBuiltin ? (
-        <Button type="button" variant="ghost" size="sm" className="mt-4" onClick={remove} disabled={pending}>
-          <Trash2 />
-          Excluir
-        </Button>
-      ) : null}
-    </div>
+      <TemplateFormDialog template={template} open={editOpen} onOpenChange={setEditOpen} />
+    </>
   );
 }
 
-function TemplateDialog() {
-  const [open, setOpen] = useState(false);
+function TemplateFormDialog({
+  template,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  template?: TemplateRecord;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const isEdit = Boolean(template);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [pending, startTransition] = useTransition();
-  const [name, setName] = useState("");
-  const [primaryColor, setPrimaryColor] = useState<string>(DEFAULT_TEMPLATE_COLORS.primary);
-  const [secondaryColor, setSecondaryColor] = useState<string>(DEFAULT_TEMPLATE_COLORS.secondary);
+  const [name, setName] = useState(template?.name ?? "");
+  const [primaryColor, setPrimaryColor] = useState<string>(template?.primaryColor ?? DEFAULT_TEMPLATE_COLORS.primary);
+  const [secondaryColor, setSecondaryColor] = useState<string>(template?.secondaryColor ?? DEFAULT_TEMPLATE_COLORS.secondary);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(template?.name ?? "");
+    setPrimaryColor(template?.primaryColor ?? DEFAULT_TEMPLATE_COLORS.primary);
+    setSecondaryColor(template?.secondaryColor ?? DEFAULT_TEMPLATE_COLORS.secondary);
+  }, [open, template]);
 
   function submit() {
     startTransition(async () => {
-      const result = await createTemplateAction({ name, primaryColor, secondaryColor, content: "" });
+      const payload = { name, primaryColor, secondaryColor };
+
+      const result = isEdit && template
+        ? await updateTemplateAction(template.id, payload)
+        : await createTemplateAction({ ...payload, content: "" });
+
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
+
       setOpen(false);
-      setName("");
-      toast.success("Template criado");
+      if (!isEdit) {
+        setName("");
+        setPrimaryColor(DEFAULT_TEMPLATE_COLORS.primary);
+        setSecondaryColor(DEFAULT_TEMPLATE_COLORS.secondary);
+      }
+      toast.success(isEdit ? "Template atualizado" : "Template criado");
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm"><Plus />Novo template</Button>
-      </DialogTrigger>
-      <DialogContent>
+      {!isEdit ? (
+        <DialogTrigger asChild>
+          <Button type="button" variant="outline" size="sm"><Plus />Novo template</Button>
+        </DialogTrigger>
+      ) : null}
+      <DialogContent className="template-form-dialog">
         <DialogHeader>
-          <DialogTitle>Novo template</DialogTitle>
-          <DialogDescription>Defina um nome e duas cores editoriais (primária e secundária).</DialogDescription>
+          <DialogTitle>{isEdit ? "Editar template" : "Novo template"}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Atualize o nome e as cores editoriais deste template."
+              : "Defina um nome e duas cores editoriais (primária e secundária)."}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="template-name">Nome</Label>
-            <Input id="template-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Relatório executivo" />
+            <Label htmlFor={isEdit ? `template-name-${template?.id}` : "template-name"}>Nome</Label>
+            <Input
+              id={isEdit ? `template-name-${template?.id}` : "template-name"}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Ex.: Relatório executivo"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="template-primary">Cor primária</Label>
-              <Input id="template-primary" type="color" value={primaryColor} onChange={(event) => setPrimaryColor(event.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="template-secondary">Cor secundária</Label>
-              <Input id="template-secondary" type="color" value={secondaryColor} onChange={(event) => setSecondaryColor(event.target.value)} />
-            </div>
+            <ColorPicker
+              id={isEdit ? `template-primary-${template?.id}` : "template-primary"}
+              label="Cor primária"
+              value={primaryColor}
+              onChange={setPrimaryColor}
+            />
+            <ColorPicker
+              id={isEdit ? `template-secondary-${template?.id}` : "template-secondary"}
+              label="Cor secundária"
+              value={secondaryColor}
+              onChange={setSecondaryColor}
+              align="end"
+            />
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={pending || name.trim().length < 1}>Criar template</Button>
+          <Button onClick={submit} disabled={pending || name.trim().length < 1}>
+            {isEdit ? "Salvar alterações" : "Criar template"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
