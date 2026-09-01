@@ -2,7 +2,7 @@ import "server-only";
 
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, existsSync, accessSync, constants } from "node:fs";
 import path from "node:path";
 import type { DocumentInput, DocumentRecord, DocumentRelease, DocumentStatus, DocumentType } from "@/lib/documents";
 
@@ -37,10 +37,41 @@ type DocumentReleaseRow = {
   published_at: string;
 };
 
-const defaultPath = path.join(process.cwd(), "data", "festpay-docs.sqlite");
-const databasePath = process.env.DATABASE_PATH || defaultPath;
+// Determine the database path
+// On Vercel (or other serverless with read-only filesystem), use /tmp (ephemeral)
+// In development, use ./data (persistent)
+function getDatabasePath(): string {
+  if (process.env.DATABASE_PATH) {
+    return process.env.DATABASE_PATH;
+  }
 
-mkdirSync(path.dirname(databasePath), { recursive: true });
+  // Check if current working directory is writable
+  const cwd = process.cwd();
+  let isWritable = false;
+  try {
+    accessSync(cwd, constants.W_OK);
+    isWritable = true;
+  } catch {
+    isWritable = false;
+  }
+
+  if (isWritable) {
+    // Development: use ./data directory
+    return path.join(cwd, "data", "festpay-docs.sqlite");
+  } else {
+    // Production/serverless: use /tmp (ephemeral but writable)
+    return path.join("/tmp", "festpay-docs.sqlite");
+  }
+}
+
+const databasePath = getDatabasePath();
+
+// Ensure the directory exists (only if parent is writable)
+try {
+  mkdirSync(path.dirname(databasePath), { recursive: true });
+} catch (error) {
+  console.warn(`Could not create database directory: ${error}`);
+}
 
 const globalForDb = globalThis as unknown as { festpayDocsDb?: Database.Database };
 const db = globalForDb.festpayDocsDb ?? new Database(databasePath);
