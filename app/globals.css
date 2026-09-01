@@ -397,12 +397,45 @@
 .header-inner { max-width: 1100px; margin: 0 auto; padding: 7px var(--sp-6); display: flex; align-items: center; gap: var(--sp-5); }
 .header-divider { flex: 1; }
 .auth-controls { display: flex; align-items: center; gap: 8px; }
+.auth-menu { position: relative; }
 .auth-menu-trigger { border: 1px solid transparent; background: transparent; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
 .auth-menu-trigger:hover { border-color: var(--border); background: var(--selection-bg); }
 .auth-menu-chevron { width: 14px; height: 14px; opacity: .6; flex-shrink: 0; }
 .auth-sign-in { border: 1px solid var(--border); background: transparent; padding: 6px 10px; font: 500 11px/1 var(--font-mono); cursor: pointer; }
 .auth-sign-in:hover { background: var(--selection-bg); }
-.auth-menu-content { min-width: 10rem; }
+.auth-menu-panel {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 10px);
+  z-index: 110;
+  min-width: 10rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--foreground) 12%, transparent);
+  padding: 4px;
+}
+.auth-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  padding: 6px 8px;
+  color: inherit;
+  font: 500 12px/1 var(--font-mono);
+  text-align: start;
+  cursor: pointer;
+}
+.auth-menu-item:hover { background: var(--selection-bg); }
+.auth-menu-item svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .7; }
+.auth-menu-item-destructive { color: var(--destructive); }
+.auth-menu-item-destructive svg { color: var(--destructive); opacity: 1; }
+.auth-menu-item-destructive:hover { background: color-mix(in srgb, var(--destructive) 10%, transparent); }
+.auth-menu-separator { height: 1px; margin: 4px 0; background: var(--border); }
 .template-badge { font: 600 9px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
 .template-badge-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--template-primary, var(--primary)); }
 .template-filter-select { width: 100%; max-width: 11rem; border: 1px solid var(--border); background: var(--background); padding: 8px 10px; font: 500 12px/1 var(--font-mono); }
