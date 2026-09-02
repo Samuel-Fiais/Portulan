@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   title: { default: "Portulan", template: "%s · Portulan" },
   description: "Workspace para documentos e relatórios técnicos navegáveis.",
   icons: {
-    icon: "/portulan-logo.png",
-    apple: "/portulan-logo.png",
+    icon: "/portulan-mark.png",
+    apple: "/portulan-mark.png",
   },
 };
 
