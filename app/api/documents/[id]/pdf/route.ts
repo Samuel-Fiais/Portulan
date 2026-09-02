@@ -1,7 +1,8 @@
 import puppeteer from "puppeteer";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { PDFDocument, StandardFonts, rgb, type RGB } from "pdf-lib";
 import { auth } from "@/auth";
-import { getBrandLogo } from "@/lib/brand-assets";
 import { getDocument } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
 
@@ -21,9 +22,7 @@ export async function GET(request: Request, { params }: Context) {
   const document = await getDocument(id, { userId: session.user.id });
   if (!document) return Response.json({ error: "Documento não encontrado" }, { status: 404 });
 
-  const accent = document.primaryColor;
-  const accent2 = document.secondaryColor;
-  const logo = await getBrandLogo("navy");
+  const logo = await readFile(join(process.cwd(), "public", "portulan-logo.png"));
   const date = formatDate(document.updatedAt);
   const sessionCookie = request.headers.get("cookie");
 
@@ -52,11 +51,11 @@ export async function GET(request: Request, { params }: Context) {
       printBackground: true,
       margin: { top: "11mm", right: "0", bottom: "8mm", left: "0" },
     });
-    const pdf = await decoratePdf(new Uint8Array(contentPdf), {
+    const pdf = await addRunningFurniture(new Uint8Array(contentPdf), {
       logo,
-      accent,
-      accent2,
-      type: document.templateName,
+      primaryColor: document.primaryColor,
+      secondaryColor: document.secondaryColor,
+      templateName: document.templateName,
       version: document.version,
       date,
     });
@@ -80,49 +79,57 @@ function safeFilename(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "-");
 }
 
-async function decoratePdf(source: Uint8Array, input: { logo: Buffer; accent: string; accent2: string; type: string; version: number; date: string }) {
+async function addRunningFurniture(source: Uint8Array, input: {
+  logo: Uint8Array;
+  primaryColor: string;
+  secondaryColor: string;
+  templateName: string;
+  version: number;
+  date: string;
+}) {
   const sourcePdf = await PDFDocument.load(source);
   const normalizedPdf = await PDFDocument.create();
   const sourcePages = sourcePdf.getPages();
   const embeddedPages = await normalizedPdf.embedPdf(source, sourcePages.map((_, index) => index));
+
   for (let index = 0; index < sourcePages.length; index += 1) {
     const { width, height } = sourcePages[index].getSize();
     const page = normalizedPdf.addPage([width, height]);
     page.drawPage(embeddedPages[index], { x: 0, y: 0, width, height });
   }
+
   const pdf = await PDFDocument.load(await normalizedPdf.save());
   const logo = await pdf.embedPng(input.logo);
   const regular = await pdf.embedFont(StandardFonts.Courier);
   const bold = await pdf.embedFont(StandardFonts.CourierBold);
-  const accent = hexColor(input.accent);
-  const accent2 = hexColor(input.accent2);
+  const primary = hexColor(input.primaryColor);
+  const secondary = hexColor(input.secondaryColor);
   const surface = hexColor("#F5F5F5");
   const border = hexColor("#D4D4D4");
   const muted = hexColor("#A3A3A3");
   const headerHeight = mm(10);
   const footerHeight = mm(8);
   const inset = mm(7);
-  const type = input.type.toUpperCase();
-  const version = `v${input.version} · ${input.date}`;
-  const footerCopy = `Portulan · Confidencial · ${input.date}`;
+  const metadata = `v${input.version} · ${input.date}`;
+  const footer = `Portulan · Confidencial · ${input.date}`;
 
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();
     page.drawRectangle({ x: 0, y: height - headerHeight, width, height: headerHeight, color: surface });
-    drawGradient(page, height - headerHeight - mm(1), width, mm(1), accent, accent2);
+    drawGradient(page, height - headerHeight - mm(1), width, mm(1), primary, secondary);
 
     const headerLogoHeight = mm(5);
     const headerLogoWidth = logo.width * (headerLogoHeight / logo.height);
-    page.drawImage(logo, { x: inset, y: height - (headerLogoHeight + headerLogoHeight) / 2, width: headerLogoWidth, height: headerLogoHeight });
-    drawRightText(page, type, width - inset, height - mm(3.2), bold, 6.7, accent);
-    drawRightText(page, version, width - inset, height - mm(6.8), regular, 6.2, muted);
+    page.drawImage(logo, { x: inset, y: height - mm(7.5), width: headerLogoWidth, height: headerLogoHeight });
+    drawRightText(page, input.templateName.toUpperCase(), width - inset, height - mm(3.2), bold, 6.7, primary);
+    drawRightText(page, metadata, width - inset, height - mm(6.8), regular, 6.2, muted);
 
     page.drawRectangle({ x: 0, y: 0, width, height: footerHeight, color: surface });
     page.drawLine({ start: { x: 0, y: footerHeight }, end: { x: width, y: footerHeight }, thickness: 0.6, color: border });
     const footerLogoHeight = mm(4);
     const footerLogoWidth = logo.width * (footerLogoHeight / logo.height);
-    page.drawImage(logo, { x: inset, y: (footerHeight - footerLogoHeight) / 2, width: footerLogoWidth, height: footerLogoHeight });
-    drawRightText(page, footerCopy, width - inset, mm(3.1), regular, 6.2, muted);
+    page.drawImage(logo, { x: inset, y: mm(2), width: footerLogoWidth, height: footerLogoHeight });
+    drawRightText(page, footer, width - inset, mm(3.1), regular, 6.2, muted);
   }
 
   return pdf.save();

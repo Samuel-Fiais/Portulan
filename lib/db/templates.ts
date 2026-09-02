@@ -1,11 +1,11 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { templates } from "@/lib/db/schema";
+import { documents, templates } from "@/lib/db/schema";
 import {
-  DEFAULT_TEMPLATE_COLORS,
+  builtinTemplates,
   DEFAULT_TEMPLATE_ID,
   defaultDocumentContent,
   type TemplateInput,
@@ -36,6 +36,7 @@ export async function getTemplate(id: string) {
 }
 
 export async function listTemplates(userId: string) {
+  await ensureDefaultTemplate();
   const db = await getDb();
   const rows = await db
     .select()
@@ -77,6 +78,7 @@ export async function updateTemplate(userId: string, id: string, input: Partial<
         name: input.name ?? current.name,
         primaryColor: input.primaryColor ?? current.primaryColor,
         secondaryColor: input.secondaryColor ?? current.secondaryColor,
+        content: input.content ?? current.content,
       })
       .where(eq(templates.id, id))
       .returning();
@@ -125,18 +127,26 @@ export async function resolveTemplateForUser(templateId: string, userId: string)
 
 export async function ensureDefaultTemplate() {
   const db = await getDb();
-  const [existing] = await db.select({ id: templates.id }).from(templates).where(eq(templates.id, DEFAULT_TEMPLATE_ID)).limit(1);
-  if (existing) return;
+  await db
+    .insert(templates)
+    .values(builtinTemplates.map((template) => ({ ...template, userId: null, isBuiltin: true })))
+    .onConflictDoNothing({ target: templates.id });
 
-  await db.insert(templates).values({
-    id: DEFAULT_TEMPLATE_ID,
-    userId: null,
-    name: "Default",
-    primaryColor: DEFAULT_TEMPLATE_COLORS.primary,
-    secondaryColor: DEFAULT_TEMPLATE_COLORS.secondary,
-    content: defaultDocumentContent,
-    isBuiltin: true,
-  });
+  // Versões anteriores ofereciam modelos internos adicionais. Documentos que
+  // ainda os referenciam passam ao Default antes de remover esses registros.
+  const obsoleteTemplates = await db
+    .select({ id: templates.id })
+    .from(templates)
+    .where(and(eq(templates.isBuiltin, true), ne(templates.id, DEFAULT_TEMPLATE_ID)));
+  const obsoleteTemplateIds = obsoleteTemplates.map((template) => template.id);
+
+  if (obsoleteTemplateIds.length === 0) return;
+
+  await db
+    .update(documents)
+    .set({ templateId: DEFAULT_TEMPLATE_ID })
+    .where(inArray(documents.templateId, obsoleteTemplateIds));
+  await db.delete(templates).where(inArray(templates.id, obsoleteTemplateIds));
 }
 
 export async function getDefaultTemplate() {

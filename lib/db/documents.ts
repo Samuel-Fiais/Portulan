@@ -231,7 +231,9 @@ export async function updateDocument(
       team: next.team,
       tags: JSON.stringify(next.tags),
       content: next.content,
-      version: current.version + 1,
+      // O rascunho pode ser salvo quantas vezes for necessário. A versão só
+      // avança ao criar um snapshot publicado em publishDocument.
+      version: current.version,
       updatedAt: now,
       publishedAt,
     })
@@ -247,25 +249,6 @@ export async function deleteDocument(id: string, ctx: DocumentAccessContext = {}
   const db = await getDb();
   const deleted = await db.delete(documents).where(eq(documents.id, id)).returning({ id: documents.id });
   return deleted.length > 0;
-}
-
-function documentContentChanged(current: DocumentRecord, input: Partial<DocumentInput>) {
-  const title = input.title ?? current.title;
-  const summary = input.summary ?? current.summary;
-  const templateId = input.templateId ?? current.templateId;
-  const author = input.author ?? current.author;
-  const team = input.team ?? current.team;
-  const tags = input.tags ?? current.tags;
-  const content = input.content ?? current.content;
-  return (
-    title !== current.title ||
-    summary !== current.summary ||
-    templateId !== current.templateId ||
-    author !== current.author ||
-    team !== current.team ||
-    JSON.stringify(tags) !== JSON.stringify(current.tags) ||
-    content !== current.content
-  );
 }
 
 export async function getDocumentRelease(releaseId: string) {
@@ -309,49 +292,36 @@ export async function publishDocument(
     content: input.content ?? current.content,
   };
   const now = new Date().toISOString();
-  const changed = documentContentChanged(current, input);
+  const slug = input.title ? await uniqueSlug(input.title, id) : current.slug;
+  const [latestRelease] = await db
+    .select({ version: documentReleases.version })
+    .from(documentReleases)
+    .where(eq(documentReleases.documentId, id))
+    .orderBy(desc(documentReleases.version))
+    .limit(1);
+  const nextVersion = (latestRelease?.version ?? 0) + 1;
 
-  if (changed) {
-    const slug = input.title ? await uniqueSlug(input.title, id) : current.slug;
-    await db
-      .update(documents)
-      .set({
-        slug,
-        title: merged.title,
-        summary: merged.summary,
-        templateId: merged.templateId,
-        status: "published",
-        author: merged.author,
-        team: merged.team,
-        tags: JSON.stringify(merged.tags),
-        content: merged.content,
-        version: current.version + 1,
-        updatedAt: now,
-        publishedAt: current.publishedAt ?? now,
-      })
-      .where(eq(documents.id, id));
-  } else {
-    await db
-      .update(documents)
-      .set({
-        status: "published",
-        updatedAt: now,
-        publishedAt: current.publishedAt ?? now,
-      })
-      .where(eq(documents.id, id));
-  }
+  // Publicar é uma decisão explícita: cada publicação cria um snapshot
+  // imutável, inclusive quando o rascunho não mudou desde a última versão.
+  await db
+    .update(documents)
+    .set({
+      slug,
+      title: merged.title,
+      summary: merged.summary,
+      templateId: merged.templateId,
+      status: "published",
+      author: merged.author,
+      team: merged.team,
+      tags: JSON.stringify(merged.tags),
+      content: merged.content,
+      version: nextVersion,
+      updatedAt: now,
+      publishedAt: now,
+    })
+    .where(eq(documents.id, id));
 
   const document = (await getDocument(id, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership }))!;
-  const [existing] = await db
-    .select()
-    .from(documentReleases)
-    .where(and(eq(documentReleases.documentId, id), eq(documentReleases.version, document.version)))
-    .limit(1);
-
-  if (existing) {
-    return { document, release: mapReleaseRow(existing) };
-  }
-
   const releaseId = randomUUID();
   await db.insert(documentReleases).values({
     id: releaseId,

@@ -9,6 +9,16 @@ export const DEFAULT_TEMPLATE_COLORS = {
   secondary: "#8b2735",
 } as const;
 
+export const builtinTemplates = [
+  {
+    id: DEFAULT_TEMPLATE_ID,
+    name: "Default",
+    primaryColor: "#1a2847",
+    secondaryColor: "#8b2735",
+    content: "## Visão geral\n\nDescreva o contexto, objetivo e público deste documento.\n\n## Conteúdo principal\n\nDesenvolva o assunto com clareza e evidências.\n\n:::callout{title=\"Destaque\"}\nInformação relevante para o leitor.\n:::\n\n## Próximos passos\n\n- Ação ou decisão pendente\n- Responsável e prazo",
+  },
+] as const;
+
 export type TemplateRecord = {
   id: string;
   userId: string | null;
@@ -95,19 +105,4 @@ export const statusMeta: Record<DocumentStatus, { label: string; tone: string }>
   archived: { label: "Arquivado", tone: "neutral" },
 };
 
-export const defaultDocumentContent = `## Visão geral
-
-Descreva o contexto, objetivo e público deste documento.
-
-## Conteúdo principal
-
-Desenvolva o assunto com clareza e evidências.
-
-:::callout{title="Destaque"}
-Informação relevante para o leitor.
-:::
-
-## Próximos passos
-
-- Ação ou decisão pendente
-- Responsável e prazo`;
+export const defaultDocumentContent = builtinTemplates[0].content;

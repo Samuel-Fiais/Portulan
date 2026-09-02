@@ -3,13 +3,16 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import {
   createDocument,
+  createTemplate,
   deleteDocument,
+  deleteTemplate,
   getDocument,
   listDocumentReleases,
   listDocuments,
   listTemplates,
   publishDocument,
   updateDocument,
+  updateTemplate,
   validateMcpToken,
 } from "@/lib/db";
 import { documentStatuses } from "@/lib/documents";
@@ -38,6 +41,55 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({}),
     },
     async () => textResult({ templates: await listTemplates(requireUserId()) }),
+  );
+
+  const templateFields = {
+    name: z.string().trim().min(1).max(80),
+    primary_color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
+    secondary_color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
+    content: z.string().max(250_000).default(""),
+  };
+
+  server.registerTool(
+    "create_template",
+    {
+      title: "Criar template",
+      description: "Cria um template particular de documento, com paleta e conteúdo Markdown inicial.",
+      inputSchema: z.object(templateFields),
+    },
+    async ({ primary_color, secondary_color, ...input }) => textResult({ template: await createTemplate(requireUserId(), { ...input, primaryColor: primary_color, secondaryColor: secondary_color }) }),
+  );
+
+  server.registerTool(
+    "update_template",
+    {
+      title: "Editar template",
+      description: "Atualiza parcialmente nome, cores ou conteúdo-base de um template. Não cria versão de documentos.",
+      inputSchema: z.object({
+        id: z.string().min(1),
+        name: templateFields.name.optional(),
+        primary_color: templateFields.primary_color.optional(),
+        secondary_color: templateFields.secondary_color.optional(),
+        content: z.string().max(250_000).optional(),
+      }).refine((input) => input.name !== undefined || input.primary_color !== undefined || input.secondary_color !== undefined || input.content !== undefined, { message: "Informe ao menos um campo para atualizar." }),
+    },
+    async ({ id, primary_color, secondary_color, ...input }) => {
+      const template = await updateTemplate(requireUserId(), id, { ...input, primaryColor: primary_color, secondaryColor: secondary_color });
+      return template ? textResult({ template }) : { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "delete_template",
+    {
+      title: "Excluir template",
+      description: "Exclui definitivamente um template particular. Templates internos não podem ser excluídos.",
+      inputSchema: z.object({ id: z.string().min(1) }),
+    },
+    async ({ id }) => {
+      const deleted = await deleteTemplate(requireUserId(), id);
+      return deleted ? textResult({ deleted: true, id }) : { ...textResult({ error: "Template não encontrado, interno ou sem permissão." }), isError: true };
+    },
   );
 
   server.registerTool(
@@ -111,7 +163,7 @@ const mcpHandler = createMcpHandler((server) => {
     "update_document",
     {
       title: "Editar documento",
-      description: "Atualiza parcialmente um documento. Cada alteração incrementa sua versão.",
+      description: "Atualiza parcialmente o rascunho de um documento, sem criar uma nova versão publicada.",
       inputSchema: z.object({
         id: z.string().min(1),
         title: z.string().min(3).max(180).optional(),
@@ -147,7 +199,7 @@ const mcpHandler = createMcpHandler((server) => {
     "publish_document",
     {
       title: "Publicar documento",
-      description: "Publica o documento na versão atual, cria um snapshot imutável e retorna o link público compartilhável.",
+      description: "Cria uma nova versão publicada a partir do rascunho, com snapshot imutável e link público compartilhável.",
       inputSchema: z.object({
         id: z.string().min(1),
         title: z.string().min(3).max(180).optional(),
@@ -188,9 +240,9 @@ const mcpHandler = createMcpHandler((server) => {
     },
   );
 }, {
-  serverInfo: { name: "portulan", version: "0.4.0" },
+  serverInfo: { name: "portulan", version: "0.5.0" },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão. Use create_template e update_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {

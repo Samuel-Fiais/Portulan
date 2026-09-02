@@ -11,7 +11,7 @@ Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable
 
 1. App rodando: `npm run dev` (Node 20+) no repo Portulan
 2. Endpoint: `http://localhost:3000/api/mcp`
-3. Servidor MCP: `portulan` v0.2.0
+3. Servidor MCP: `portulan` v0.5.0
 
 Sem o dev server, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
 
@@ -68,17 +68,21 @@ Authorization: Bearer <MCP_API_KEY>
 
 No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
 
-## Ferramentas (7)
+## Ferramentas (11)
 
 | Ferramenta | Quando usar |
 |---|---|
 | `list_documents` | Descobrir o que existe; buscar por título, tag, tipo ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |
-| `update_document` | Editar rascunho/revisão; **incrementa versão** |
+| `update_document` | Editar rascunho/revisão; não cria versão publicada |
 | `publish_document` | Gerar link público imutável da versão atual |
 | `list_document_releases` | Recuperar links `/p/{id}` já publicados |
 | `delete_document` | Remover definitivamente (só UUID) |
+| `list_templates` | Descobrir os templates disponíveis e seus conteúdos-base |
+| `create_template` | Criar um template particular com paleta e Markdown inicial |
+| `update_template` | Alterar nome, cores ou conteúdo-base de um template |
+| `delete_template` | Remover definitivamente um template particular |
 
 Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 
@@ -104,8 +108,8 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 
 ### Versão e publicação
 
-- `update_document` sempre incrementa `version` quando há mudança de conteúdo/metadados.
-- `publish_document` cria snapshot imutável em `document_releases` e retorna `publicPath: "/p/{releaseId}"`.
+- `update_document` salva o rascunho sem criar uma nova versão.
+- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `publicPath: "/p/{releaseId}"`.
 - Links antigos **não mudam** quando o documento é editado depois; nova publicação = novo link.
 - Link público: `http://localhost:3000/p/{releaseId}` (fundo branco, conteúdo centralizado).
 
@@ -154,6 +158,16 @@ delete_document(id: "<uuid>")
 
 Irreversível. Confirme com o usuário antes.
 
+### Manter templates
+
+```
+1. list_templates → consultar id, paleta e conteúdo-base existentes
+2. create_template → criar uma variação particular, quando apropriado
+3. update_template → ajustar nome, cores ou conteúdo-base sem alterar documentos já criados
+```
+
+Templates internos também podem ter nome, paleta e conteúdo-base ajustados; não podem ser excluídos. Templates particulares só podem ser alterados ou excluídos pelo respectivo usuário.
+
 ### Escolha do componente certo
 
 | Conteúdo | Use |
@@ -172,20 +186,49 @@ Diretivas suportadas:
 
 | Diretiva | Formato do corpo |
 |---|---|
-| `:::alert{variant="info" title="..."}` | Markdown livre |
+| `:::alert{variant="info" style="tint" title="..."}` | Markdown livre; `style`: `tint`, `line` ou `solid` |
 | `:::callout{title="..."}` | Markdown livre |
 | `:::banner{title="..."}` | Markdown livre |
-| `:::stats` | `- Label \| valor \| delta \| up\|down` por linha |
-| `:::cards` | `- eyebrow \| título \| corpo` |
+| `:::stats{layout="grid"}` | `- Label \| valor \| delta \| up\|down` por linha; `layout`: `grid` ou `strip` |
+| `:::cards{layout="grid"}` | `- eyebrow \| título \| corpo`; `layout`: `grid` ou `list` |
 | `:::steps` | `- título \| corpo` |
-| `:::timeline` | `- data \| título \| corpo \| done\|current` |
+| `:::timeline{state="current"}` | `- data \| título \| corpo \| estado opcional`; `state`: `done` ou `current` |
 | `:::checklist` | Tarefas rastreáveis com `- [ ]` ou `- [x]` · subtítulo opcional após `\|` |
 
 **Quando NÃO usar `:::checklist`:** critérios, sintomas, condições ou listas informativas (“quando escalar”, “sinais de alerta”) → use bullets Markdown normais (`- item`) no corpo da seção, **não** dentro de `:::checklist`. O `-` vira lista com marcador; checkbox só com `[ ]` / `[x]`.
 
 **Stats:** se não houver delta, omita a terceira coluna — não use `-` como placeholder (`- Label | valor` basta).
 | `:::kv` | `- chave \| valor` |
-| `:::progress` | `- label \| 0-100 \| ok\|warn\|err\|a2` |
+| `:::progress{size="regular" tone="ok"}` | `- label \| 0-100 \| tom opcional`; `size`: `regular` ou `compact`; `tone`: `ok`, `warn`, `err`, `a2` |
+| `:::chart{type="bar\|line\|area\|column\|donut\|gauge\|spark" title="..."}` | `- rótulo \| número` por linha. Use o componente **Gráfico configurável** para trocar `type`. |
+| `:::chart{type="stacked" title="..."}` | `- rótulo \| número` por linha |
+| `:::chart{type="target" title="..."}` | `- rótulo \| realizado \| meta` por linha |
+| `:::decision{status="approved\|pending\|rejected" style="note\|banner" title="..."}` | Markdown livre |
+| `:::comparison` | `- rótulo \| atual \| meta` por linha |
+| `:::milestones{state="planned"}` | `- data \| marco \| estado opcional`; `state`: `done`, `current`, `planned` |
+| `:::actions{state="open"}` | `- ação \| responsável \| prazo \| estado opcional`; `state`: `open`, `done`, `blocked` |
+| `:::risks{level="medium"}` | `- risco \| impacto \| mitigação \| nível opcional`; `level`: `low`, `medium`, `high` |
+| `:::scorecard` | `- objetivo \| estado \| evidência` por linha |
+| `:::evidence` | `- evidência \| fonte \| data` por linha |
+| `:::api{method="GET" path="/..."}` | Corpo JSON do endpoint |
+| `:::terminal` | Comando e saída em texto livre |
+| `:::filetree{title="..."}` | Estrutura de arquivos em texto livre |
+| `:::diff{title="..."}` | Linhas com `+` ou `-` em texto livre |
+| `:::env` | `- chave | valor | escopo` por linha |
+| `:::logs{level="INFO"}` | `- horário \| mensagem` ou `- horário \| INFO\|WARN\|ERROR \| mensagem` |
+| `:::tests{status="PASS"}` | `- teste \| observação` ou `- teste \| PASS\|FAIL \| observação` |
+| `:::columns{count="2"}` | Colunas separadas por uma linha `---`; aceita Markdown e diretivas aninhadas |
+| `:::people{layout="directory"}` | `- nome \| papel \| escopo`; `layout`: `directory` ou `cards` |
+| `:::agenda` | `- tópico \| responsável \| duração` por linha |
+| `:::faq{mode="expanded"}` | `- pergunta \| resposta`; `mode`: `expanded` ou `collapsed` |
+| `:::experiment` | `- hipótese \| métrica \| estado` por linha |
+| `:::slo{status="ok"}` | `- serviço \| meta \| atual \| estado opcional`; `status`: `ok`, `warn`, `err` |
+| `:::changelog` | `- versão \| data \| descrição` por linha |
+| `:::glossary` | `- termo \| definição` por linha |
+| `:::resources` | `- recurso \| tipo \| descrição` por linha |
+| `:::properties` | `- campo \| valor \| status\|person\|date\|url` por linha |
+| `:::daci` | `- papel DACI \| pessoa ou grupo` por linha |
+| `:::related` | `- item \| relação \| estado` por linha |
 
 Variantes de alert: `info`, `success`, `warning`, `error`, `accent`.
 
@@ -236,7 +279,7 @@ curl -sS -X POST http://localhost:3000/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 7 ferramentas.
+Deve listar 11 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

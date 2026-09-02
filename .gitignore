@@ -12,3 +12,4 @@ data/*.db
 *.tsbuildinfo
 tmp/
 output/
+.vercel

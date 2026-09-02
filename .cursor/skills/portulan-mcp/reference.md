@@ -22,6 +22,21 @@ MCP_API_KEY=
 
 ## Ferramentas — schemas e exemplos
 
+### `list_templates`, `create_template`, `update_template`, `delete_template`
+
+`list_templates` retorna templates internos e os templates particulares do usuário, incluindo `id`, `name`, `primaryColor`, `secondaryColor` e `content`.
+
+```json
+{
+  "name": "Status de engenharia",
+  "primary_color": "#1A2847",
+  "secondary_color": "#8B2735",
+  "content": "## Visão geral\n\n:::stats\n- Disponibilidade | 99,9%\n:::"
+}
+```
+
+Use esse corpo com `create_template`. Para `update_template`, acrescente o `id` e envie apenas os campos a mudar. `delete_template` recebe `{ "id": "..." }` e só exclui templates particulares; modelos internos podem ser editados, mas não excluídos.
+
 ### `list_documents`
 
 **Input (todos opcionais):**
@@ -109,7 +124,7 @@ Aceita UUID ou slug.
 }
 ```
 
-Incrementa `version` a cada alteração persistida.
+Salva o rascunho sem criar uma nova versão publicada.
 
 ---
 
@@ -124,7 +139,7 @@ Incrementa `version` a cada alteração persistida.
 }
 ```
 
-Se `content`/metadados mudarem, salva e incrementa versão antes de publicar.
+Cria uma nova versão publicada e um snapshot imutável, usando o rascunho atual junto de qualquer campo enviado.
 
 **Output:**
 
@@ -211,6 +226,13 @@ Diretivas: `steps`, `stats`, `alert`, `progress`, tabelas.
 
 Seções: Visão geral, Arquitetura, Contrato, Exemplo, Operação.  
 Diretivas: `kv`, blocos de código, mermaid (se presente no conteúdo).
+
+### Templates editoriais incluídos
+
+- `Status semanal`: saúde, entregas, riscos e plano de ação.
+- `Resumo executivo`: leitura para liderança, indicadores e decisão necessária.
+- `Pós-incidente`: impacto, cronologia, causa e ações preventivas.
+- `Revisão trimestral`: objetivos, evidências, tendências e prioridades.
 
 ---
 
@@ -319,6 +341,77 @@ Linhas em `:::checklist` **sem** `[ ]`/`[x]` renderizam como lista simples, sem 
 ```
 
 Tons opcionais: `ok`, `warn`, `err`, `a2`.
+
+### chart
+
+```
+:::chart{type="bar" title="Volume por canal"}
+- Web | 68
+- Mobile | 44
+:::
+```
+
+Tipos: `bar`, `line`, `area`, `column`, `donut`, `gauge`, `spark`. Cada linha usa `rótulo | número`. Os gráficos de linha e área exibem o valor em cada ponto; `gauge` usa o primeiro valor, entre 0 e 100.
+
+### decision
+
+```
+:::decision{status="approved" title="Aprovar a liberação"}
+Critérios técnicos e operacionais validados.
+:::
+```
+
+Status: `approved`, `pending`, `rejected`.
+
+### comparison
+
+```
+:::comparison
+- Cobertura | 91% | 95%
+:::
+```
+
+### milestones
+
+```
+:::milestones
+- 20 set. | Liberação gradual | current
+:::
+```
+
+### actions
+
+```
+:::actions
+- Validar resultados | Marina | 18 set. | open
+:::
+```
+
+### risks
+
+```
+:::risks
+- Dependência externa | Alto | Validar contingência. | high
+:::
+```
+
+### scorecard
+
+```
+:::scorecard
+- Confiabilidade | No rumo | 99,95% de disponibilidade.
+:::
+```
+
+### evidence
+
+```
+:::evidence
+- Teste de carga aprovado | Pipeline de qualidade | 12 set.
+:::
+```
+
+Formato: `rótulo | atual | meta`.
 
 ---
 
