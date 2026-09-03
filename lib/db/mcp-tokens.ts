@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { mcpTokens } from "@/lib/db/schema";
+import { mcpTokenExpiresAtFromPreset, type McpTokenExpirationPreset } from "@/lib/validation";
 
 export type McpTokenRecord = {
   id: string;
@@ -11,20 +12,29 @@ export type McpTokenRecord = {
   tokenPrefix: string;
   createdAt: string;
   lastUsedAt: string | null;
+  expiresAt: string | null;
 };
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+const LEGACY_MCP_TOKEN_NAME = "Agente MCP";
+
 function mapRow(row: typeof mcpTokens.$inferSelect): McpTokenRecord {
   return {
     id: row.id,
-    name: row.name,
+    name: row.name?.trim() || LEGACY_MCP_TOKEN_NAME,
     tokenPrefix: row.tokenPrefix,
     createdAt: row.createdAt,
     lastUsedAt: row.lastUsedAt,
+    expiresAt: row.expiresAt ?? null,
   };
+}
+
+function isExpired(expiresAt: string | null | undefined) {
+  if (!expiresAt) return false;
+  return new Date(expiresAt).getTime() <= Date.now();
 }
 
 export async function listMcpTokens(userId: string) {
@@ -37,12 +47,17 @@ export async function listMcpTokens(userId: string) {
   return rows.map(mapRow);
 }
 
-export async function createMcpToken(userId: string, name: string) {
+export async function createMcpToken(
+  userId: string,
+  name: string,
+  expiration: McpTokenExpirationPreset,
+) {
   const db = await getDb();
   const raw = randomBytes(32).toString("base64url");
   const token = `ptl_${raw}`;
   const tokenHash = hashToken(token);
   const tokenPrefix = token.slice(0, 12);
+  const expiresAt = mcpTokenExpiresAtFromPreset(expiration);
 
   const [row] = await db
     .insert(mcpTokens)
@@ -51,6 +66,7 @@ export async function createMcpToken(userId: string, name: string) {
       name,
       tokenHash,
       tokenPrefix,
+      expiresAt,
     })
     .returning();
 
@@ -75,7 +91,7 @@ export async function validateMcpToken(token: string) {
   const db = await getDb();
   const tokenHash = hashToken(token);
   const [row] = await db.select().from(mcpTokens).where(eq(mcpTokens.tokenHash, tokenHash)).limit(1);
-  if (!row) return null;
+  if (!row || isExpired(row.expiresAt)) return null;
 
   await db
     .update(mcpTokens)

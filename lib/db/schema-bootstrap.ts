@@ -22,7 +22,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "is_builtin",
     "created_at",
   ],
-  mcp_tokens: ["id", "user_id", "name", "token_hash", "token_prefix", "created_at", "last_used_at"],
+  mcp_tokens: ["id", "user_id", "name", "token_hash", "token_prefix", "created_at", "last_used_at", "expires_at"],
   documents: [
     "id",
     "slug",
@@ -274,9 +274,21 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       token_hash TEXT NOT NULL UNIQUE,
       token_prefix TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      last_used_at TIMESTAMPTZ
+      last_used_at TIMESTAMPTZ,
+      expires_at TIMESTAMPTZ
     )`,
   );
+
+  if (await portulanTableExists(db, "mcp_tokens")) {
+    const columns = (await loadTableColumns(db)).get("mcp_tokens") ?? new Set<string>();
+
+    if (!columns.has("expires_at")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.mcp_tokens ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`,
+      );
+    }
+  }
 
   await db.execute(sql`
     INSERT INTO ${sql.raw(`${PORTULAN_PG_SCHEMA}.templates`)} (

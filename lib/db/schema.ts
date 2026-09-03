@@ -40,6 +40,7 @@ export const mcpTokens = portulanSchema.table(
     tokenPrefix: text("token_prefix").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true, mode: "string" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }),
   },
   (table) => [index("idx_mcp_tokens_user_id").on(table.userId)],
 );

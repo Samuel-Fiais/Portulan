@@ -116,6 +116,27 @@
   html { scroll-behavior: smooth; }
   body { @apply bg-background text-foreground; font-family: var(--font-sans); font-size: 14px; -webkit-font-smoothing: antialiased; }
   button, a { -webkit-tap-highlight-color: transparent; }
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  [data-slot="select-trigger"]:not([data-disabled]),
+  [data-slot="dialog-close"],
+  [role="tab"]:not([data-disabled]),
+  [role="menuitem"]:not([data-disabled]),
+  [role="option"]:not([data-disabled]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  select:disabled,
+  [data-slot="select-trigger"][data-disabled],
+  [role="tab"][data-disabled],
+  [role="menuitem"][data-disabled],
+  [role="option"][data-disabled] {
+    cursor: not-allowed;
+  }
 }
 
 .brand-symbol { position: relative; display: inline-flex; width: 22px; height: 22px; transform: rotate(-9deg); }

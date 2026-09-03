@@ -24,3 +24,12 @@ export function formatRelativeDate(value: string) {
   if (days < 7) return `há ${days}d`;
   return formatDate(value);
 }
+
+export function formatMcpTokenExpiry(expiresAt: string | null) {
+  if (!expiresAt) return "Sem expiração";
+  return `Expira em ${new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(expiresAt))}`;
+}

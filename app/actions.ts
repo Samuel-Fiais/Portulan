@@ -147,9 +147,9 @@ export async function createMcpTokenAction(input: unknown) {
   }
 
   const parsed = mcpTokenInputSchema.safeParse(input ?? {});
-  if (!parsed.success) return { ok: false as const, error: "Nome do token inválido." };
+  if (!parsed.success) return { ok: false as const, error: "Dados do token inválidos." };
 
-  const result = await createMcpToken(session.user.id, parsed.data.name);
+  const result = await createMcpToken(session.user.id, parsed.data.name, parsed.data.expiration);
   revalidatePath("/");
   return { ok: true as const, token: result.token, record: result.record };
 }

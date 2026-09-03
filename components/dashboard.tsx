@@ -25,7 +25,11 @@ import {
   type TemplateRecord,
 } from "@/lib/documents";
 import { pickContrastInkColor } from "@/lib/color-utils";
-import { formatRelativeDate } from "@/lib/utils";
+import { formatMcpTokenExpiry, formatRelativeDate } from "@/lib/utils";
+import {
+  DEFAULT_MCP_TOKEN_EXPIRATION,
+  type McpTokenExpirationPreset,
+} from "@/lib/validation";
 
 type Stats = { total: number; published: number; review: number; draft: number };
 type DocumentSummary = Omit<DocumentRecord, "content">;
@@ -35,6 +39,14 @@ type McpTokenSummary = {
   tokenPrefix: string;
   createdAt: string;
   lastUsedAt: string | null;
+  expiresAt: string | null;
+};
+
+const MCP_TOKEN_EXPIRATION_LABELS: Record<McpTokenExpirationPreset, string> = {
+  "30d": "30 dias",
+  "60d": "60 dias",
+  "1y": "1 ano",
+  never: "Sem expiração",
 };
 
 export function Dashboard({
@@ -340,14 +352,28 @@ function TemplateFormDialog({
 function McpTokenPanel({ initialTokens }: { initialTokens: McpTokenSummary[] }) {
   const [pending, startTransition] = useTransition();
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [tokenName, setTokenName] = useState("");
+  const [expiration, setExpiration] = useState<McpTokenExpirationPreset>(DEFAULT_MCP_TOKEN_EXPIRATION);
+
+  useEffect(() => {
+    if (!dialogOpen) {
+      setTokenName("");
+      setExpiration(DEFAULT_MCP_TOKEN_EXPIRATION);
+    }
+  }, [dialogOpen]);
 
   function createToken() {
+    const name = tokenName.trim();
+    if (!name) return;
+
     startTransition(async () => {
-      const result = await createMcpTokenAction({ name: "Agente MCP" });
+      const result = await createMcpTokenAction({ name, expiration });
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
+      setDialogOpen(false);
       setRevealedToken(result.token);
       toast.success("Token MCP gerado", { description: "Copie agora — ele não será exibido novamente." });
     });
@@ -393,7 +419,8 @@ function McpTokenPanel({ initialTokens }: { initialTokens: McpTokenSummary[] }) 
           <ul className="mcp-token-list">
             {initialTokens.map((token) => (
               <li key={token.id}>
-                <span><KeyRound className="inline size-3.5" /> {token.name}</span>
+                <span><KeyRound className="inline size-3.5" /> {token.name?.trim() || "Agente MCP"}</span>
+                <span className="text-muted-foreground">{formatMcpTokenExpiry(token.expiresAt)}</span>
                 <code>{token.tokenPrefix}…</code>
                 <Button type="button" variant="ghost" size="xs" onClick={() => revoke(token.id)} disabled={pending}>
                   Revogar
@@ -406,10 +433,66 @@ function McpTokenPanel({ initialTokens }: { initialTokens: McpTokenSummary[] }) 
         )}
       </div>
       <div className="integration-skill-actions">
-        <Button type="button" variant="outline" size="sm" onClick={createToken} disabled={pending}>
-          <KeyRound />
-          Gerar token MCP
-        </Button>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button type="button" variant="outline" size="sm" disabled={pending}>
+              <KeyRound />
+              Gerar token MCP
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Novo token MCP</DialogTitle>
+              <DialogDescription>
+                Dê um nome para identificar este token na lista (agente, IDE ou automação).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="mcp-token-name">Nome</Label>
+                <Input
+                  id="mcp-token-name"
+                  value={tokenName}
+                  onChange={(event) => setTokenName(event.target.value)}
+                  placeholder="Ex.: Claude, Cursor, automação…"
+                  autoFocus
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && tokenName.trim()) createToken();
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mcp-token-expiration">Validade</Label>
+                <Select value={expiration} onValueChange={(value) => setExpiration(value as McpTokenExpirationPreset)}>
+                  <SelectTrigger id="mcp-token-expiration" className="w-full">
+                    <SelectValue placeholder="Escolha a validade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.entries(MCP_TOKEN_EXPIRATION_LABELS) as [McpTokenExpirationPreset, string][]).map(
+                      ([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              {expiration === "never" ? (
+                <div className="border border-[color-mix(in_srgb,var(--s-warn)_45%,var(--border))] bg-[var(--s-warn-bg)] px-3 py-2 text-sm text-[var(--text-2)]">
+                  <strong className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-[var(--s-warn)]">
+                    Atenção
+                  </strong>
+                  Tokens sem expiração permanecem válidos até serem revogados manualmente. Prefira uma validade limitada sempre que possível.
+                </div>
+              ) : null}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button type="button" onClick={createToken} disabled={pending || tokenName.trim().length < 1}>
+                Gerar token
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
