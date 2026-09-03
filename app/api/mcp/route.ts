@@ -51,6 +51,7 @@ const mcpHandler = createMcpHandler((server) => {
     name: z.string().trim().min(1).max(80),
     primary_color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
     secondary_color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
+    logo_url: z.union([z.string().trim().url().max(2048), z.literal(""), z.null()]).optional(),
     content: z.string().max(250_000).default(""),
   };
 
@@ -58,27 +59,41 @@ const mcpHandler = createMcpHandler((server) => {
     "create_template",
     {
       title: "Criar template",
-      description: "Cria um template particular de documento, com paleta e conteúdo Markdown inicial.",
+      description: "Cria um template particular de documento, com paleta, logo opcional e conteúdo Markdown inicial.",
       inputSchema: z.object(templateFields),
     },
-    async ({ primary_color, secondary_color, ...input }) => textResult({ template: await createTemplate(requireUserId(), { ...input, primaryColor: primary_color, secondaryColor: secondary_color }) }),
+    async ({ primary_color, secondary_color, logo_url, ...input }) =>
+      textResult({
+        template: await createTemplate(requireUserId(), {
+          ...input,
+          primaryColor: primary_color,
+          secondaryColor: secondary_color,
+          logoUrl: logo_url === "" ? null : logo_url ?? null,
+        }),
+      }),
   );
 
   server.registerTool(
     "update_template",
     {
       title: "Editar template",
-      description: "Atualiza parcialmente nome, cores ou conteúdo-base de um template. Não cria versão de documentos.",
+      description: "Atualiza parcialmente nome, cores, logo ou conteúdo-base de um template. Não cria versão de documentos.",
       inputSchema: z.object({
         id: z.string().min(1),
         name: templateFields.name.optional(),
         primary_color: templateFields.primary_color.optional(),
         secondary_color: templateFields.secondary_color.optional(),
+        logo_url: templateFields.logo_url,
         content: z.string().max(250_000).optional(),
-      }).refine((input) => input.name !== undefined || input.primary_color !== undefined || input.secondary_color !== undefined || input.content !== undefined, { message: "Informe ao menos um campo para atualizar." }),
+      }).refine((input) => input.name !== undefined || input.primary_color !== undefined || input.secondary_color !== undefined || input.logo_url !== undefined || input.content !== undefined, { message: "Informe ao menos um campo para atualizar." }),
     },
-    async ({ id, primary_color, secondary_color, ...input }) => {
-      const template = await updateTemplate(requireUserId(), id, { ...input, primaryColor: primary_color, secondaryColor: secondary_color });
+    async ({ id, primary_color, secondary_color, logo_url, ...input }) => {
+      const template = await updateTemplate(requireUserId(), id, {
+        ...input,
+        primaryColor: primary_color,
+        secondaryColor: secondary_color,
+        ...(logo_url !== undefined ? { logoUrl: logo_url === "" ? null : logo_url } : {}),
+      });
       return template ? textResult({ template }) : { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
     },
   );

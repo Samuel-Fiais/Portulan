@@ -108,7 +108,10 @@ export async function createTemplateAction(input: unknown) {
   const parsed = templateInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Revise nome e cores do template." };
 
-  const template = await createTemplate(session.user.id, parsed.data);
+  const template = await createTemplate(session.user.id, {
+    ...parsed.data,
+    logoUrl: parsed.data.logoUrl ?? null,
+  });
   revalidatePath("/");
   return { ok: true as const, template };
 }

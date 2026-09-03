@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { PortulanLogo } from "@/components/portulan-logo";
+import { ReportBrandLogo, reportPrintLogoStyle } from "@/components/report-brand-logo";
 import { RichMarkdown } from "@/components/rich-markdown";
 import { statusMeta, type DocumentRecord } from "@/lib/documents";
 import { formatDate } from "@/lib/utils";
@@ -8,6 +8,7 @@ export function ReportPreview({ document, publicView = false }: { document: Docu
   const paletteStyle = {
     "--report-accent": document.primaryColor,
     "--report-accent-2": document.secondaryColor,
+    "--print-logo": reportPrintLogoStyle(document.logoUrl),
   } as CSSProperties;
 
   return (
@@ -15,7 +16,7 @@ export function ReportPreview({ document, publicView = false }: { document: Docu
       <table className="template-document-table">
       <thead><tr><th>
       <div className="tmpl-doc-header">
-        <span className="tmpl-logo-slot"><PortulanLogo /></span>
+        <span className="tmpl-logo-slot"><ReportBrandLogo logoUrl={document.logoUrl} /></span>
         <div className="tmpl-doc-right">
           <span className="tmpl-doc-type">{document.templateName}</span>
           <span className="tmpl-doc-date">v{document.version} · {formatDate(document.updatedAt)}</span>
@@ -46,7 +47,7 @@ export function ReportPreview({ document, publicView = false }: { document: Docu
       </tbody>
       <tfoot><tr><td>
       <footer className="tmpl-footer keep-together">
-        <span className="tmpl-footer-logo"><PortulanLogo /></span>
+        <span className="tmpl-footer-logo"><ReportBrandLogo logoUrl={document.logoUrl} /></span>
         <span className="tmpl-footer-text">
           {publicView ? `Portulan · v${document.version} · ${formatDate(document.updatedAt)}` : `Portulan · Confidencial · ${formatDate(document.updatedAt)}`}
         </span>

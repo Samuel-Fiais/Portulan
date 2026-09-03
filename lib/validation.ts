@@ -18,6 +18,14 @@ export const templateInputSchema = z.object({
   name: z.string().trim().min(1).max(80),
   primaryColor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
   secondaryColor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
+  logoUrl: z
+    .union([z.string().trim().url().max(2048), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return undefined;
+      if (value === "" || value === null) return null;
+      return value;
+    }),
   content: z.string().max(250_000).default(""),
 });
 

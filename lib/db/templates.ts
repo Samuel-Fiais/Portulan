@@ -19,6 +19,7 @@ function mapRow(row: typeof templates.$inferSelect): TemplateRecord {
     name: row.name,
     primaryColor: row.primaryColor,
     secondaryColor: row.secondaryColor,
+    logoUrl: row.logoUrl ?? null,
     content: row.content,
     isBuiltin: row.isBuiltin,
     createdAt: row.createdAt,
@@ -57,6 +58,7 @@ export async function createTemplate(userId: string, input: TemplateInput) {
       name: input.name,
       primaryColor: input.primaryColor,
       secondaryColor: input.secondaryColor,
+      logoUrl: input.logoUrl ?? null,
       content: input.content || defaultDocumentContent,
       isBuiltin: false,
     })
@@ -78,6 +80,7 @@ export async function updateTemplate(userId: string, id: string, input: Partial<
         name: input.name ?? current.name,
         primaryColor: input.primaryColor ?? current.primaryColor,
         secondaryColor: input.secondaryColor ?? current.secondaryColor,
+        logoUrl: input.logoUrl !== undefined ? input.logoUrl : current.logoUrl,
         content: input.content ?? current.content,
       })
       .where(eq(templates.id, id))
@@ -94,6 +97,7 @@ export async function updateTemplate(userId: string, id: string, input: Partial<
       name: input.name ?? current.name,
       primaryColor: input.primaryColor ?? current.primaryColor,
       secondaryColor: input.secondaryColor ?? current.secondaryColor,
+      logoUrl: input.logoUrl !== undefined ? input.logoUrl : current.logoUrl,
       content: input.content ?? current.content,
     })
     .where(and(eq(templates.id, id), eq(templates.userId, userId)))

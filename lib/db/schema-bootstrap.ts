@@ -18,6 +18,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "name",
     "primary_color",
     "secondary_color",
+    "logo_url",
     "content",
     "is_builtin",
     "created_at",
@@ -50,6 +51,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "template_name",
     "primary_color",
     "secondary_color",
+    "logo_url",
     "author",
     "team",
     "tags",
@@ -290,6 +292,17 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     }
   }
 
+  if (await portulanTableExists(db, "templates")) {
+    const columns = (await loadTableColumns(db)).get("templates") ?? new Set<string>();
+
+    if (!columns.has("logo_url")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.templates ADD COLUMN IF NOT EXISTS logo_url TEXT`,
+      );
+    }
+  }
+
   await db.execute(sql`
     INSERT INTO ${sql.raw(`${PORTULAN_PG_SCHEMA}.templates`)} (
       id, user_id, name, primary_color, secondary_color, content, is_builtin
@@ -357,6 +370,12 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       await executeSchemaStatement(
         db,
         `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS secondary_color TEXT`,
+      );
+    }
+    if (!columns.has("logo_url")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS logo_url TEXT`,
       );
     }
 

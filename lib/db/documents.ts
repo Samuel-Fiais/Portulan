@@ -15,7 +15,7 @@ export type DocumentAccessContext = {
 type DocumentRow = typeof documents.$inferSelect;
 type TemplateRow = typeof templates.$inferSelect;
 
-function mapRow(row: DocumentRow, template: Pick<TemplateRow, "name" | "primaryColor" | "secondaryColor">): DocumentRecord {
+function mapRow(row: DocumentRow, template: Pick<TemplateRow, "name" | "primaryColor" | "secondaryColor" | "logoUrl">): DocumentRecord {
   return {
     id: row.id,
     slug: row.slug,
@@ -25,6 +25,7 @@ function mapRow(row: DocumentRow, template: Pick<TemplateRow, "name" | "primaryC
     templateName: template.name,
     primaryColor: template.primaryColor,
     secondaryColor: template.secondaryColor,
+    logoUrl: template.logoUrl ?? null,
     status: row.status as DocumentStatus,
     author: row.author,
     team: row.team,
@@ -49,6 +50,7 @@ function mapReleaseRow(row: typeof documentReleases.$inferSelect): DocumentRelea
     templateName: row.templateName,
     primaryColor: row.primaryColor,
     secondaryColor: row.secondaryColor,
+    logoUrl: row.logoUrl ?? null,
     author: row.author,
     team: row.team,
     tags: JSON.parse(row.tags) as string[],
@@ -107,6 +109,7 @@ async function fetchDocumentRow(idOrSlug: string) {
       templateName: templates.name,
       primaryColor: templates.primaryColor,
       secondaryColor: templates.secondaryColor,
+      logoUrl: templates.logoUrl,
     })
     .from(documents)
     .innerJoin(templates, eq(documents.templateId, templates.id))
@@ -140,14 +143,15 @@ export async function listDocuments(
       templateName: templates.name,
       primaryColor: templates.primaryColor,
       secondaryColor: templates.secondaryColor,
+      logoUrl: templates.logoUrl,
     })
     .from(documents)
     .innerJoin(templates, eq(documents.templateId, templates.id))
     .where(clauses.length ? and(...clauses) : undefined)
     .orderBy(desc(documents.updatedAt));
 
-  return rows.map(({ document, templateName, primaryColor, secondaryColor }) =>
-    mapRow(document, { name: templateName, primaryColor, secondaryColor }),
+  return rows.map(({ document, templateName, primaryColor, secondaryColor, logoUrl }) =>
+    mapRow(document, { name: templateName, primaryColor, secondaryColor, logoUrl }),
   );
 }
 
@@ -159,6 +163,7 @@ export async function getDocument(idOrSlug: string, ctx: DocumentAccessContext =
     name: row.templateName,
     primaryColor: row.primaryColor,
     secondaryColor: row.secondaryColor,
+    logoUrl: row.logoUrl,
   });
   return canReadDocument(document, ctx) ? document : null;
 }
@@ -373,6 +378,7 @@ export async function publishDocument(
     templateName: document.templateName,
     primaryColor: document.primaryColor,
     secondaryColor: document.secondaryColor,
+    logoUrl: document.logoUrl,
     author: document.author,
     team: document.team,
     tags: JSON.stringify(document.tags),

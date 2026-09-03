@@ -19,10 +19,13 @@ CREATE TABLE IF NOT EXISTS portulan.templates (
   name TEXT NOT NULL,
   primary_color TEXT NOT NULL,
   secondary_color TEXT NOT NULL,
+  logo_url TEXT,
   content TEXT NOT NULL DEFAULT '',
   is_builtin BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE portulan.templates ADD COLUMN IF NOT EXISTS logo_url TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_templates_user_id ON portulan.templates (user_id);
 
@@ -89,6 +92,7 @@ CREATE TABLE IF NOT EXISTS portulan.document_releases (
   template_name TEXT NOT NULL,
   primary_color TEXT NOT NULL,
   secondary_color TEXT NOT NULL,
+  logo_url TEXT,
   author TEXT NOT NULL DEFAULT '',
   team TEXT NOT NULL DEFAULT '',
   tags TEXT NOT NULL DEFAULT '[]',
@@ -97,6 +101,7 @@ CREATE TABLE IF NOT EXISTS portulan.document_releases (
   UNIQUE (document_id, version)
 );
 
+ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS logo_url TEXT;
 ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS template_id TEXT;
 ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS template_name TEXT;
 ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS primary_color TEXT;

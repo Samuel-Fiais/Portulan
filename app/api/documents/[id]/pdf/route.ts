@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: Context) {
   const document = await getDocument(id, { userId: session.user.id });
   if (!document) return Response.json({ error: "Documento não encontrado" }, { status: 404 });
 
-  const logo = await readFile(join(process.cwd(), "public", "portulan-logo.png"));
+  const logo = await loadLogoBytes(document.logoUrl);
   const date = formatDate(document.updatedAt);
   const sessionCookie = request.headers.get("cookie");
 
@@ -79,8 +79,47 @@ function safeFilename(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "-");
 }
 
+async function loadLogoBytes(logoUrl: string | null): Promise<{ bytes: Uint8Array; mime: "png" | "jpg" }> {
+  const fallbackPath = join(process.cwd(), "public", "portulan-logo.png");
+  const fallback = { bytes: await readFile(fallbackPath), mime: "png" as const };
+
+  if (!logoUrl) return fallback;
+
+  try {
+    if (logoUrl.startsWith("/")) {
+      const localPath = join(process.cwd(), "public", logoUrl.replace(/^\//, ""));
+      const bytes = await readFile(localPath);
+      return { bytes, mime: guessImageMime(logoUrl) };
+    }
+
+    const response = await fetch(logoUrl, { headers: { Accept: "image/*" } });
+    if (!response.ok) return fallback;
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+      return { bytes, mime: "jpg" };
+    }
+    if (contentType.includes("png") || logoUrl.toLowerCase().endsWith(".png")) {
+      return { bytes, mime: "png" };
+    }
+    if (logoUrl.toLowerCase().endsWith(".jpg") || logoUrl.toLowerCase().endsWith(".jpeg")) {
+      return { bytes, mime: "jpg" };
+    }
+    return { bytes, mime: "png" };
+  } catch {
+    return fallback;
+  }
+}
+
+function guessImageMime(value: string): "png" | "jpg" {
+  const lower = value.toLowerCase();
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "jpg";
+  return "png";
+}
+
 async function addRunningFurniture(source: Uint8Array, input: {
-  logo: Uint8Array;
+  logo: { bytes: Uint8Array; mime: "png" | "jpg" };
   primaryColor: string;
   secondaryColor: string;
   templateName: string;
@@ -99,7 +138,9 @@ async function addRunningFurniture(source: Uint8Array, input: {
   }
 
   const pdf = await PDFDocument.load(await normalizedPdf.save());
-  const logo = await pdf.embedPng(input.logo);
+  const logo = input.logo.mime === "jpg"
+    ? await pdf.embedJpg(input.logo.bytes)
+    : await pdf.embedPng(input.logo.bytes);
   const regular = await pdf.embedFont(StandardFonts.Courier);
   const bold = await pdf.embedFont(StandardFonts.CourierBold);
   const primary = hexColor(input.primaryColor);

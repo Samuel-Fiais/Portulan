@@ -265,17 +265,24 @@ function TemplateFormDialog({
   const [name, setName] = useState(template?.name ?? "");
   const [primaryColor, setPrimaryColor] = useState<string>(template?.primaryColor ?? DEFAULT_TEMPLATE_COLORS.primary);
   const [secondaryColor, setSecondaryColor] = useState<string>(template?.secondaryColor ?? DEFAULT_TEMPLATE_COLORS.secondary);
+  const [logoUrl, setLogoUrl] = useState(template?.logoUrl ?? "");
 
   useEffect(() => {
     if (!open) return;
     setName(template?.name ?? "");
     setPrimaryColor(template?.primaryColor ?? DEFAULT_TEMPLATE_COLORS.primary);
     setSecondaryColor(template?.secondaryColor ?? DEFAULT_TEMPLATE_COLORS.secondary);
+    setLogoUrl(template?.logoUrl ?? "");
   }, [open, template]);
 
   function submit() {
     startTransition(async () => {
-      const payload = { name, primaryColor, secondaryColor };
+      const payload = {
+        name,
+        primaryColor,
+        secondaryColor,
+        logoUrl: logoUrl.trim() ? logoUrl.trim() : null,
+      };
 
       const result = isEdit && template
         ? await updateTemplateAction(template.id, payload)
@@ -291,6 +298,7 @@ function TemplateFormDialog({
         setName("");
         setPrimaryColor(DEFAULT_TEMPLATE_COLORS.primary);
         setSecondaryColor(DEFAULT_TEMPLATE_COLORS.secondary);
+        setLogoUrl("");
       }
       toast.success(isEdit ? "Template atualizado" : "Template criado");
     });
@@ -308,8 +316,8 @@ function TemplateFormDialog({
           <DialogTitle>{isEdit ? "Editar template" : "Novo template"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Atualize o nome e as cores editoriais deste template."
-              : "Defina um nome e duas cores editoriais (primária e secundária)."}
+              ? "Atualize o nome, as cores editoriais e, opcionalmente, um logo personalizado."
+              : "Defina um nome, duas cores editoriais e, se quiser, uma URL de logo para cabeçalho e rodapé."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -321,6 +329,35 @@ function TemplateFormDialog({
               onChange={(event) => setName(event.target.value)}
               placeholder="Ex.: Relatório executivo"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={isEdit ? `template-logo-${template?.id}` : "template-logo"}>Logo (opcional)</Label>
+            <div className="flex gap-2">
+              <Input
+                id={isEdit ? `template-logo-${template?.id}` : "template-logo"}
+                value={logoUrl}
+                onChange={(event) => setLogoUrl(event.target.value)}
+                placeholder="https://exemplo.com/logo.png"
+                type="url"
+              />
+              {logoUrl.trim() ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => setLogoUrl("")}>
+                  Padrão
+                </Button>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Deixe em branco para usar a marca Portulan. Informe uma URL HTTPS pública.
+            </p>
+            <div className="flex h-10 items-center rounded-md border border-border bg-muted/30 px-3">
+              {logoUrl.trim() ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl.trim()} alt="Prévia do logo" className="max-h-6 w-auto object-contain" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/portulan-logo.png" alt="Marca Portulan padrão" className="max-h-6 w-auto object-contain opacity-70" />
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <ColorPicker

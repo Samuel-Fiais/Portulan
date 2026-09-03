@@ -25,6 +25,7 @@ export type TemplateRecord = {
   name: string;
   primaryColor: string;
   secondaryColor: string;
+  logoUrl: string | null;
   content: string;
   isBuiltin: boolean;
   createdAt: string;
@@ -39,6 +40,7 @@ export type DocumentRecord = {
   templateName: string;
   primaryColor: string;
   secondaryColor: string;
+  logoUrl: string | null;
   status: DocumentStatus;
   author: string;
   team: string;
@@ -61,6 +63,7 @@ export type DocumentRelease = {
   templateName: string;
   primaryColor: string;
   secondaryColor: string;
+  logoUrl: string | null;
   author: string;
   team: string;
   tags: string[];
@@ -78,6 +81,7 @@ export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecor
     templateName: release.templateName,
     primaryColor: release.primaryColor,
     secondaryColor: release.secondaryColor,
+    logoUrl: release.logoUrl,
     status: "published",
     author: release.author,
     team: release.team,
@@ -96,7 +100,7 @@ export type DocumentInput = Pick<
   "title" | "summary" | "templateId" | "status" | "author" | "team" | "tags" | "content"
 >;
 
-export type TemplateInput = Pick<TemplateRecord, "name" | "primaryColor" | "secondaryColor" | "content">;
+export type TemplateInput = Pick<TemplateRecord, "name" | "primaryColor" | "secondaryColor" | "logoUrl" | "content">;
 
 export const statusMeta: Record<DocumentStatus, { label: string; tone: string }> = {
   draft: { label: "Rascunho", tone: "neutral" },
