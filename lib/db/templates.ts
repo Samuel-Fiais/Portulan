@@ -138,6 +138,7 @@ export async function duplicateTemplate(userId: string, id: string, input?: { na
     name,
     primaryColor: source.primaryColor,
     secondaryColor: source.secondaryColor,
+    logoUrl: source.logoUrl,
     content: source.content,
   });
 }

@@ -4,15 +4,27 @@ import { RichMarkdown } from "@/components/rich-markdown";
 import { statusMeta, type DocumentRecord } from "@/lib/documents";
 import { formatDate } from "@/lib/utils";
 
-export function ReportPreview({ document, publicView = false }: { document: DocumentRecord; publicView?: boolean }) {
+export function ReportPreview({
+  document,
+  publicView = false,
+  interactive = false,
+  documentKey,
+}: {
+  document: DocumentRecord;
+  publicView?: boolean;
+  interactive?: boolean;
+  documentKey?: string;
+}) {
   const paletteStyle = {
     "--report-accent": document.primaryColor,
     "--report-accent-2": document.secondaryColor,
     "--print-logo": reportPrintLogoStyle(document.logoUrl),
   } as CSSProperties;
+  const livingKey = documentKey ?? `doc-${document.id}-v${document.version}`;
+  const isLiving = interactive && Boolean(livingKey);
 
   return (
-    <article className="report-paper" style={paletteStyle}>
+    <article className={`report-paper${isLiving ? " living-document" : ""}`} style={paletteStyle}>
       <table className="template-document-table">
       <thead><tr><th>
       <div className="tmpl-doc-header">
@@ -43,7 +55,7 @@ export function ReportPreview({ document, publicView = false }: { document: Docu
       </header>
       </td></tr></tbody>
       <tbody className="tmpl-body report-content">
-        <RichMarkdown source={document.content} tableRows />
+        <RichMarkdown source={document.content} tableRows interactive={isLiving} documentKey={livingKey} />
       </tbody>
       <tfoot><tr><td>
       <footer className="tmpl-footer keep-together">

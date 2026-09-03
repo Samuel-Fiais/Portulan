@@ -1,7 +1,10 @@
 import { Children, isValidElement, type CSSProperties, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AlertCircle, Check, CheckCircle2, Info, TriangleAlert } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
+import { InlineMarkdown, isPlaceholderToken } from "@/components/inline-markdown";
+import { LivingChart, parseChartDirective } from "@/components/living-chart";
+import { LivingChecklist } from "@/components/living-checklist";
 import { parseAttributes, parseDirectiveOpener } from "@/lib/directive-attrs";
 
 type Directive = {
@@ -100,22 +103,6 @@ function rows(body: string) {
     .map((line) => line.replace(/^[-*]\s+/, "").split("|").map((part) => part.trim()));
 }
 
-function isPlaceholderToken(value?: string) {
-  if (!value?.trim()) return true;
-  return /^[-–—−•·.…]+$/u.test(value.trim());
-}
-
-function prepareInlineMarkdown(source: string) {
-  if (isPlaceholderToken(source)) return "";
-  return source
-    .split("\n")
-    .map((line) => {
-      if (/^(\s*)-(?= )/.test(line)) return line.replace(/^(\s*)-(?= )/, "$1\\-");
-      return line;
-    })
-    .join("\n");
-}
-
 function prepareBlockMarkdown(source: string) {
   return source
     .split("\n")
@@ -186,26 +173,6 @@ function Markdown({ children }: { children: string }) {
   );
 }
 
-function InlineMarkdown({ children }: { children: string }) {
-  if (!children.trim() || isPlaceholderToken(children)) return null;
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      allowedElements={["p", "strong", "em", "a", "code", "del"]}
-      unwrapDisallowed
-      components={{
-        p: ({ children }) => <>{children}</>,
-        strong: ({ children }) => <strong>{children}</strong>,
-        em: ({ children }) => <em>{children}</em>,
-        a: ({ children, href }) => <a href={href}>{children}</a>,
-        code: ({ children }) => <code className="report-inline-code">{children}</code>,
-      }}
-    >
-      {prepareInlineMarkdown(children)}
-    </ReactMarkdown>
-  );
-}
-
 function AlertDirective({ directive }: { directive: Directive }) {
   const variant = ["info", "success", "warning", "error", "accent"].includes(directive.attributes.variant)
     ? directive.attributes.variant
@@ -220,73 +187,14 @@ function AlertDirective({ directive }: { directive: Directive }) {
   );
 }
 
-function ChartDirective({ directive }: { directive: Directive }) {
-  const points = rows(directive.body)
-    .map(([label, rawValue]) => ({ label, value: Number.parseFloat((rawValue ?? "").replace(",", ".")) }))
-    .filter((point) => point.label && Number.isFinite(point.value));
-  const rawType = directive.attributes.type ?? "";
-  const type = ["bar", "line", "area", "column", "donut", "gauge", "spark", "stacked", "target"].includes(rawType) ? rawType : "bar";
-  const max = Math.max(...points.map((point) => point.value), 1);
-  const total = Math.max(points.reduce((sum, point) => sum + point.value, 0), 1);
-  const colors = ["var(--accent)", "var(--accent-2)", "var(--s-ok)", "var(--s-warn)"];
+type LivingDocumentOptions = {
+  interactive: boolean;
+  documentKey: string;
+  sectionIndex: number;
+  blockIndex: number;
+};
 
-  if (type === "gauge") {
-    const point = points[0];
-    const value = Math.max(0, Math.min(100, point?.value ?? 0));
-    return <figure className="fp-chart fp-chart-gauge"><figcaption>{directive.attributes.title || "Indicador"}</figcaption><div className="fp-gauge" style={{ "--gauge-value": `${value}%` } as CSSProperties}><div><strong>{value}%</strong><span>{point?.label || "Resultado atual"}</span></div></div></figure>;
-  }
-
-  if (type === "donut") {
-    let offset = 0;
-    const gradient = points.map((point, index) => {
-      const start = offset;
-      offset += (point.value / total) * 100;
-      return `${colors[index % colors.length]} ${start}% ${offset}%`;
-    }).join(", ");
-    return <figure className="fp-chart"><figcaption>{directive.attributes.title || "Distribuição"}</figcaption><div className="fp-chart-donut-row"><div className="fp-chart-donut" style={{ background: `conic-gradient(${gradient || "var(--border) 0 100%"})` }}><span>{Math.round(total)}</span></div><ul className="fp-chart-legend">{points.map((point, index) => <li key={point.label}><i style={{ background: colors[index % colors.length] }} /><span>{point.label}</span><strong>{point.value}</strong></li>)}</ul></div></figure>;
-  }
-
-  if (type === "stacked") {
-    return <figure className="fp-chart"><figcaption>{directive.attributes.title || "Distribuição"}</figcaption><div className="fp-chart-stacked" aria-label={directive.attributes.title || "Distribuição"}>{points.map((point, index) => <span key={point.label} style={{ width: `${Math.max((point.value / total) * 100, 2)}%`, background: colors[index % colors.length] }} title={`${point.label}: ${point.value}`} />)}</div><ul className="fp-chart-legend">{points.map((point, index) => <li key={point.label}><i style={{ background: colors[index % colors.length] }} /><span>{point.label}</span><strong>{point.value}</strong></li>)}</ul></figure>;
-  }
-
-  if (type === "target") {
-    const targets = rows(directive.body)
-      .map(([label, rawValue, rawTarget]) => ({ label, value: Number.parseFloat((rawValue ?? "").replace(",", ".")), target: Number.parseFloat((rawTarget ?? "").replace(",", ".")) }))
-      .filter((point) => point.label && Number.isFinite(point.value) && Number.isFinite(point.target));
-    const targetMaximum = Math.max(...targets.map((point) => Math.max(point.value, point.target)), 1);
-    return <figure className="fp-chart"><figcaption>{directive.attributes.title || "Meta e realizado"}</figcaption><div className="fp-chart-targets">{targets.map((point) => <div key={point.label}><div><span>{point.label}</span><strong>{point.value}</strong><small>meta {point.target}</small></div><div className="fp-chart-target-track"><i style={{ width: `${Math.min((point.value / targetMaximum) * 100, 100)}%` }} /><b style={{ left: `${Math.min((point.target / targetMaximum) * 100, 100)}%` }} /></div></div>)}</div></figure>;
-  }
-
-  if (type === "line" || type === "area" || type === "column" || type === "spark") {
-    const width = 720;
-    const height = 180;
-    const padding = 20;
-    const horizontalPadding = 42;
-    const steps = Math.max(points.length - 1, 1);
-    const minimum = Math.min(...points.map((point) => point.value), 0);
-    const maximum = Math.max(...points.map((point) => point.value), 0);
-    const range = Math.max(maximum - minimum, 1);
-    const pointY = (value: number) => height - padding - ((value - minimum) / range) * (height - padding * 2);
-    const pointsWithCoordinates = points.map((point, index) => ({ ...point, x: horizontalPadding + (index / steps) * (width - horizontalPadding * 2), y: pointY(point.value) }));
-    const coordinates = pointsWithCoordinates.map((point) => `${point.x},${point.y}`).join(" ");
-    const baseline = pointY(0);
-    const title = directive.attributes.title || (type === "column" ? "Comparativo" : "Evolução");
-
-    if (type === "column") {
-      const columnMaximum = Math.max(...points.map((point) => Math.abs(point.value)), 1);
-      return <figure className="fp-chart"><figcaption>{title}</figcaption><div className="fp-chart-columns" style={{ gridTemplateColumns: `repeat(${Math.max(points.length, 1)}, minmax(84px, 150px))` }}>{points.map((point) => <div key={point.label}><span><strong>{point.value}</strong><i className={point.value < 0 ? "negative" : undefined} style={{ height: `${Math.max((Math.abs(point.value) / columnMaximum) * 100, 3)}%` }} /></span><small>{point.label}</small></div>)}</div></figure>;
-    }
-
-    const areaCoordinates = `${coordinates} ${width - horizontalPadding},${baseline} ${horizontalPadding},${baseline}`;
-    if (type === "spark") return <figure className="fp-chart fp-chart-spark"><figcaption>{title}</figcaption><div className="fp-chart-line"><svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" aria-label={title}><polyline points={coordinates} />{pointsWithCoordinates.map((point) => <circle key={point.label} cx={point.x} cy={point.y} r="4" />)}</svg><div>{points.map((point) => <span key={point.label}>{point.label}</span>)}</div></div></figure>;
-    return <figure className="fp-chart"><figcaption>{title}</figcaption><div className={`fp-chart-line ${type === "area" ? "fp-chart-area" : ""}`}><svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" aria-label={title}><line x1={horizontalPadding} y1={baseline} x2={width - horizontalPadding} y2={baseline} />{type === "area" ? <polygon points={areaCoordinates} /> : null}<polyline points={coordinates} />{pointsWithCoordinates.map((point) => { const labelX = Math.max(20, Math.min(width - 20, point.x)); const labelY = point.y < 42 ? point.y + 26 : point.y - 14; return <g key={point.label}><circle cx={point.x} cy={point.y} r="4" /><text x={labelX} y={labelY}>{point.value}</text></g>; })}</svg><div>{points.map((point) => <span key={point.label}>{point.label}</span>)}</div></div></figure>;
-  }
-
-  return <figure className="fp-chart"><figcaption>{directive.attributes.title || "Comparativo"}</figcaption><div className="fp-chart-bars">{points.map((point, index) => <div key={point.label}><span>{point.label}</span><div><i style={{ width: `${(point.value / max) * 100}%`, background: colors[index % colors.length] }} /><strong>{point.value}</strong></div></div>)}</div></figure>;
-}
-
-function DirectiveRenderer({ directive }: { directive: Directive }) {
+function DirectiveRenderer({ directive, living }: { directive: Directive; living: LivingDocumentOptions }) {
   const data = rows(directive.body);
 
   if (directive.name === "alert") return <AlertDirective directive={directive} />;
@@ -333,39 +241,14 @@ function DirectiveRenderer({ directive }: { directive: Directive }) {
     return <div className="fp-timeline">{data.map(([date, title, body, state = directive.attributes.state || ""], index) => <div className={`fp-tl-item ${state}`} key={`${date}-${index}`}><div className="tl-date">{date}</div><div className="tl-line"><span className="tl-dot" /></div><div className="tl-content"><div className="tl-title"><InlineMarkdown>{title}</InlineMarkdown></div><div className="tl-body"><InlineMarkdown>{body}</InlineMarkdown></div></div></div>)}</div>;
   }
   if (directive.name === "checklist") {
-    const hasAnyCheckbox = data.some(([rawTitle]) => /^\[[ xX]\]/.test(rawTitle));
-
-    if (!hasAnyCheckbox) {
-      const listMarkdown = data
-        .map(([title, sub]) => (sub ? `- ${title} — ${sub}` : `- ${title}`))
-        .join("\n");
-      return <Markdown>{listMarkdown}</Markdown>;
-    }
-
     return (
-      <div className="fp-checklist">
-        {data.map(([rawTitle, sub], index) => {
-          const hasCheckbox = /^\[[ xX]\]/.test(rawTitle);
-          const checked = /^\[[xX]\]/.test(rawTitle);
-          const title = hasCheckbox ? rawTitle.replace(/^\[[ xX]\]\s*/, "") : rawTitle;
-          return (
-            <div
-              className={`fp-check-item ${hasCheckbox ? "" : "fp-check-item-plain"} ${checked ? "checked" : ""}`}
-              key={`${title}-${index}`}
-            >
-              {hasCheckbox ? (
-                <span className="check-box">
-                  <span className="check-mark"><Check /></span>
-                </span>
-              ) : null}
-              <div>
-                <div className="check-text"><InlineMarkdown>{title}</InlineMarkdown></div>
-                {sub ? <div className="check-sub"><InlineMarkdown>{sub}</InlineMarkdown></div> : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <LivingChecklist
+        items={data.map(([title, sub]) => [title, sub])}
+        interactive={living.interactive}
+        documentKey={living.documentKey}
+        sectionIndex={living.sectionIndex}
+        blockIndex={living.blockIndex}
+      />
     );
   }
   if (directive.name === "kv") {
@@ -374,7 +257,17 @@ function DirectiveRenderer({ directive }: { directive: Directive }) {
   if (directive.name === "progress") {
     return <div className={`fp-progress-list progress-${directive.attributes.size || "regular"}`}>{data.map(([label, rawValue, tone = directive.attributes.tone || ""], index) => { const value = Math.max(0, Math.min(100, Number.parseInt(rawValue, 10) || 0)); return <div className="fp-progress" key={`${label}-${index}`}><div className="progress-header"><span className="progress-label">{label}</span><span className="progress-pct">{value}%</span></div><div className="progress-track"><div className={`progress-fill ${tone}`} style={{ width: `${value}%` }} /></div></div>; })}</div>;
   }
-  if (directive.name === "chart") return <ChartDirective directive={directive} />;
+  if (directive.name === "chart") {
+    const chart = parseChartDirective(directive.body, directive.attributes);
+    return (
+      <LivingChart
+        title={chart.title}
+        type={chart.type}
+        points={chart.points}
+        interactive={living.interactive}
+      />
+    );
+  }
   if (directive.name === "decision") return <aside className={`fp-decision ${directive.attributes.status || "pending"} ${directive.attributes.style || "note"}`}><span>{directive.attributes.status === "approved" ? "Decisão aprovada" : directive.attributes.status === "rejected" ? "Decisão rejeitada" : "Decisão pendente"}</span><strong>{directive.attributes.title || "Decisão"}</strong><Markdown>{directive.body}</Markdown></aside>;
   if (directive.name === "comparison") return <div className="fp-comparison">{data.map(([label, current, target], index) => <div key={`${label}-${index}`}><span>{label}</span><strong>{current}</strong><small>Meta: {target}</small></div>)}</div>;
   if (directive.name === "milestones") return <div className="fp-milestones">{data.map(([date, title, state = directive.attributes.state || "planned"], index) => <div className={`fp-milestone ${state}`} key={`${date}-${index}`}><time>{date}</time><span /><strong><InlineMarkdown>{title}</InlineMarkdown></strong></div>)}</div>;
@@ -409,12 +302,38 @@ function DirectiveRenderer({ directive }: { directive: Directive }) {
   if (directive.name === "columns") {
     const columns = directive.body.split(/^---\s*$/m).map((column) => column.trim()).filter(Boolean);
     const count = Math.max(1, Math.min(4, Number.parseInt(directive.attributes.count || "", 10) || columns.length || 2));
-    return <div className="fp-columns" style={{ "--column-count": count } as CSSProperties}>{columns.map((column, index) => <div key={index}><RichMarkdown source={column} /></div>)}</div>;
+    return (
+      <div className="fp-columns" style={{ "--column-count": count } as CSSProperties}>
+        {columns.map((column, index) => (
+          <div key={index}>
+            <RichMarkdown
+              source={column}
+              interactive={living.interactive}
+              documentKey={living.documentKey}
+              sectionIndexBase={living.sectionIndex}
+              blockIndexBase={living.blockIndex * 10 + index + 1}
+            />
+          </div>
+        ))}
+      </div>
+    );
   }
   return <div className="fp-callout"><strong className="fp-callout-title">{directive.name}</strong><Markdown>{directive.body}</Markdown></div>;
 }
 
-function RenderedSection({ section }: { section: { title?: string; body: string } }) {
+function RenderedSection({
+  section,
+  sectionIndex,
+  interactive,
+  documentKey,
+  blockIndexBase = 0,
+}: {
+  section: { title?: string; body: string };
+  sectionIndex: number;
+  interactive: boolean;
+  documentKey: string;
+  blockIndexBase?: number;
+}) {
   const blocks = parseBlocks(section.body);
   return (
     <section className="tmpl-section">
@@ -423,15 +342,60 @@ function RenderedSection({ section }: { section: { title?: string; body: string 
         <div className={`tmpl-block tmpl-block-${block.kind}`} key={`${block.kind}-${blockIndex}`}>
           {block.kind === "markdown"
             ? <Markdown>{block.body}</Markdown>
-            : <DirectiveRenderer directive={block.directive} />}
+            : (
+              <DirectiveRenderer
+                directive={block.directive}
+                living={{
+                  interactive,
+                  documentKey,
+                  sectionIndex,
+                  blockIndex: blockIndexBase + blockIndex,
+                }}
+              />
+            )}
         </div>
       ))}
     </section>
   );
 }
 
-export function RichMarkdown({ source, tableRows = false }: { source: string; tableRows?: boolean }) {
+export function RichMarkdown({
+  source,
+  tableRows = false,
+  interactive = false,
+  documentKey = "",
+  sectionIndexBase = 0,
+  blockIndexBase = 0,
+}: {
+  source: string;
+  tableRows?: boolean;
+  interactive?: boolean;
+  documentKey?: string;
+  sectionIndexBase?: number;
+  blockIndexBase?: number;
+}) {
   return splitSections(source).map((section, sectionIndex) => tableRows
-    ? <tr className="tmpl-section-row" key={`${section.title || "intro"}-${sectionIndex}`}><td><RenderedSection section={section} /></td></tr>
-    : <RenderedSection key={`${section.title || "intro"}-${sectionIndex}`} section={section} />);
+    ? (
+      <tr className="tmpl-section-row" key={`${section.title || "intro"}-${sectionIndex}`}>
+        <td>
+          <RenderedSection
+            section={section}
+            sectionIndex={sectionIndexBase + sectionIndex}
+            interactive={interactive}
+            documentKey={documentKey}
+            blockIndexBase={blockIndexBase}
+          />
+        </td>
+      </tr>
+    )
+    : (
+      <RenderedSection
+        key={`${section.title || "intro"}-${sectionIndex}`}
+        section={section}
+        sectionIndex={sectionIndexBase + sectionIndex}
+        interactive={interactive}
+        documentKey={documentKey}
+        blockIndexBase={blockIndexBase}
+      />
+    ));
 }

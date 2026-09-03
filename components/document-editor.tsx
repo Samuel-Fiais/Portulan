@@ -546,7 +546,7 @@ export function DocumentEditor({
         </section>
         <section className="preview-pane">
           <div className="preview-label no-print"><span>Visualização</span><small>A impressão continua em A4</small></div>
-          <div className="preview-scroll"><ReportPreview document={deferredDocument} /></div>
+          <div className="preview-scroll"><ReportPreview document={deferredDocument} interactive /></div>
         </section>
       </main>
       <Dialog open={componentPickerOpen} onOpenChange={setComponentPickerOpen}>
