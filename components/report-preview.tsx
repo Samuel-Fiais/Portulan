@@ -9,11 +9,13 @@ export function ReportPreview({
   publicView = false,
   interactive = false,
   documentKey,
+  publishedBy,
 }: {
   document: DocumentRecord;
   publicView?: boolean;
   interactive?: boolean;
   documentKey?: string;
+  publishedBy?: string | null;
 }) {
   const paletteStyle = {
     "--report-accent": document.primaryColor,
@@ -61,7 +63,14 @@ export function ReportPreview({
       <footer className="tmpl-footer keep-together">
         <span className="tmpl-footer-logo"><ReportBrandLogo logoUrl={document.logoUrl} /></span>
         <span className="tmpl-footer-text">
-          {publicView ? `Portulan · v${document.version} · ${formatDate(document.updatedAt)}` : `Portulan · Confidencial · ${formatDate(document.updatedAt)}`}
+          {publicView ? (
+            <>
+              Portulan · v{document.version} · {formatDate(document.updatedAt)}
+              {publishedBy ? ` · publicado por ${publishedBy}` : ""}
+            </>
+          ) : (
+            `Portulan · Confidencial · ${formatDate(document.updatedAt)}`
+          )}
         </span>
       </footer>
       </td></tr></tfoot>

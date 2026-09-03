@@ -71,7 +71,37 @@ export type DocumentRelease = {
   content: string;
   publishedAt: string;
   disabled: boolean;
+  publishedByUserId: string | null;
+  publishedByLogin: string | null;
+  publishedByName: string | null;
+  publishedByAvatarUrl: string | null;
 };
+
+export type DocumentShareRole = "viewer" | "editor";
+
+export type DocumentShareRecord = {
+  id: string;
+  documentId: string;
+  email: string;
+  role: DocumentShareRole;
+  invitedBy: string;
+  userId: string | null;
+  createdAt: string;
+  userLogin: string | null;
+  userName: string | null;
+  userAvatarUrl: string | null;
+};
+
+export type DocumentCollaborator = {
+  id: string;
+  login: string | null;
+  name: string | null;
+  avatarUrl: string | null;
+  role: DocumentShareRole | "owner";
+  email?: string;
+};
+
+export type DocumentAccessLevel = "owner" | "editor" | "viewer" | "legacy" | null;
 
 export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecord {
   return {

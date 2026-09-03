@@ -11,7 +11,7 @@ type Db = NeonHttpDatabase<typeof schema>;
 
 /** Required Portulan tables and columns inside the dedicated Postgres schema. */
 export const PORTULAN_TABLE_COLUMNS = {
-  users: ["id", "github_id", "login", "name", "avatar_url", "created_at"],
+  users: ["id", "github_id", "login", "name", "avatar_url", "email", "created_at"],
   templates: [
     "id",
     "user_id",
@@ -59,7 +59,9 @@ export const PORTULAN_TABLE_COLUMNS = {
     "content",
     "published_at",
     "disabled",
+    "published_by_user_id",
   ],
+  document_shares: ["id", "document_id", "email", "role", "invited_by", "user_id", "created_at"],
 } as const;
 
 type PortulanTable = keyof typeof PORTULAN_TABLE_COLUMNS;
@@ -109,7 +111,7 @@ async function loadTableColumns(db: Db): Promise<Map<string, Set<string>>> {
     SELECT table_name, column_name
     FROM information_schema.columns
     WHERE table_schema = ${PORTULAN_PG_SCHEMA}
-      AND table_name IN ('users', 'templates', 'mcp_tokens', 'documents', 'document_releases')
+      AND table_name IN ('users', 'templates', 'mcp_tokens', 'documents', 'document_releases', 'document_shares')
   `);
 
   const byTable = new Map<string, Set<string>>();
@@ -251,9 +253,20 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       login TEXT NOT NULL,
       name TEXT,
       avatar_url TEXT,
+      email TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
   );
+
+  if (await portulanTableExists(db, "users")) {
+    const columns = (await loadTableColumns(db)).get("users") ?? new Set<string>();
+    if (!columns.has("email")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.users ADD COLUMN IF NOT EXISTS email TEXT`,
+      );
+    }
+  }
 
   await executeSchemaStatement(
     db,
@@ -419,6 +432,41 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
         `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE`,
       );
     }
+    if (!columns.has("published_by_user_id")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS published_by_user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE SET NULL`,
+      );
+    }
+  }
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_shares (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
+      email TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('viewer', 'editor')),
+      invited_by UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (document_id, email)
+    )`,
+  );
+
+  if (await portulanTableExists(db, "document_shares")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_document_shares_document_id ON ${PORTULAN_PG_SCHEMA}.document_shares (document_id)`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_document_shares_user_id ON ${PORTULAN_PG_SCHEMA}.document_shares (user_id)`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_document_shares_email ON ${PORTULAN_PG_SCHEMA}.document_shares (email)`,
+    );
   }
 }
 

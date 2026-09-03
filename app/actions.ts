@@ -3,25 +3,40 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import {
+  addDocumentShare,
   createDocument,
   createMcpToken,
   createTemplate,
   deleteDocument,
   deleteTemplate,
   getDocument,
+  isDocumentOwner,
+  listDocumentCollaborators,
+  listDocumentShares,
   listLinkableDocuments,
   listMcpTokens,
   publishDocument,
+  revokeDocumentShare,
   revokeMcpToken,
   setDocumentDisabled,
   setDocumentReleaseDisabled,
   updateDocument,
+  updateDocumentShareRole,
   updateTemplate,
 } from "@/lib/db";
-import { documentInputSchema, documentUpdateSchema, mcpTokenInputSchema, templateInputSchema } from "@/lib/validation";
+import { getUserById } from "@/lib/users";
+import { documentAccessContext } from "@/lib/access-context";
+import {
+  documentInputSchema,
+  documentShareInputSchema,
+  documentShareUpdateSchema,
+  documentUpdateSchema,
+  mcpTokenInputSchema,
+  templateInputSchema,
+} from "@/lib/validation";
 
-function accessContext(userId?: string) {
-  return { userId: userId ?? null };
+async function accessContext(userId?: string) {
+  return documentAccessContext(userId);
 }
 
 export async function createDocumentAction(input: unknown) {
@@ -53,7 +68,7 @@ export async function updateDocumentAction(id: string, input: unknown) {
   const parsed = documentUpdateSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Não foi possível validar o documento." };
 
-  const document = await updateDocument(id, parsed.data, accessContext(session.user.id));
+  const document = await updateDocument(id, parsed.data, await accessContext(session.user.id));
   if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
   revalidatePath("/");
   revalidatePath(`/documents/${id}`);
@@ -67,7 +82,7 @@ export async function deleteDocumentAction(id: string) {
     return { ok: false as const, error: "Faça login para excluir documentos." };
   }
 
-  const deleted = await deleteDocument(id, accessContext(session.user.id));
+  const deleted = await deleteDocument(id, await accessContext(session.user.id));
   if (!deleted) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const };
@@ -82,7 +97,7 @@ export async function publishDocumentAction(id: string, input: unknown) {
   const parsed = documentUpdateSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Não foi possível validar o documento." };
 
-  const result = await publishDocument(id, parsed.data, accessContext(session.user.id));
+  const result = await publishDocument(id, parsed.data, await accessContext(session.user.id));
   if (!result) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
   revalidatePath("/");
   revalidatePath(`/documents/${id}`);
@@ -98,7 +113,7 @@ export async function setDocumentDisabledAction(id: string, disabled: boolean) {
     return { ok: false as const, error: "Faça login para alterar o acesso público." };
   }
 
-  const document = await setDocumentDisabled(id, disabled, accessContext(session.user.id));
+  const document = await setDocumentDisabled(id, disabled, await accessContext(session.user.id));
   if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
 
   revalidatePath("/");
@@ -114,10 +129,10 @@ export async function setDocumentReleaseDisabledAction(documentId: string, relea
     return { ok: false as const, error: "Faça login para alterar o acesso público." };
   }
 
-  const document = await getDocument(documentId, accessContext(session.user.id));
+  const document = await getDocument(documentId, await accessContext(session.user.id));
   if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
 
-  const release = await setDocumentReleaseDisabled(documentId, releaseId, disabled, accessContext(session.user.id));
+  const release = await setDocumentReleaseDisabled(documentId, releaseId, disabled, await accessContext(session.user.id));
   if (!release) return { ok: false as const, error: "Versão não encontrada ou sem permissão." };
 
   revalidatePath(`/documents/${documentId}`);
@@ -133,7 +148,7 @@ export async function listLinkableDocumentsAction(excludeDocumentId?: string) {
     return { ok: false as const, error: "Faça login para listar documentos." };
   }
 
-  const documents = await listLinkableDocuments(accessContext(session.user.id), { excludeDocumentId });
+  const documents = await listLinkableDocuments(await accessContext(session.user.id), { excludeDocumentId });
   return { ok: true as const, documents };
 }
 
@@ -213,5 +228,95 @@ export async function revokeMcpTokenAction(tokenId: string) {
   const revoked = await revokeMcpToken(session.user.id, tokenId);
   if (!revoked) return { ok: false as const, error: "Token não encontrado." };
   revalidatePath("/");
+  return { ok: true as const };
+}
+
+export async function listDocumentSharesAction(documentId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para gerenciar compartilhamentos." };
+  }
+
+  const document = await getDocument(documentId, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!isDocumentOwner(document, { userId: session.user.id })) {
+    return { ok: false as const, error: "Apenas o responsável pode gerenciar compartilhamentos." };
+  }
+
+  const [shares, collaborators] = await Promise.all([
+    listDocumentShares(documentId),
+    listDocumentCollaborators(documentId, document.userId),
+  ]);
+  return { ok: true as const, shares, collaborators };
+}
+
+export async function addDocumentShareAction(documentId: string, input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para compartilhar documentos." };
+  }
+
+  const parsed = documentShareInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Informe um e-mail válido." };
+
+  const document = await getDocument(documentId, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!isDocumentOwner(document, { userId: session.user.id })) {
+    return { ok: false as const, error: "Apenas o responsável pode compartilhar este documento." };
+  }
+
+  const owner = await getUserById(session.user.id);
+  if (owner?.email && parsed.data.email === owner.email) {
+    return { ok: false as const, error: "Você já é o responsável deste documento." };
+  }
+
+  const share = await addDocumentShare(documentId, parsed.data.email, parsed.data.role, session.user.id);
+  if (!share) return { ok: false as const, error: "Não foi possível adicionar o compartilhamento." };
+
+  revalidatePath(`/documents/${documentId}`);
+  revalidatePath(`/documents/${document.slug}`);
+  return { ok: true as const, share };
+}
+
+export async function updateDocumentShareAction(documentId: string, shareId: string, input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para alterar compartilhamentos." };
+  }
+
+  const parsed = documentShareUpdateSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Papel inválido." };
+
+  const document = await getDocument(documentId, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!isDocumentOwner(document, { userId: session.user.id })) {
+    return { ok: false as const, error: "Apenas o responsável pode alterar compartilhamentos." };
+  }
+
+  const share = await updateDocumentShareRole(shareId, documentId, parsed.data.role);
+  if (!share) return { ok: false as const, error: "Compartilhamento não encontrado." };
+
+  revalidatePath(`/documents/${documentId}`);
+  revalidatePath(`/documents/${document.slug}`);
+  return { ok: true as const, share };
+}
+
+export async function revokeDocumentShareAction(documentId: string, shareId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para revogar compartilhamentos." };
+  }
+
+  const document = await getDocument(documentId, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!isDocumentOwner(document, { userId: session.user.id })) {
+    return { ok: false as const, error: "Apenas o responsável pode revogar compartilhamentos." };
+  }
+
+  const revoked = await revokeDocumentShare(shareId, documentId);
+  if (!revoked) return { ok: false as const, error: "Compartilhamento não encontrado." };
+
+  revalidatePath(`/documents/${documentId}`);
+  revalidatePath(`/documents/${document.slug}`);
   return { ok: true as const };
 }

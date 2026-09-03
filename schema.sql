@@ -10,8 +10,11 @@ CREATE TABLE IF NOT EXISTS portulan.users (
   login TEXT NOT NULL,
   name TEXT,
   avatar_url TEXT,
+  email TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE portulan.users ADD COLUMN IF NOT EXISTS email TEXT;
 
 CREATE TABLE IF NOT EXISTS portulan.templates (
   id TEXT PRIMARY KEY,
@@ -121,4 +124,21 @@ WHERE r.template_id IS NULL OR r.template_name IS NULL OR r.primary_color IS NUL
 ALTER TABLE portulan.document_releases DROP COLUMN IF EXISTS type;
 ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE;
 
+ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS published_by_user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS idx_document_releases_document ON portulan.document_releases (document_id, version DESC);
+
+CREATE TABLE IF NOT EXISTS portulan.document_shares (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id TEXT NOT NULL REFERENCES portulan.documents(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('viewer', 'editor')),
+  invited_by UUID NOT NULL REFERENCES portulan.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (document_id, email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_shares_document_id ON portulan.document_shares (document_id);
+CREATE INDEX IF NOT EXISTS idx_document_shares_user_id ON portulan.document_shares (user_id);
+CREATE INDEX IF NOT EXISTS idx_document_shares_email ON portulan.document_shares (email);

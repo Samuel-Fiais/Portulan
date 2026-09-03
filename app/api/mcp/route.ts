@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import {
+  addDocumentShare,
   createDocument,
   createTemplate,
   deleteDocument,
@@ -9,17 +10,22 @@ import {
   duplicateTemplate,
   getDocument,
   getTemplateForUser,
+  isDocumentOwner,
   listDocumentReleases,
+  listDocumentShares,
   listDocuments,
   listTemplates,
   previewTemplateContent,
   publishDocument,
+  revokeDocumentShare,
   setDocumentDisabled,
   setDocumentReleaseDisabled,
   updateDocument,
   updateTemplate,
   validateMcpToken,
 } from "@/lib/db";
+import { documentAccessContext } from "@/lib/access-context";
+import { documentShareInputSchema } from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
 
@@ -36,6 +42,10 @@ function requireUserId() {
   const userId = mcpUserStore.getStore()?.userId;
   if (!userId) throw new Error("Não autorizado");
   return userId;
+}
+
+async function requireAccessContext() {
+  return documentAccessContext(requireUserId());
 }
 
 const mcpHandler = createMcpHandler((server) => {
@@ -208,7 +218,7 @@ const mcpHandler = createMcpHandler((server) => {
       textResult({
         documents: await listDocuments(
           { query: filters.query, templateId: filters.template_id, status: filters.status },
-          { userId: requireUserId() },
+          await requireAccessContext(),
         ),
       }),
   );
@@ -221,7 +231,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1).describe("ID ou slug do documento") }),
     },
     async ({ id }) => {
-      const document = await getDocument(id, { userId: requireUserId() });
+      const document = await getDocument(id, await requireAccessContext());
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -243,6 +253,7 @@ const mcpHandler = createMcpHandler((server) => {
       }),
     },
     async (input) => {
+      const ctx = await requireAccessContext();
       const document = await createDocument(
         {
           title: input.title,
@@ -254,7 +265,7 @@ const mcpHandler = createMcpHandler((server) => {
           tags: input.tags,
           content: input.content,
         },
-        { userId: requireUserId() },
+        { userId: ctx.userId },
       );
       return textResult({ document });
     },
@@ -280,10 +291,10 @@ const mcpHandler = createMcpHandler((server) => {
     },
     async ({ id, template_id, disabled, ...changes }) => {
       if (disabled !== undefined) {
-        const toggled = await setDocumentDisabled(id, disabled, { userId: requireUserId() });
+        const toggled = await setDocumentDisabled(id, disabled, await requireAccessContext());
         if (!toggled) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
       }
-      const document = await updateDocument(id, { ...changes, templateId: template_id }, { userId: requireUserId() });
+      const document = await updateDocument(id, { ...changes, templateId: template_id }, await requireAccessContext());
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -296,7 +307,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().uuid() }),
     },
     async ({ id }) => {
-      const deleted = await deleteDocument(id, { userId: requireUserId() });
+      const deleted = await deleteDocument(id, await requireAccessContext());
       return deleted ? textResult({ deleted: true, id }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
   );
@@ -318,7 +329,7 @@ const mcpHandler = createMcpHandler((server) => {
       }),
     },
     async ({ id, template_id, ...changes }) => {
-      const result = await publishDocument(id, { ...changes, templateId: template_id }, { userId: requireUserId() });
+      const result = await publishDocument(id, { ...changes, templateId: template_id }, await requireAccessContext());
       if (!result) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
       return textResult({
         document: result.document,
@@ -337,7 +348,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1).describe("ID ou slug do documento") }),
     },
     async ({ id }) => {
-      const document = await getDocument(id, { userId: requireUserId() });
+      const document = await getDocument(id, await requireAccessContext());
       if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
       const releases = (await listDocumentReleases(document.id)).map((release) => ({
         ...release,
@@ -364,15 +375,85 @@ const mcpHandler = createMcpHandler((server) => {
       }),
     },
     async ({ document_id, release_id, disabled }) => {
-      const document = await getDocument(document_id, { userId: requireUserId() });
+      const document = await getDocument(document_id, await requireAccessContext());
       if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
-      const release = await setDocumentReleaseDisabled(document.id, release_id, disabled, { userId: requireUserId() });
+      const release = await setDocumentReleaseDisabled(document.id, release_id, disabled, await requireAccessContext());
       if (!release) return { ...textResult({ error: "Versão não encontrada" }), isError: true };
       return textResult({
         release,
         publicPath: `/p/${release.id}`,
         disabled: release.disabled,
       });
+    },
+  );
+
+  server.registerTool(
+    "list_document_shares",
+    {
+      title: "Listar compartilhamentos",
+      description: "Lista convites por e-mail de um documento privado (apenas o responsável).",
+      inputSchema: z.object({ document_id: z.string().min(1) }),
+    },
+    async ({ document_id }) => {
+      const ctx = await requireAccessContext();
+      const document = await getDocument(document_id, ctx);
+      if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+      if (!isDocumentOwner(document, ctx)) {
+        return { ...textResult({ error: "Apenas o responsável pode listar compartilhamentos." }), isError: true };
+      }
+      return textResult({ shares: await listDocumentShares(document.id) });
+    },
+  );
+
+  server.registerTool(
+    "share_document",
+    {
+      title: "Compartilhar documento",
+      description: "Convida alguém por e-mail como leitor ou editor de um documento privado.",
+      inputSchema: z.object({
+        document_id: z.string().min(1),
+        email: z.string().email(),
+        role: z.enum(["viewer", "editor"]).default("viewer"),
+      }),
+    },
+    async (input) => {
+      const parsed = documentShareInputSchema.safeParse({ email: input.email, role: input.role });
+      if (!parsed.success) return { ...textResult({ error: "E-mail ou papel inválido." }), isError: true };
+
+      const ctx = await requireAccessContext();
+      const document = await getDocument(input.document_id, ctx);
+      if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+      if (!isDocumentOwner(document, ctx)) {
+        return { ...textResult({ error: "Apenas o responsável pode compartilhar." }), isError: true };
+      }
+
+      const share = await addDocumentShare(document.id, parsed.data.email, parsed.data.role, ctx.userId!);
+      return share ? textResult({ share }) : { ...textResult({ error: "Não foi possível compartilhar." }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "revoke_document_share",
+    {
+      title: "Revogar compartilhamento",
+      description: "Remove o acesso de um convite por e-mail (apenas o responsável).",
+      inputSchema: z.object({
+        document_id: z.string().min(1),
+        share_id: z.string().uuid(),
+      }),
+    },
+    async ({ document_id, share_id }) => {
+      const ctx = await requireAccessContext();
+      const document = await getDocument(document_id, ctx);
+      if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+      if (!isDocumentOwner(document, ctx)) {
+        return { ...textResult({ error: "Apenas o responsável pode revogar compartilhamentos." }), isError: true };
+      }
+
+      const revoked = await revokeDocumentShare(share_id, document.id);
+      return revoked
+        ? textResult({ revoked: true })
+        : { ...textResult({ error: "Compartilhamento não encontrado." }), isError: true };
     },
   );
 }, {

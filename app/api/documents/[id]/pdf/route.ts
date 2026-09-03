@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { PDFDocument, StandardFonts, rgb, type RGB } from "pdf-lib";
 import { auth } from "@/auth";
 import { getDocument } from "@/lib/db";
+import { documentAccessContext } from "@/lib/access-context";
 import { formatDate } from "@/lib/utils";
 
 type Context = { params: Promise<{ id: string }> };
@@ -19,7 +20,7 @@ export async function GET(request: Request, { params }: Context) {
   }
 
   const { id } = await params;
-  const document = await getDocument(id, { userId: session.user.id });
+  const document = await getDocument(id, await documentAccessContext(session.user.id));
   if (!document) return Response.json({ error: "Documento não encontrado" }, { status: 404 });
 
   const logo = await loadLogoBytes(document.logoUrl);

@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { createDocument, listDocuments } from "@/lib/db";
+import { documentAccessContext } from "@/lib/access-context";
 import { documentInputSchema } from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const ctx = { userId: session.user.id };
+  const ctx = await documentAccessContext(session.user.id);
   const params = new URL(request.url).searchParams;
   const statusValue = params.get("status");
   const status = documentStatuses.find((item) => item === statusValue);

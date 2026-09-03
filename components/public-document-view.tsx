@@ -7,7 +7,13 @@ export function PublicDocumentView({ release }: { release: DocumentRelease }) {
   return (
     <div className="public-document-shell">
       <main className="public-document-main">
-        <ReportPreview document={document} publicView interactive documentKey={release.id} />
+        <ReportPreview
+          document={document}
+          publicView
+          interactive
+          documentKey={release.id}
+          publishedBy={release.publishedByLogin ?? release.publishedByName}
+        />
       </main>
     </div>
   );

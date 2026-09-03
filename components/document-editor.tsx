@@ -7,6 +7,8 @@ import { ArrowLeft, Ban, Blocks, Check, ChevronRight, Copy, Download, ExternalLi
 import { toast } from "sonner";
 import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, setDocumentDisabledAction, setDocumentReleaseDisabledAction, updateDocumentAction } from "@/app/actions";
 import { BrandMark } from "@/components/brand-mark";
+import { DocumentCollaboratorAvatars } from "@/components/document-collaborator-avatars";
+import { DocumentShareDialog } from "@/components/document-share-dialog";
 import { ReportPreview } from "@/components/report-preview";
 import { RichMarkdown } from "@/components/rich-markdown";
 import { StatusBadge, TemplateBadge, DisabledBadge } from "@/components/document-badges";
@@ -19,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { documentStatuses, statusMeta, type DocumentRecord, type DocumentRelease, type TemplateRecord } from "@/lib/documents";
+import { documentStatuses, statusMeta, type DocumentCollaborator, type DocumentRecord, type DocumentRelease, type TemplateRecord } from "@/lib/documents";
 import {
   applyComponentProperties,
   defaultComponentProperties,
@@ -35,11 +37,15 @@ export function DocumentEditor({
   initialReleases = [],
   templates,
   canEdit = true,
+  isOwner = true,
+  collaborators = [],
 }: {
   initialDocument: DocumentRecord;
   initialReleases?: DocumentRelease[];
   templates: TemplateRecord[];
   canEdit?: boolean;
+  isOwner?: boolean;
+  collaborators?: DocumentCollaborator[];
 }) {
   const router = useRouter();
   const [document, setDocument] = useState(initialDocument);
@@ -351,15 +357,18 @@ export function DocumentEditor({
           <BrandMark className="hidden sm:flex" />
           <ChevronRight className="hidden size-3.5 text-border sm:block" />
           <div className="min-w-0"><strong className="block truncate text-sm">{document.title}</strong><small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small></div>
+          {collaborators.length ? <DocumentCollaboratorAvatars collaborators={collaborators} className="hidden md:flex" /> : null}
         </div>
         <div className="editor-actions flex items-center gap-1.5">
           <Button variant="outline" size="sm" className="hidden md:flex" onClick={() => setPreviewVisible(!previewVisible)}><PanelRight />{previewVisible ? "Ocultar preview" : "Mostrar preview"}</Button>
           <Button variant="outline" size="sm" onClick={openDraftPreview}><Eye /><span className="hidden sm:inline">Abrir prévia</span></Button>
           <Button variant="outline" size="sm" onClick={exportPdf} disabled={exporting || pending}>{exporting ? <LoaderCircle className="animate-spin" /> : <Download />}<span className="hidden sm:inline">{exporting ? "Gerando PDF" : "Exportar PDF"}</span></Button>
+          {isOwner ? <DocumentShareDialog documentId={document.id} initialCollaborators={collaborators} /> : null}
           {canEdit ? (
             <>
               <Button variant="outline" size="sm" onClick={publish} disabled={pending}><Globe /><span className="hidden sm:inline">Publicar</span></Button>
               <Button size="sm" onClick={save} disabled={!dirty || pending}>{pending ? <span className="saving-dot" /> : dirty ? <Save /> : <Check />}<span className="hidden sm:inline">{pending ? "Salvando" : dirty ? "Salvar" : "Salvo"}</span></Button>
+              {isOwner ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal /></Button></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -396,6 +405,7 @@ export function DocumentEditor({
                   </AlertDialog>
                 </DropdownMenuContent>
               </DropdownMenu>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -442,7 +452,7 @@ export function DocumentEditor({
               <Field label="Responsável"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} readOnly={!canEdit} /></Field>
               <Field label="Time"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
               <Field label="Tags"><Input value={document.tags.join(", ")} onChange={(event) => patch("tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean))} placeholder="pagamentos, api, arquitetura" readOnly={!canEdit} /><p>Separe as tags por vírgula.</p></Field>
-              {canEdit ? (
+              {isOwner ? (
                 <div className="metadata-public-access">
                   <span>Acesso público</span>
                   <p>
@@ -504,7 +514,12 @@ export function DocumentEditor({
                             v{release.version} · versão fixa
                             {release.disabled ? " · desativada" : ""}
                           </strong>
-                          <span>Publicada em {formatRelativeDate(release.publishedAt)}</span>
+                          <span>
+                            Publicada em {formatRelativeDate(release.publishedAt)}
+                            {release.publishedByLogin || release.publishedByName
+                              ? ` · por ${release.publishedByLogin ?? release.publishedByName}`
+                              : ""}
+                          </span>
                           <code>/p/{release.id}</code>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">

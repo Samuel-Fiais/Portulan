@@ -10,6 +10,7 @@ export const users = portulanSchema.table("users", {
   login: text("login").notNull(),
   name: text("name"),
   avatarUrl: text("avatar_url"),
+  email: text("email"),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });
 
@@ -97,9 +98,33 @@ export const documentReleases = portulanSchema.table(
     content: text("content").notNull().default(""),
     publishedAt: timestamp("published_at", { withTimezone: true, mode: "string" }).notNull(),
     disabled: boolean("disabled").notNull().default(false),
+    publishedByUserId: uuid("published_by_user_id").references(() => users.id, { onDelete: "set null" }),
   },
   (table) => [
     unique("document_releases_document_version").on(table.documentId, table.version),
     index("idx_document_releases_document").on(table.documentId, table.version),
+  ],
+);
+
+export const documentShares = portulanSchema.table(
+  "document_shares",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role").notNull(),
+    invitedBy: uuid("invited_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("document_shares_document_email").on(table.documentId, table.email),
+    index("idx_document_shares_document_id").on(table.documentId),
+    index("idx_document_shares_user_id").on(table.userId),
+    index("idx_document_shares_email").on(table.email),
   ],
 );

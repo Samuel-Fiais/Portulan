@@ -1,12 +1,15 @@
 export {
+  canEditDocument,
   canMutateDocument,
   canReadDocument,
   createDocument,
   deleteDocument,
   getDocument,
+  getDocumentAccessLevel,
   getDocumentRelease,
   getDocumentStats,
   getLatestDocumentReleaseBySlug,
+  isDocumentOwner,
   listDocumentReleases,
   listDocuments,
   listLinkableDocuments,
@@ -18,6 +21,16 @@ export {
   updateDocument,
   type DocumentAccessContext,
 } from "@/lib/db/documents";
+
+export {
+  addDocumentShare,
+  documentHasAnyShares,
+  isPrivateOwnedDocument,
+  listDocumentCollaborators,
+  listDocumentShares,
+  revokeDocumentShare,
+  updateDocumentShareRole,
+} from "@/lib/db/document-shares";
 
 export {
   createTemplate,

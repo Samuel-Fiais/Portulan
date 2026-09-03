@@ -53,3 +53,14 @@ export const mcpTokenInputSchema = z.object({
   name: z.string().trim().min(1).max(80).default("Token MCP"),
   expiration: z.enum(mcpTokenExpirationPresets).default(DEFAULT_MCP_TOKEN_EXPIRATION),
 });
+
+export const documentShareRoleSchema = z.enum(["viewer", "editor"]);
+
+export const documentShareInputSchema = z.object({
+  email: z.string().trim().email().max(320).transform((value) => value.toLowerCase()),
+  role: documentShareRoleSchema.default("viewer"),
+});
+
+export const documentShareUpdateSchema = z.object({
+  role: documentShareRoleSchema,
+});
