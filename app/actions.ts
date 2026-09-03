@@ -8,10 +8,13 @@ import {
   createTemplate,
   deleteDocument,
   deleteTemplate,
+  getDocument,
   listLinkableDocuments,
   listMcpTokens,
   publishDocument,
   revokeMcpToken,
+  setDocumentDisabled,
+  setDocumentReleaseDisabled,
   updateDocument,
   updateTemplate,
 } from "@/lib/db";
@@ -87,6 +90,41 @@ export async function publishDocumentAction(id: string, input: unknown) {
   revalidatePath(`/p/${result.release.id}`);
   revalidatePath(`/d/${result.document.slug}`);
   return { ok: true as const, document: result.document, release: result.release };
+}
+
+export async function setDocumentDisabledAction(id: string, disabled: boolean) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para alterar o acesso público." };
+  }
+
+  const document = await setDocumentDisabled(id, disabled, accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+
+  revalidatePath("/");
+  revalidatePath(`/documents/${id}`);
+  revalidatePath(`/documents/${document.slug}`);
+  revalidatePath(`/d/${document.slug}`);
+  return { ok: true as const, document };
+}
+
+export async function setDocumentReleaseDisabledAction(documentId: string, releaseId: string, disabled: boolean) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para alterar o acesso público." };
+  }
+
+  const document = await getDocument(documentId, accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+
+  const release = await setDocumentReleaseDisabled(documentId, releaseId, disabled, accessContext(session.user.id));
+  if (!release) return { ok: false as const, error: "Versão não encontrada ou sem permissão." };
+
+  revalidatePath(`/documents/${documentId}`);
+  revalidatePath(`/documents/${document.slug}`);
+  revalidatePath(`/p/${releaseId}`);
+  revalidatePath(`/d/${document.slug}`);
+  return { ok: true as const, release };
 }
 
 export async function listLinkableDocumentsAction(excludeDocumentId?: string) {

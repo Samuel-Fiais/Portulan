@@ -40,6 +40,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "created_at",
     "updated_at",
     "published_at",
+    "disabled",
   ],
   document_releases: [
     "id",
@@ -57,6 +58,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "tags",
     "content",
     "published_at",
+    "disabled",
   ],
 } as const;
 
@@ -397,6 +399,26 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       db,
       `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases DROP COLUMN IF EXISTS type`,
     );
+  }
+
+  if (await portulanTableExists(db, "documents")) {
+    const columns = (await loadTableColumns(db)).get("documents") ?? new Set<string>();
+    if (!columns.has("disabled")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.documents ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE`,
+      );
+    }
+  }
+
+  if (await portulanTableExists(db, "document_releases")) {
+    const columns = (await loadTableColumns(db)).get("document_releases") ?? new Set<string>();
+    if (!columns.has("disabled")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_releases ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE`,
+      );
+    }
   }
 }
 

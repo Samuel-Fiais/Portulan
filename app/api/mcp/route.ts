@@ -14,6 +14,8 @@ import {
   listTemplates,
   previewTemplateContent,
   publishDocument,
+  setDocumentDisabled,
+  setDocumentReleaseDisabled,
   updateDocument,
   updateTemplate,
   validateMcpToken,
@@ -273,9 +275,14 @@ const mcpHandler = createMcpHandler((server) => {
         team: z.string().max(100).optional(),
         tags: z.array(z.string().min(1).max(40)).max(12).optional(),
         content: z.string().max(250_000).optional(),
+        disabled: z.boolean().optional().describe("Desativa ou reativa o acesso público a todo o documento"),
       }),
     },
-    async ({ id, template_id, ...changes }) => {
+    async ({ id, template_id, disabled, ...changes }) => {
+      if (disabled !== undefined) {
+        const toggled = await setDocumentDisabled(id, disabled, { userId: requireUserId() });
+        if (!toggled) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+      }
       const document = await updateDocument(id, { ...changes, templateId: template_id }, { userId: requireUserId() });
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
     },
@@ -341,6 +348,30 @@ const mcpHandler = createMcpHandler((server) => {
         slug: document.slug,
         stablePublicPath: `/d/${document.slug}`,
         releases,
+      });
+    },
+  );
+
+  server.registerTool(
+    "update_document_release",
+    {
+      title: "Ativar/desativar versão publicada",
+      description: "Controla se uma versão fixa (/p/{releaseId}) permanece acessível publicamente.",
+      inputSchema: z.object({
+        document_id: z.string().min(1).describe("ID ou slug do documento"),
+        release_id: z.string().uuid().describe("ID da versão publicada"),
+        disabled: z.boolean().describe("true desativa a versão; false reativa"),
+      }),
+    },
+    async ({ document_id, release_id, disabled }) => {
+      const document = await getDocument(document_id, { userId: requireUserId() });
+      if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+      const release = await setDocumentReleaseDisabled(document.id, release_id, disabled, { userId: requireUserId() });
+      if (!release) return { ...textResult({ error: "Versão não encontrada" }), isError: true };
+      return textResult({
+        release,
+        publicPath: `/p/${release.id}`,
+        disabled: release.disabled,
       });
     },
   );

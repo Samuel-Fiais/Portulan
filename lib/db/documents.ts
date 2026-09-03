@@ -5,7 +5,7 @@ import { and, count, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { documentReleases, documents, templates } from "@/lib/db/schema";
 import { getDefaultTemplate, resolveTemplateForUser } from "@/lib/db/templates";
-import type { DocumentInput, DocumentRecord, DocumentRelease, DocumentStatus } from "@/lib/documents";
+import type { DocumentInput, DocumentRecord, DocumentRelease, DocumentStatus, PublicReleaseResult } from "@/lib/documents";
 
 export type DocumentAccessContext = {
   userId?: string | null;
@@ -36,6 +36,7 @@ function mapRow(row: DocumentRow, template: Pick<TemplateRow, "name" | "primaryC
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     publishedAt: row.publishedAt,
+    disabled: row.disabled,
   };
 }
 
@@ -56,6 +57,7 @@ function mapReleaseRow(row: typeof documentReleases.$inferSelect): DocumentRelea
     tags: JSON.parse(row.tags) as string[],
     content: row.content,
     publishedAt: row.publishedAt,
+    disabled: row.disabled,
   };
 }
 
@@ -199,6 +201,7 @@ export async function createDocument(
     createdAt: now,
     updatedAt: now,
     publishedAt,
+    disabled: false,
   });
 
   return (await getDocument(id, { userId, bypassOwnership: true }))!;
@@ -262,6 +265,25 @@ export async function getDocumentRelease(releaseId: string) {
   return row ? mapReleaseRow(row) : null;
 }
 
+export async function resolvePublicReleaseById(releaseId: string): Promise<PublicReleaseResult> {
+  const db = await getDb();
+  const [row] = await db
+    .select({
+      release: documentReleases,
+      documentDisabled: documents.disabled,
+      slug: documents.slug,
+    })
+    .from(documentReleases)
+    .innerJoin(documents, eq(documentReleases.documentId, documents.id))
+    .where(eq(documentReleases.id, releaseId))
+    .limit(1);
+
+  if (!row) return { access: "not_found" };
+  if (row.documentDisabled) return { access: "document_disabled", slug: row.slug };
+  if (row.release.disabled) return { access: "release_disabled", slug: row.slug };
+  return { access: "ok", release: mapReleaseRow(row.release), slug: row.slug };
+}
+
 export async function getLatestDocumentReleaseBySlug(slug: string) {
   const db = await getDb();
   const [row] = await db
@@ -272,6 +294,28 @@ export async function getLatestDocumentReleaseBySlug(slug: string) {
     .orderBy(desc(documentReleases.version), desc(documentReleases.publishedAt))
     .limit(1);
   return row ? mapReleaseRow(row.release) : null;
+}
+
+export async function resolvePublicLatestReleaseBySlug(slug: string): Promise<PublicReleaseResult> {
+  const db = await getDb();
+  const [documentRow] = await db
+    .select({ id: documents.id, disabled: documents.disabled, slug: documents.slug })
+    .from(documents)
+    .where(eq(documents.slug, slug))
+    .limit(1);
+
+  if (!documentRow) return { access: "not_found" };
+  if (documentRow.disabled) return { access: "document_disabled", slug: documentRow.slug };
+
+  const [releaseRow] = await db
+    .select({ release: documentReleases })
+    .from(documentReleases)
+    .where(and(eq(documentReleases.documentId, documentRow.id), eq(documentReleases.disabled, false)))
+    .orderBy(desc(documentReleases.version), desc(documentReleases.publishedAt))
+    .limit(1);
+
+  if (!releaseRow) return { access: "no_enabled_release", slug: documentRow.slug };
+  return { access: "ok", release: mapReleaseRow(releaseRow.release), slug: documentRow.slug };
 }
 
 export async function listLinkableDocuments(
@@ -296,7 +340,13 @@ export async function listLinkableDocuments(
     })
     .from(documents)
     .innerJoin(documentReleases, eq(documents.id, documentReleases.documentId))
-    .where(clauses.length ? and(...clauses) : undefined)
+    .where(
+      and(
+        ...(clauses.length ? clauses : []),
+        eq(documents.disabled, false),
+        eq(documentReleases.disabled, false),
+      ),
+    )
     .orderBy(desc(documents.updatedAt));
 
   return rows;
@@ -384,9 +434,40 @@ export async function publishDocument(
     tags: JSON.stringify(document.tags),
     content: document.content,
     publishedAt: now,
+    disabled: false,
   });
 
   return { document, release: (await getDocumentRelease(releaseId))! };
+}
+
+export async function setDocumentDisabled(id: string, disabled: boolean, ctx: DocumentAccessContext = {}) {
+  const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
+  if (!current || !canMutateDocument(current, ctx)) return null;
+
+  const db = await getDb();
+  const now = new Date().toISOString();
+  await db.update(documents).set({ disabled, updatedAt: now }).where(eq(documents.id, id));
+  return getDocument(id, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership });
+}
+
+export async function setDocumentReleaseDisabled(
+  documentId: string,
+  releaseId: string,
+  disabled: boolean,
+  ctx: DocumentAccessContext = {},
+) {
+  const current = await getDocument(documentId, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
+  if (!current || !canMutateDocument(current, ctx)) return null;
+
+  const db = await getDb();
+  const updated = await db
+    .update(documentReleases)
+    .set({ disabled })
+    .where(and(eq(documentReleases.id, releaseId), eq(documentReleases.documentId, documentId)))
+    .returning({ id: documentReleases.id });
+
+  if (!updated.length) return null;
+  return getDocumentRelease(releaseId);
 }
 
 export async function getDocumentStats(ctx: DocumentAccessContext = {}) {

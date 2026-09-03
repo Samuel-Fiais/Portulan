@@ -13,7 +13,7 @@ import {
 } from "@/app/actions";
 import { ColorPicker } from "@/components/color-picker";
 import { NewDocumentDialog } from "@/components/new-document-dialog";
-import { StatusBadge, TemplateBadge } from "@/components/document-badges";
+import { StatusBadge, TemplateBadge, DisabledBadge } from "@/components/document-badges";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -129,6 +129,7 @@ export function Dashboard({
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <TemplateBadge name={document.templateName} primaryColor={document.primaryColor} secondaryColor={document.secondaryColor} />
                   <StatusBadge status={document.status} />
+                  {document.disabled ? <DisabledBadge /> : null}
                 </div>
                 <h3>{document.title}</h3>
                 <p>{document.summary}</p>
@@ -178,6 +179,7 @@ export function Dashboard({
             <span>get_document</span>
             <span>create_document</span>
             <span>update_document</span>
+            <span>update_document_release</span>
             <span>publish_document</span>
             <span>list_document_releases</span>
             <span>delete_document</span>

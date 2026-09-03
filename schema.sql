@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS portulan.documents (
   user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL,
-  published_at TIMESTAMPTZ
+  published_at TIMESTAMPTZ,
+  disabled BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Migrations for databases created before template-based documents (must run before template_id indexes)
@@ -76,6 +77,7 @@ ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS template_id TEXT;
 UPDATE portulan.documents SET template_id = 'portulan-default' WHERE template_id IS NULL;
 DROP INDEX IF EXISTS portulan.idx_documents_type;
 ALTER TABLE portulan.documents DROP COLUMN IF EXISTS type;
+ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON portulan.documents (updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_documents_template_id ON portulan.documents (template_id);
@@ -98,6 +100,7 @@ CREATE TABLE IF NOT EXISTS portulan.document_releases (
   tags TEXT NOT NULL DEFAULT '[]',
   content TEXT NOT NULL DEFAULT '',
   published_at TIMESTAMPTZ NOT NULL,
+  disabled BOOLEAN NOT NULL DEFAULT FALSE,
   UNIQUE (document_id, version)
 );
 
@@ -116,5 +119,6 @@ SET
 WHERE r.template_id IS NULL OR r.template_name IS NULL OR r.primary_color IS NULL OR r.secondary_color IS NULL;
 
 ALTER TABLE portulan.document_releases DROP COLUMN IF EXISTS type;
+ALTER TABLE portulan.document_releases ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_document_releases_document ON portulan.document_releases (document_id, version DESC);

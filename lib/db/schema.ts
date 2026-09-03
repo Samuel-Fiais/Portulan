@@ -66,6 +66,7 @@ export const documents = portulanSchema.table(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true, mode: "string" }),
+    disabled: boolean("disabled").notNull().default(false),
   },
   (table) => [
     index("idx_documents_updated_at").on(table.updatedAt),
@@ -95,6 +96,7 @@ export const documentReleases = portulanSchema.table(
     tags: text("tags").notNull().default("[]"),
     content: text("content").notNull().default(""),
     publishedAt: timestamp("published_at", { withTimezone: true, mode: "string" }).notNull(),
+    disabled: boolean("disabled").notNull().default(false),
   },
   (table) => [
     unique("document_releases_document_version").on(table.documentId, table.version),

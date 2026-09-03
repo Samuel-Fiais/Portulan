@@ -11,6 +11,10 @@ export {
   listDocuments,
   listLinkableDocuments,
   publishDocument,
+  resolvePublicLatestReleaseBySlug,
+  resolvePublicReleaseById,
+  setDocumentDisabled,
+  setDocumentReleaseDisabled,
   updateDocument,
   type DocumentAccessContext,
 } from "@/lib/db/documents";

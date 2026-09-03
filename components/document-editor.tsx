@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useDeferredValue, useMemo, useRef, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Blocks, Check, ChevronRight, Copy, Download, ExternalLink, Eye, FileText, Globe, History, Link2, LoaderCircle, MoreHorizontal, PanelRight, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Ban, Blocks, Check, ChevronRight, Copy, Download, ExternalLink, Eye, FileText, Globe, History, Link2, LoaderCircle, MoreHorizontal, PanelRight, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, updateDocumentAction } from "@/app/actions";
+import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, setDocumentDisabledAction, setDocumentReleaseDisabledAction, updateDocumentAction } from "@/app/actions";
 import { BrandMark } from "@/components/brand-mark";
 import { ReportPreview } from "@/components/report-preview";
 import { RichMarkdown } from "@/components/rich-markdown";
-import { StatusBadge, TemplateBadge } from "@/components/document-badges";
+import { StatusBadge, TemplateBadge, DisabledBadge } from "@/components/document-badges";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -257,6 +257,35 @@ export function DocumentEditor({
     });
   }
 
+  function toggleDocumentDisabled(disabled: boolean) {
+    startTransition(async () => {
+      const result = await setDocumentDisabledAction(document.id, disabled);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setDocument(result.document);
+      setSavedDocument(result.document);
+      toast.success(disabled ? "Documento desativado" : "Documento reativado", {
+        description: disabled
+          ? "Todos os links públicos deste documento exibem uma mensagem de indisponibilidade."
+          : "O acesso público foi restaurado conforme as versões ativas.",
+      });
+    });
+  }
+
+  function toggleReleaseDisabled(releaseId: string, disabled: boolean) {
+    startTransition(async () => {
+      const result = await setDocumentReleaseDisabledAction(document.id, releaseId, disabled);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setReleases((current) => current.map((release) => (release.id === releaseId ? result.release : release)));
+      toast.success(disabled ? "Versão desativada" : "Versão reativada");
+    });
+  }
+
   function publish() {
     startTransition(async () => {
       const result = await publishDocumentAction(document.id, savePayload());
@@ -336,6 +365,28 @@ export function DocumentEditor({
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={duplicate}><Copy />Duplicar documento</DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  {document.disabled ? (
+                    <DropdownMenuItem onClick={() => toggleDocumentDisabled(false)}><RotateCcw />Reativar documento</DropdownMenuItem>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive"><Ban />Desativar documento</DropdownMenuItem>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Desativar este documento?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Todos os links públicos (/d/{document.slug} e /p/…) deixarão de exibir o conteúdo. Você poderá reativar depois.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => toggleDocumentDisabled(true)}>Desativar</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  <DropdownMenuSeparator />
                   <AlertDialog>
                     <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive"><Trash2 />Excluir documento</DropdownMenuItem></AlertDialogTrigger>
                     <AlertDialogContent>
@@ -357,6 +408,7 @@ export function DocumentEditor({
             <div className="flex flex-wrap items-center gap-2">
               <TemplateBadge name={document.templateName} primaryColor={document.primaryColor} secondaryColor={document.secondaryColor} />
               <StatusBadge status={document.status} />
+              {document.disabled ? <DisabledBadge /> : null}
             </div>
             <Textarea className="editor-title-input" value={document.title} onChange={(event) => patch("title", event.target.value)} aria-label="Título do documento" readOnly={!canEdit} />
             <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo do documento…" aria-label="Resumo do documento" readOnly={!canEdit} />
@@ -390,6 +442,37 @@ export function DocumentEditor({
               <Field label="Responsável"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} readOnly={!canEdit} /></Field>
               <Field label="Time"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
               <Field label="Tags"><Input value={document.tags.join(", ")} onChange={(event) => patch("tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean))} placeholder="pagamentos, api, arquitetura" readOnly={!canEdit} /><p>Separe as tags por vírgula.</p></Field>
+              {canEdit ? (
+                <div className="metadata-public-access">
+                  <span>Acesso público</span>
+                  <p>
+                    {document.disabled
+                      ? "Este documento está desativado. Links /d/ e /p/ exibem mensagem de indisponibilidade."
+                      : "Links públicos permanecem ativos. Desative para interromper o acesso sem excluir o documento."}
+                  </p>
+                  {document.disabled ? (
+                    <Button type="button" variant="outline" size="sm" onClick={() => toggleDocumentDisabled(false)} disabled={pending}><RotateCcw />Reativar documento</Button>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button type="button" variant="destructive" size="sm" disabled={pending}><Ban />Desativar documento</Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Desativar este documento?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Todos os links públicos deixarão de exibir o conteúdo até você reativar o documento.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => toggleDocumentDisabled(true)}>Desativar</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              ) : null}
               <div className="metadata-summary"><span>ID</span><code>{document.id}</code><span>Slug</span><code>{document.slug}</code><span>Versão</span><code>{document.version}</code></div>
             </TabsContent>
             <TabsContent value="history" className="editor-tab-content version-history">
@@ -415,15 +498,41 @@ export function DocumentEditor({
                   </div>
                   <ol className="version-history-list">
                     {releases.map((release) => (
-                      <li key={release.id}>
+                      <li key={release.id} className={cn(release.disabled && "version-history-item-disabled")}>
                         <div>
-                          <strong>v{release.version} · versão fixa</strong>
+                          <strong>
+                            v{release.version} · versão fixa
+                            {release.disabled ? " · desativada" : ""}
+                          </strong>
                           <span>Publicada em {formatRelativeDate(release.publishedAt)}</span>
                           <code>/p/{release.id}</code>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button type="button" variant="outline" size="xs" onClick={() => copyShareUrl(`/p/${release.id}`, `Versão fixa v${release.version}`)}><Link2 />Copiar link</Button>
                           <Button type="button" variant="outline" size="xs" asChild><Link href={`/p/${release.id}`} target="_blank"><ExternalLink />Abrir</Link></Button>
+                          {canEdit ? (
+                            release.disabled ? (
+                              <Button type="button" variant="outline" size="xs" onClick={() => toggleReleaseDisabled(release.id, false)} disabled={pending || document.disabled}><RotateCcw />Reativar</Button>
+                            ) : (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button type="button" variant="destructive" size="xs" disabled={pending || document.disabled}><Ban />Desativar</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Desativar versão v{release.version}?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      O link /p/{release.id} deixará de exibir o conteúdo. Outras versões e o link estável /d/{document.slug} (se houver versões ativas) continuam funcionando.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => toggleReleaseDisabled(release.id, true)}>Desativar versão</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )
+                          ) : null}
                         </div>
                       </li>
                     ))}

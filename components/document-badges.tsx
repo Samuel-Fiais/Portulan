@@ -35,3 +35,11 @@ export function StatusBadge({ status }: { status: DocumentStatus }) {
     </Badge>
   );
 }
+
+export function DisabledBadge() {
+  return (
+    <Badge variant="outline" className={cn("status-badge", "status-disabled")}>
+      Desativado
+    </Badge>
+  );
+}

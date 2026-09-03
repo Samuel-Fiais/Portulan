@@ -51,6 +51,7 @@ export type DocumentRecord = {
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
+  disabled: boolean;
 };
 
 export type DocumentRelease = {
@@ -69,6 +70,7 @@ export type DocumentRelease = {
   tags: string[];
   content: string;
   publishedAt: string;
+  disabled: boolean;
 };
 
 export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecord {
@@ -92,8 +94,15 @@ export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecor
     createdAt: release.publishedAt,
     updatedAt: release.publishedAt,
     publishedAt: release.publishedAt,
+    disabled: false,
   };
 }
+
+export type PublicAccessDenied = "not_found" | "document_disabled" | "release_disabled" | "no_enabled_release";
+
+export type PublicReleaseResult =
+  | { access: "ok"; release: DocumentRelease; slug: string }
+  | { access: Exclude<PublicAccessDenied, "not_found"> | "not_found"; slug?: string };
 
 export type DocumentInput = Pick<
   DocumentRecord,
