@@ -436,6 +436,7 @@ export async function listLinkableDocuments(
       id: documents.id,
       slug: documents.slug,
       title: documents.title,
+      updatedAt: documents.updatedAt,
     })
     .from(documents)
     .innerJoin(documentReleases, eq(documents.id, documentReleases.documentId))
@@ -448,7 +449,7 @@ export async function listLinkableDocuments(
     )
     .orderBy(desc(documents.updatedAt));
 
-  return rows;
+  return rows.map(({ id, slug, title }) => ({ id, slug, title }));
 }
 
 export async function listDocumentReleases(documentId: string) {
