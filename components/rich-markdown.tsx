@@ -2,7 +2,8 @@ import { Children, isValidElement, type CSSProperties, type ReactNode } from "re
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
-import { InlineMarkdown, isPlaceholderToken } from "@/components/inline-markdown";
+import { InlineMarkdown } from "@/components/inline-markdown";
+import { isPlaceholderToken } from "@/lib/inline-markdown";
 import { LivingChart, parseChartDirective } from "@/components/living-chart";
 import { LivingChecklist } from "@/components/living-checklist";
 import { parseAttributes, parseDirectiveOpener } from "@/lib/directive-attrs";
