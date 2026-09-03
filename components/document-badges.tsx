@@ -19,8 +19,6 @@ export function TemplateBadge({
         {
           "--template-primary": primaryColor,
           "--template-secondary": secondaryColor ?? primaryColor,
-          color: primaryColor,
-          borderColor: primaryColor,
         } as React.CSSProperties
       }
     >
