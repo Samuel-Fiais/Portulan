@@ -2,6 +2,7 @@ import { Children, isValidElement, type CSSProperties, type ReactNode } from "re
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AlertCircle, Check, CheckCircle2, Info, TriangleAlert } from "lucide-react";
+import { parseAttributes, parseDirectiveOpener } from "@/lib/directive-attrs";
 
 type Directive = {
   name: string;
@@ -12,8 +13,6 @@ type Directive = {
 type Block =
   | { kind: "markdown"; body: string }
   | { kind: "directive"; directive: Directive };
-
-const directivePattern = /^:::(\w+)(?:\{([^}]*)\})?\s*$/;
 
 function splitSections(source: string) {
   const sections: Array<{ title?: string; body: string }> = [];
@@ -38,12 +37,6 @@ function splitSections(source: string) {
   return sections;
 }
 
-function parseAttributes(source = "") {
-  return Object.fromEntries(
-    Array.from(source.matchAll(/([\w-]+)="([^"]*)"/g), (match) => [match[1], match[2]]),
-  );
-}
-
 function parseBlocks(source: string): Block[] {
   const lines = source.split("\n");
   const blocks: Block[] = [];
@@ -57,19 +50,19 @@ function parseBlocks(source: string): Block[] {
   };
 
   for (let index = 0; index < lines.length; index += 1) {
-    const match = lines[index].match(directivePattern);
-    if (!match || lines[index] === ":::") {
+    const opener = parseDirectiveOpener(lines[index]);
+    if (!opener || lines[index] === ":::") {
       markdown.push(lines[index]);
       continue;
     }
 
     flushMarkdown();
     const body: string[] = [];
-    const allowsNestedDirectives = match[1].toLowerCase() === "columns";
+    const allowsNestedDirectives = opener.name.toLowerCase() === "columns";
     let depth = 1;
     index += 1;
     while (index < lines.length) {
-      if (allowsNestedDirectives && lines[index].match(directivePattern)) {
+      if (allowsNestedDirectives && parseDirectiveOpener(lines[index])) {
         depth += 1;
         body.push(lines[index]);
         index += 1;
@@ -88,8 +81,8 @@ function parseBlocks(source: string): Block[] {
     blocks.push({
       kind: "directive",
       directive: {
-        name: match[1].toLowerCase(),
-        attributes: parseAttributes(match[2]),
+        name: opener.name.toLowerCase(),
+        attributes: parseAttributes(opener.attributeSource),
         body: body.join("\n").trim(),
       },
     });
