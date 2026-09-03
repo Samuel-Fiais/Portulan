@@ -134,6 +134,23 @@ function SectionLabel({ title }: { title: string }) {
   );
 }
 
+type HastText = { type: "text"; value: string };
+type HastElement = { type: "element"; tagName: string; children?: HastText[] };
+
+function isFencedCode(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false;
+  const element = node as HastElement;
+  if (element.type !== "element" || element.tagName !== "code") return false;
+  const text = element.children?.[0];
+  return text?.type === "text" && text.value.endsWith("\n");
+}
+
+function MarkdownCode({ children, className, node }: { children?: ReactNode; className?: string; node?: unknown }) {
+  if (className) return <code className={className}>{children}</code>;
+  if (isFencedCode(node)) return <code>{children}</code>;
+  return <code className="report-inline-code">{children}</code>;
+}
+
 function CodeBlock({ children }: { children: ReactNode }) {
   const child = Children.toArray(children)[0];
   const className = isValidElement<{ className?: string }>(child) ? child.props.className : undefined;
@@ -160,9 +177,7 @@ function Markdown({ children }: { children: string }) {
         li: ({ children }) => <li>{children}</li>,
         table: ({ children }) => <div className="fp-table-wrap"><table className="fp-table">{children}</table></div>,
         pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
-        code: ({ children, className }) => className
-          ? <code className={className}>{children}</code>
-          : <code className="report-inline-code">{children}</code>,
+        code: ({ children, className, node }) => <MarkdownCode className={className} node={node}>{children}</MarkdownCode>,
         a: ({ children, href }) => <a href={href}>{children}</a>,
       }}
     >

@@ -950,6 +950,8 @@ article.report-paper.markdown-component-preview-paper .tmpl-section { margin: 0;
 .fp-code-header { display: flex; align-items: center; height: 30px; border-bottom: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); padding: 0 12px; color: #aebbd1; font: 600 10px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .fp-code-header::before { content: ""; width: 7px; height: 7px; margin-right: 7px; background: var(--accent-2); }
 .fp-code-block .report-code { margin: 0; overflow: auto; border: 0; background: transparent; padding: 16px; color: #edf3ff; white-space: pre; word-break: normal; font: 400 12px/1.75 var(--font-mono); }
+.fp-code-block code,
+.fp-code-block .report-code code { border: 0; background: transparent; padding: 0; color: inherit; font: inherit; }
 
 /* PDF export uses the same screen renderer as the preview. Puppeteer owns pagination and running furniture. */
 html:has(.pdf-export-page), body:has(.pdf-export-page) { margin: 0; background: #fff !important; color-scheme: light; }
