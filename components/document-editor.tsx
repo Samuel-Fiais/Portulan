@@ -5,7 +5,7 @@ import { useDeferredValue, useMemo, useRef, useState, useTransition, type CSSPro
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Blocks, Check, ChevronRight, Copy, Download, ExternalLink, Eye, FileText, Globe, History, Link2, LoaderCircle, MoreHorizontal, PanelRight, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { createDocumentAction, deleteDocumentAction, publishDocumentAction, updateDocumentAction } from "@/app/actions";
+import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, updateDocumentAction } from "@/app/actions";
 import { BrandMark } from "@/components/brand-mark";
 import { ReportPreview } from "@/components/report-preview";
 import { RichMarkdown } from "@/components/rich-markdown";
@@ -21,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { documentStatuses, statusMeta, type DocumentRecord, type DocumentRelease, type TemplateRecord } from "@/lib/documents";
 import { cn, formatRelativeDate } from "@/lib/utils";
+
+type LinkableDocument = { id: string; slug: string; title: string };
 
 type ComponentProperty = {
   name: string;
@@ -115,6 +117,9 @@ export function DocumentEditor({
   const [previewVisible, setPreviewVisible] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [componentPickerOpen, setComponentPickerOpen] = useState(false);
+  const [reportLinkPickerOpen, setReportLinkPickerOpen] = useState(false);
+  const [linkableDocuments, setLinkableDocuments] = useState<LinkableDocument[]>([]);
+  const [reportLinkSearch, setReportLinkSearch] = useState("");
   const [componentSearch, setComponentSearch] = useState("");
   const [selectedMarkdownComponentId, setSelectedMarkdownComponentId] = useState(markdownComponents[0].id);
   const [componentPropertyValues, setComponentPropertyValues] = useState<Record<string, string>>({});
@@ -123,6 +128,12 @@ export function DocumentEditor({
   const markdownSelectionRef = useRef({ start: 0, end: 0 });
   const dirty = useMemo(() => JSON.stringify(document) !== JSON.stringify(savedDocument), [document, savedDocument]);
   const deferredDocument = useDeferredValue(document);
+  const visibleLinkableDocuments = useMemo(() => {
+    const query = reportLinkSearch.trim().toLocaleLowerCase("pt-BR");
+    return query
+      ? linkableDocuments.filter((item) => `${item.title} ${item.slug}`.toLocaleLowerCase("pt-BR").includes(query))
+      : linkableDocuments;
+  }, [linkableDocuments, reportLinkSearch]);
   const visibleMarkdownComponents = useMemo(() => {
     const query = componentSearch.trim().toLocaleLowerCase("pt-BR");
     return query
@@ -143,6 +154,40 @@ export function DocumentEditor({
 
   function patch<K extends keyof DocumentRecord>(key: K, value: DocumentRecord[K]) {
     setDocument((current) => ({ ...current, [key]: value }));
+  }
+
+  function openReportLinkPicker() {
+    const editor = markdownEditorRef.current;
+    markdownSelectionRef.current = {
+      start: editor?.selectionStart ?? document.content.length,
+      end: editor?.selectionEnd ?? document.content.length,
+    };
+    setReportLinkSearch("");
+    setReportLinkPickerOpen(true);
+    startTransition(async () => {
+      const result = await listLinkableDocumentsAction(document.id);
+      if (!result.ok) {
+        toast.error(result.error);
+        setReportLinkPickerOpen(false);
+        return;
+      }
+      setLinkableDocuments(result.documents);
+    });
+  }
+
+  function insertReportLink(item: LinkableDocument) {
+    const { start, end } = markdownSelectionRef.current;
+    const snippet = `[${item.title}](/d/${item.slug})`;
+    const prefix = start > 0 && !document.content.slice(0, start).endsWith("\n\n") ? "\n\n" : "";
+    const suffix = end < document.content.length && !document.content.slice(end).startsWith("\n\n") ? "\n\n" : "";
+    const content = `${document.content.slice(0, start)}${prefix}${snippet}${suffix}${document.content.slice(end)}`;
+    patch("content", content);
+    setReportLinkPickerOpen(false);
+    requestAnimationFrame(() => {
+      markdownEditorRef.current?.focus();
+      const cursor = start + prefix.length + snippet.length;
+      markdownEditorRef.current?.setSelectionRange(cursor, cursor);
+    });
   }
 
   function openComponentPicker() {
@@ -291,21 +336,26 @@ export function DocumentEditor({
       setDocument(result.document);
       setSavedDocument(result.document);
       setReleases((current) => [result.release, ...current.filter((item) => item.id !== result.release.id)]);
-      const url = `${window.location.origin}/p/${result.release.id}`;
+      const stableUrl = `${window.location.origin}/d/${result.document.slug}`;
+      const pinnedUrl = `${window.location.origin}/p/${result.release.id}`;
       try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Versão publicada");
+        await navigator.clipboard.writeText(stableUrl);
+        toast.success("Versão publicada", {
+          description: `Link estável copiado. Use ${pinnedUrl} para fixar esta versão.`,
+        });
       } catch {
-        toast.success("Versão publicada");
+        toast.success("Versão publicada", {
+          description: `Link estável: ${stableUrl}. Versão fixa: ${pinnedUrl}`,
+        });
       }
     });
   }
 
-  async function copyShareUrl(releaseId: string, version: number) {
-    const url = `${window.location.origin}/p/${releaseId}`;
+  async function copyShareUrl(path: string, label: string) {
+    const url = `${window.location.origin}${path}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link copiado", { description: `Versão ${version}` });
+      toast.success("Link copiado", { description: label });
     } catch {
       toast.message("Link público", { description: url });
     }
@@ -383,7 +433,15 @@ export function DocumentEditor({
           <Tabs defaultValue="content" className="editor-tabs">
             <TabsList variant="line" className="editor-tabs-list"><TabsTrigger value="content"><FileText />Conteúdo</TabsTrigger><TabsTrigger value="metadata">Metadados</TabsTrigger><TabsTrigger value="history"><History />Histórico</TabsTrigger></TabsList>
             <TabsContent value="content" className="editor-tab-content">
-              <div className="markdown-hint"><span>Markdown</span>{canEdit ? <Button type="button" variant="ghost" size="xs" onClick={openComponentPicker}><Plus />Adicionar componente</Button> : null}</div>
+              <div className="markdown-hint">
+                <span>Markdown</span>
+                {canEdit ? (
+                  <div className="flex items-center gap-1">
+                    <Button type="button" variant="ghost" size="xs" onClick={openReportLinkPicker}><Link2 />Link para relatório</Button>
+                    <Button type="button" variant="ghost" size="xs" onClick={openComponentPicker}><Plus />Adicionar componente</Button>
+                  </div>
+                ) : null}
+              </div>
               <Textarea ref={markdownEditorRef} className="markdown-editor" value={document.content} onChange={(event) => patch("content", event.target.value)} spellCheck={false} aria-label="Conteúdo em Markdown" readOnly={!canEdit} />
             </TabsContent>
             <TabsContent value="metadata" className="editor-tab-content metadata-form">
@@ -407,26 +465,39 @@ export function DocumentEditor({
               <div className="version-history-heading">
                 <div>
                   <span>Versões publicadas</span>
-                  <p>Salvar atualiza apenas o rascunho. Cada publicação cria um snapshot imutável e um novo link.</p>
+                  <p>Salvar atualiza apenas o rascunho. Cada publicação cria um snapshot imutável e um novo link de versão fixa.</p>
                 </div>
                 <strong>{releases.length} {releases.length === 1 ? "versão" : "versões"}</strong>
               </div>
               {releases.length ? (
-                <ol className="version-history-list">
-                  {releases.map((release) => (
-                    <li key={release.id}>
-                      <div>
-                        <strong>v{release.version}</strong>
-                        <span>Publicada em {formatRelativeDate(release.publishedAt)}</span>
-                        <code>/p/{release.id}</code>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button type="button" variant="outline" size="xs" onClick={() => copyShareUrl(release.id, release.version)}><Link2 />Copiar link</Button>
-                        <Button type="button" variant="outline" size="xs" asChild><Link href={`/p/${release.id}`} target="_blank"><ExternalLink />Abrir</Link></Button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                <>
+                  <div className="version-history-stable">
+                    <div>
+                      <strong>Link estável (sempre a última versão)</strong>
+                      <span>Atualiza automaticamente a cada nova publicação</span>
+                      <code>/d/{document.slug}</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="outline" size="xs" onClick={() => copyShareUrl(`/d/${document.slug}`, "Link estável")}><Link2 />Copiar link</Button>
+                      <Button type="button" variant="outline" size="xs" asChild><Link href={`/d/${document.slug}`} target="_blank"><ExternalLink />Abrir</Link></Button>
+                    </div>
+                  </div>
+                  <ol className="version-history-list">
+                    {releases.map((release) => (
+                      <li key={release.id}>
+                        <div>
+                          <strong>v{release.version} · versão fixa</strong>
+                          <span>Publicada em {formatRelativeDate(release.publishedAt)}</span>
+                          <code>/p/{release.id}</code>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button type="button" variant="outline" size="xs" onClick={() => copyShareUrl(`/p/${release.id}`, `Versão fixa v${release.version}`)}><Link2 />Copiar link</Button>
+                          <Button type="button" variant="outline" size="xs" asChild><Link href={`/p/${release.id}`} target="_blank"><ExternalLink />Abrir</Link></Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </>
               ) : (
                 <div className="version-history-empty">Ainda não há versões publicadas. Use “Publicar” quando quiser registrar a primeira versão.</div>
               )}
@@ -464,6 +535,25 @@ export function DocumentEditor({
             </aside>
           </div>
           <DialogFooter className="markdown-component-dialog-footer"><Button type="button" variant="outline" onClick={() => setComponentPickerOpen(false)}>Cancelar</Button><Button type="button" onClick={() => insertMarkdownComponent(selectedMarkdownComponent)}><Plus />Inserir componente</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={reportLinkPickerOpen} onOpenChange={setReportLinkPickerOpen}>
+        <DialogContent className="max-w-lg rounded-none p-0 shadow-none">
+          <DialogHeader className="markdown-component-dialog-header">
+            <div><DialogTitle>Link para relatório</DialogTitle><DialogDescription>Insere um link Markdown para a última versão publicada de outro documento.</DialogDescription></div>
+            <Input value={reportLinkSearch} onChange={(event) => setReportLinkSearch(event.target.value)} placeholder="Buscar relatório…" aria-label="Buscar relatório" autoFocus />
+          </DialogHeader>
+          <div className="report-link-picker-list">
+            {pending && !linkableDocuments.length ? <p className="report-link-picker-empty">Carregando relatórios…</p> : null}
+            {!pending && !visibleLinkableDocuments.length ? <p className="report-link-picker-empty">Nenhum relatório publicado encontrado.</p> : null}
+            {visibleLinkableDocuments.map((item) => (
+              <button type="button" className="report-link-picker-option" key={item.id} onClick={() => insertReportLink(item)}>
+                <FileText />
+                <span><strong>{item.title}</strong><small>/d/{item.slug}</small></span>
+              </button>
+            ))}
+          </div>
+          <DialogFooter className="markdown-component-dialog-footer"><Button type="button" variant="outline" onClick={() => setReportLinkPickerOpen(false)}>Cancelar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

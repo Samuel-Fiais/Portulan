@@ -257,6 +257,46 @@ export async function getDocumentRelease(releaseId: string) {
   return row ? mapReleaseRow(row) : null;
 }
 
+export async function getLatestDocumentReleaseBySlug(slug: string) {
+  const db = await getDb();
+  const [row] = await db
+    .select({ release: documentReleases })
+    .from(documents)
+    .innerJoin(documentReleases, eq(documents.id, documentReleases.documentId))
+    .where(eq(documents.slug, slug))
+    .orderBy(desc(documentReleases.version), desc(documentReleases.publishedAt))
+    .limit(1);
+  return row ? mapReleaseRow(row.release) : null;
+}
+
+export async function listLinkableDocuments(
+  ctx: DocumentAccessContext = {},
+  options?: { excludeDocumentId?: string },
+) {
+  const db = await getDb();
+  const clauses = [];
+
+  if (!ctx.bypassOwnership) {
+    clauses.push(visibilityClause(ctx.userId));
+  }
+  if (options?.excludeDocumentId) {
+    clauses.push(sql`${documents.id} <> ${options.excludeDocumentId}`);
+  }
+
+  const rows = await db
+    .selectDistinct({
+      id: documents.id,
+      slug: documents.slug,
+      title: documents.title,
+    })
+    .from(documents)
+    .innerJoin(documentReleases, eq(documents.id, documentReleases.documentId))
+    .where(clauses.length ? and(...clauses) : undefined)
+    .orderBy(desc(documents.updatedAt));
+
+  return rows;
+}
+
 export async function listDocumentReleases(documentId: string) {
   const db = await getDb();
   const rows = await db

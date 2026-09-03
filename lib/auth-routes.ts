@@ -1,4 +1,4 @@
-const PUBLIC_PATH_PREFIXES = ["/p/", "/api/auth", "/api/mcp", "/api/brand/"] as const;
+const PUBLIC_PATH_PREFIXES = ["/p/", "/d/", "/api/auth", "/api/mcp", "/api/brand/"] as const;
 
 export function isPublicAppPath(pathname: string) {
   if (pathname === "/login") return true;

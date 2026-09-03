@@ -218,6 +218,7 @@ const mcpHandler = createMcpHandler((server) => {
         document: result.document,
         release: result.release,
         publicPath: `/p/${result.release.id}`,
+        stablePublicPath: `/d/${result.document.slug}`,
       });
     },
   );
@@ -236,13 +237,18 @@ const mcpHandler = createMcpHandler((server) => {
         ...release,
         publicPath: `/p/${release.id}`,
       }));
-      return textResult({ documentId: document.id, releases });
+      return textResult({
+        documentId: document.id,
+        slug: document.slug,
+        stablePublicPath: `/d/${document.slug}`,
+        releases,
+      });
     },
   );
 }, {
   serverInfo: { name: "portulan", version: "0.5.0" },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos imutáveis por versão. Use create_template e update_template para manter conteúdo-base e paleta dos templates.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{slug}) aponta sempre para a última versão; publicPath (/p/{releaseId}) fixa uma versão específica. Use create_template e update_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {

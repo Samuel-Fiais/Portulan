@@ -8,6 +8,7 @@ import {
   createTemplate,
   deleteDocument,
   deleteTemplate,
+  listLinkableDocuments,
   listMcpTokens,
   publishDocument,
   revokeMcpToken,
@@ -84,7 +85,18 @@ export async function publishDocumentAction(id: string, input: unknown) {
   revalidatePath(`/documents/${id}`);
   revalidatePath(`/documents/${result.document.slug}`);
   revalidatePath(`/p/${result.release.id}`);
+  revalidatePath(`/d/${result.document.slug}`);
   return { ok: true as const, document: result.document, release: result.release };
+}
+
+export async function listLinkableDocumentsAction(excludeDocumentId?: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para listar documentos." };
+  }
+
+  const documents = await listLinkableDocuments(accessContext(session.user.id), { excludeDocumentId });
+  return { ok: true as const, documents };
 }
 
 export async function createTemplateAction(input: unknown) {

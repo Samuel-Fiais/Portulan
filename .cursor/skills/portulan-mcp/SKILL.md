@@ -77,7 +77,7 @@ No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quan
 | `create_document` | Assunto novo, sem documento equivalente |
 | `update_document` | Editar rascunho/revisão; não cria versão publicada |
 | `publish_document` | Gerar link público imutável da versão atual |
-| `list_document_releases` | Recuperar links `/p/{id}` já publicados |
+| `list_document_releases` | Recuperar links `/d/{slug}` (estável) e `/p/{id}` (versão fixa) já publicados |
 | `delete_document` | Remover definitivamente (só UUID) |
 | `list_templates` | Descobrir os templates disponíveis e seus conteúdos-base |
 | `create_template` | Criar um template particular com paleta e Markdown inicial |
@@ -109,9 +109,9 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 ### Versão e publicação
 
 - `update_document` salva o rascunho sem criar uma nova versão.
-- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `publicPath: "/p/{releaseId}"`.
-- Links antigos **não mudam** quando o documento é editado depois; nova publicação = novo link.
-- Link público: `http://localhost:3000/p/{releaseId}` (fundo branco, conteúdo centralizado).
+- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{slug}"` (sempre a última versão) e `publicPath: "/p/{releaseId}"` (versão fixa).
+- Links antigos `/p/...` **não mudam** quando o documento é editado depois; nova publicação = novo link de versão fixa. O link `/d/{slug}` passa a apontar para a versão mais recente.
+- Links públicos: `http://localhost:3000/d/{slug}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa).
 
 ### Identificadores
 
@@ -146,7 +146,7 @@ Prefira `type` coerente com o template em `lib/documents.ts` (`templates`).
 ```
 1. Garantir conteúdo final (update_document se necessário)
 2. publish_document(id)
-3. Montar URL: {origin}/p/{release.id}
+3. Compartilhar {origin}/d/{slug} para a última versão ou {origin}/p/{release.id} para fixar uma versão
 4. list_document_releases(id) → ver histórico de versões publicadas
 ```
 

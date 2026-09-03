@@ -153,11 +153,12 @@ Cria uma nova versão publicada e um snapshot imutável, usando o rascunho atual
     "title": "...",
     "publishedAt": "ISO"
   },
-  "publicPath": "/p/uuid-release"
+  "publicPath": "/p/uuid-release",
+  "stablePublicPath": "/d/document-slug"
 }
 ```
 
-URL completa em dev: `http://localhost:3000/p/{release.id}`
+URL completa em dev: `http://localhost:3000/d/{slug}` (última versão) ou `http://localhost:3000/p/{release.id}` (versão fixa)
 
 ---
 
@@ -174,6 +175,8 @@ URL completa em dev: `http://localhost:3000/p/{release.id}`
 ```json
 {
   "documentId": "uuid",
+  "slug": "document-slug",
+  "stablePublicPath": "/d/document-slug",
   "releases": [
     {
       "id": "uuid-release",
