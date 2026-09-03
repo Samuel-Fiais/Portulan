@@ -117,6 +117,33 @@ export async function deleteTemplate(userId: string, id: string) {
   return deleted.length > 0;
 }
 
+export async function getTemplateForUser(id: string, userId: string) {
+  const template = await getTemplate(id);
+  if (!template || !canUseTemplate(template, userId)) return null;
+  return template;
+}
+
+export async function duplicateTemplate(userId: string, id: string, input?: { name?: string }) {
+  const source = await getTemplate(id);
+  if (!source || !canUseTemplate(source, userId)) return null;
+
+  const requestedName = input?.name?.trim();
+  const name = (requestedName || `Cópia de ${source.name}`).slice(0, 80);
+
+  return createTemplate(userId, {
+    name,
+    primaryColor: source.primaryColor,
+    secondaryColor: source.secondaryColor,
+    content: source.content,
+  });
+}
+
+export function previewTemplateContent(content: string, maxChars = 400) {
+  const headings = Array.from(content.matchAll(/^#{2,3}\s+(.+)$/gm), (match) => match[0].trim());
+  const contentPreview = content.length <= maxChars ? content : `${content.slice(0, maxChars).trimEnd()}…`;
+  return { headings, contentPreview };
+}
+
 export async function resolveTemplateForUser(templateId: string, userId: string) {
   const template = await getTemplate(templateId);
   if (!template || !canUseTemplate(template, userId)) {

@@ -6,16 +6,20 @@ import {
   createTemplate,
   deleteDocument,
   deleteTemplate,
+  duplicateTemplate,
   getDocument,
+  getTemplateForUser,
   listDocumentReleases,
   listDocuments,
   listTemplates,
+  previewTemplateContent,
   publishDocument,
   updateDocument,
   updateTemplate,
   validateMcpToken,
 } from "@/lib/db";
 import { documentStatuses } from "@/lib/documents";
+import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,6 +93,86 @@ const mcpHandler = createMcpHandler((server) => {
     async ({ id }) => {
       const deleted = await deleteTemplate(requireUserId(), id);
       return deleted ? textResult({ deleted: true, id }) : { ...textResult({ error: "Template não encontrado, interno ou sem permissão." }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "get_template",
+    {
+      title: "Ler template",
+      description: "Obtém um template completo pelo id, incluindo conteúdo-base e paleta de cores.",
+      inputSchema: z.object({ id: z.string().min(1) }),
+    },
+    async ({ id }) => {
+      const template = await getTemplateForUser(id, requireUserId());
+      return template ? textResult({ template }) : { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "duplicate_template",
+    {
+      title: "Duplicar template",
+      description: "Clona um template acessível em um novo template particular do usuário autenticado.",
+      inputSchema: z.object({
+        id: z.string().min(1),
+        name: z.string().trim().min(1).max(80).optional().describe("Nome do clone; padrão: Cópia de {nome original}"),
+      }),
+    },
+    async ({ id, name }) => {
+      const template = await duplicateTemplate(requireUserId(), id, { name });
+      return template ? textResult({ template }) : { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "preview_template",
+    {
+      title: "Pré-visualizar template",
+      description: "Retorna nome, cores e um resumo leve do conteúdo-base (títulos e trecho inicial).",
+      inputSchema: z.object({
+        id: z.string().min(1),
+        max_chars: z.number().int().min(80).max(2000).default(400),
+      }),
+    },
+    async ({ id, max_chars }) => {
+      const template = await getTemplateForUser(id, requireUserId());
+      if (!template) return { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
+      const preview = previewTemplateContent(template.content, max_chars);
+      return textResult({
+        id: template.id,
+        name: template.name,
+        primaryColor: template.primaryColor,
+        secondaryColor: template.secondaryColor,
+        ...preview,
+      });
+    },
+  );
+
+  server.registerTool(
+    "list_markdown_components",
+    {
+      title: "Listar componentes Markdown",
+      description: "Lista diretivas customizadas e entradas Markdown do catálogo Portulan, com preview e atributos.",
+      inputSchema: z.object({}),
+    },
+    async () => textResult({ components: listMarkdownComponentsForMcp() }),
+  );
+
+  server.registerTool(
+    "explain_markdown_component",
+    {
+      title: "Explicar componente Markdown",
+      description: "Retorna sintaxe, atributos, formato do corpo e exemplos para um componente por id, nome ou diretiva.",
+      inputSchema: z.object({
+        name: z.string().min(1).describe("Id (ex.: alert), título pt-BR (ex.: Alerta) ou diretiva (ex.: stats)"),
+      }),
+    },
+    async ({ name }) => {
+      const explanation = explainMarkdownComponent(name);
+      return explanation
+        ? textResult({ component: explanation })
+        : { ...textResult({ error: "Componente Markdown não encontrado." }), isError: true };
     },
   );
 
@@ -246,9 +330,9 @@ const mcpHandler = createMcpHandler((server) => {
     },
   );
 }, {
-  serverInfo: { name: "portulan", version: "0.5.0" },
+  serverInfo: { name: "portulan", version: "0.6.0" },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{slug}) aponta sempre para a última versão; publicPath (/p/{releaseId}) fixa uma versão específica. Use create_template e update_template para manter conteúdo-base e paleta dos templates.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{slug}) aponta sempre para a última versão; publicPath (/p/{releaseId}) fixa uma versão específica. Use list_markdown_components e explain_markdown_component para escrever diretivas ::: corretamente. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {

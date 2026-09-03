@@ -18,9 +18,12 @@ export {
 export {
   createTemplate,
   deleteTemplate,
+  duplicateTemplate,
   getDefaultTemplate,
   getTemplate,
+  getTemplateForUser,
   listTemplates,
+  previewTemplateContent,
   updateTemplate,
 } from "@/lib/db/templates";
 

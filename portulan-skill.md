@@ -11,7 +11,7 @@ Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable
 
 1. App Portulan acessível (ex.: `https://seu-dominio.com` ou `http://localhost:3000` em desenvolvimento)
 2. Endpoint MCP: `{origin}/api/mcp`
-3. Servidor MCP: `portulan` v0.4.0
+3. Servidor MCP: `portulan` v0.6.0
 4. Conta Portulan com login GitHub e **token MCP pessoal**
 
 Sem o app rodando ou sem token válido, conexões falham (timeout ou 401).
@@ -60,11 +60,16 @@ Se o cliente só suporta stdio, use um proxy HTTP como `mcp-remote`:
 
 Revogue tokens comprometidos no dashboard a qualquer momento.
 
-## Ferramentas (8)
+## Ferramentas (16)
 
 | Ferramenta | Quando usar |
 |---|---|
 | `list_templates` | Descobrir templates disponíveis (cores editoriais) |
+| `get_template` | Ler template completo (cores + conteúdo-base) |
+| `duplicate_template` | Clonar template acessível como template particular |
+| `preview_template` | Resumo leve do conteúdo-base de um template |
+| `list_markdown_components` | Catálogo de diretivas `:::` e Markdown |
+| `explain_markdown_component` | Sintaxe e exemplos de um componente |
 | `list_documents` | Descobrir o que existe; buscar por título, tag, template ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |
@@ -184,7 +189,7 @@ curl -sS -X POST https://seu-dominio.com/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 8 ferramentas.
+Deve listar 16 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

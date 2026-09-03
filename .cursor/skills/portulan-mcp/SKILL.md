@@ -11,7 +11,7 @@ Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable
 
 1. App rodando: `npm run dev` (Node 20+) no repo Portulan
 2. Endpoint: `http://localhost:3000/api/mcp`
-3. Servidor MCP: `portulan` v0.5.0
+3. Servidor MCP: `portulan` v0.6.0
 
 Sem o dev server, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
 
@@ -68,7 +68,7 @@ Authorization: Bearer <MCP_API_KEY>
 
 No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
 
-## Ferramentas (11)
+## Ferramentas (16)
 
 | Ferramenta | Quando usar |
 |---|---|
@@ -80,9 +80,14 @@ No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quan
 | `list_document_releases` | Recuperar links `/d/{slug}` (estável) e `/p/{id}` (versão fixa) já publicados |
 | `delete_document` | Remover definitivamente (só UUID) |
 | `list_templates` | Descobrir os templates disponíveis e seus conteúdos-base |
+| `get_template` | Ler um template completo (cores + conteúdo-base) |
 | `create_template` | Criar um template particular com paleta e Markdown inicial |
 | `update_template` | Alterar nome, cores ou conteúdo-base de um template |
+| `duplicate_template` | Clonar um template acessível como template particular |
+| `preview_template` | Resumo leve de um template (títulos + trecho inicial) |
 | `delete_template` | Remover definitivamente um template particular |
+| `list_markdown_components` | Catálogo de diretivas `:::` e Markdown do editor |
+| `explain_markdown_component` | Sintaxe, atributos e exemplos de um componente |
 
 Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 
@@ -162,8 +167,18 @@ Irreversível. Confirme com o usuário antes.
 
 ```
 1. list_templates → consultar id, paleta e conteúdo-base existentes
-2. create_template → criar uma variação particular, quando apropriado
-3. update_template → ajustar nome, cores ou conteúdo-base sem alterar documentos já criados
+2. get_template → ler conteúdo completo antes de editar ou clonar
+3. create_template → criar uma variação particular, quando apropriado
+4. duplicate_template → copiar um template interno ou particular
+5. preview_template → inspecionar títulos e trecho inicial sem baixar tudo
+6. update_template → ajustar nome, cores ou conteúdo-base sem alterar documentos já criados
+```
+
+### Escolher componente Markdown
+
+```
+1. list_markdown_components → descobrir diretivas e previews
+2. explain_markdown_component(name) → sintaxe, atributos e exemplos antes de escrever
 ```
 
 Templates internos também podem ter nome, paleta e conteúdo-base ajustados; não podem ser excluídos. Templates particulares só podem ser alterados ou excluídos pelo respectivo usuário.
@@ -279,7 +294,7 @@ curl -sS -X POST http://localhost:3000/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 11 ferramentas.
+Deve listar 16 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

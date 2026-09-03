@@ -22,9 +22,15 @@ MCP_API_KEY=
 
 ## Ferramentas — schemas e exemplos
 
-### `list_templates`, `create_template`, `update_template`, `delete_template`
+### `list_templates`, `get_template`, `create_template`, `update_template`, `duplicate_template`, `preview_template`, `delete_template`
 
 `list_templates` retorna templates internos e os templates particulares do usuário, incluindo `id`, `name`, `primaryColor`, `secondaryColor` e `content`.
+
+`get_template` recebe `{ "id": "..." }` e retorna o template completo quando o usuário tem acesso.
+
+`duplicate_template` recebe `{ "id": "...", "name": "opcional" }` e cria um clone particular com novo id.
+
+`preview_template` recebe `{ "id": "...", "max_chars": 400 }` e retorna nome, cores, `headings` (`##`/`###`) e `contentPreview`.
 
 ```json
 {
@@ -36,6 +42,14 @@ MCP_API_KEY=
 ```
 
 Use esse corpo com `create_template`. Para `update_template`, acrescente o `id` e envie apenas os campos a mudar. `delete_template` recebe `{ "id": "..." }` e só exclui templates particulares; modelos internos podem ser editados, mas não excluídos.
+
+### `list_markdown_components`, `explain_markdown_component`
+
+`list_markdown_components` não exige parâmetros e retorna o catálogo compartilhado com o editor (`lib/markdown-components.ts`).
+
+`explain_markdown_component` recebe `{ "name": "alert" }` (id, título pt-BR ou diretiva) e devolve passos, atributos, regras e exemplos. Retorna erro se o componente for desconhecido.
+
+---
 
 ### `list_documents`
 
