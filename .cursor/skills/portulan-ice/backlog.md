@@ -21,6 +21,12 @@ Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para
 | 11 | version-diff | Diff entre versões | Publicação | 8 | 8 | 6 | 38.4 | proposto |
 | 12 | review-comments | Comentários de revisão | Colaboração | 8 | 8 | 5 | 32.0 | proposto |
 
+## Entregue fora do ranking proposto
+
+| ID | Melhoria | Superfície | I | C | E | Score | Estado |
+|---|---|---|---|---|---|---|---|
+| workspace-nav | Dashboard, telas separadas e sidebar | Workspace | 7 | 10 | 7 | 49.0 | entregue |
+
 ## Escopo (não redescobrir)
 
 - **autosave** — Debounce no rascunho, Cmd/Ctrl+S, `beforeunload`. Não muda Publicar.
@@ -35,6 +41,7 @@ Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para
 - **mermaid** — Catálogo não renderiza flowchart/sequência/estado. Fence ` ```mermaid `, paleta do template, SVG na prévia/público/PDF.
 - **version-diff** — Comparar rascunho vs release, ou duas releases.
 - **review-comments** — Status “Em revisão” sem conversa. Painel no editor para quem tem acesso; âncora opcional à `##`. Sem comentário anônimo em `/p`.
+- **workspace-nav** (entregue) — Home monolítica virou Dashboard `/`, Biblioteca `/biblioteca`, Templates `/templates`, Integrações `/integrations`, com sidebar. Editor e `/d`/`/p` fora da chrome.
 
 ## Fora de propósito
 
@@ -46,4 +53,4 @@ Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para
 
 ## Já existe (não listar de novo)
 
-Editor Markdown + prévia, catálogo de diretivas `:::`, templates com paleta/logo, publicar com `/d/{slug}` e `/p/{id}`, compartilhar leitor/editor, MCP (docs/templates/componentes), PDF, duplicar na UI, desativar documento/versão, upload de imagem (Blob), checklist living em localStorage, card `:::report`.
+Editor Markdown + prévia, catálogo de diretivas `:::`, templates com paleta/logo, publicar com `/d/{slug}` e `/p/{id}`, compartilhar leitor/editor, MCP (docs/templates/componentes), PDF, duplicar na UI, desativar documento/versão, upload de imagem (Blob), checklist living em localStorage, card `:::report`, workspace autenticado com sidebar (Dashboard, Biblioteca, Templates, Integrações).

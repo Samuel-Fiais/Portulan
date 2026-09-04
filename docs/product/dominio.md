@@ -68,10 +68,6 @@ Credencial pessoal (`ptl_…`). Expira em 30d, 60d, 1 ano ou nunca. Autentica o 
 
 Bloco do catálogo (alerta, gráfico, checklist, …). A modal **Adicionar componente** e o MCP leem o mesmo catálogo. Novo bloco = uma entrada no catálogo, não uma lista paralela no editor.
 
-### Anexo (Blob)
-
-Arquivo enviado pelo editor e referenciado por `:::file{url name title?}`. Armazenado em `portulan/users/{userId}/documents/{documentId}/files/`. Limite: 5 MB por arquivo. Imagens em `:::figure` usam o prefixo `…/images/` e tipos MIME de imagem.
-
 ## Identificadores públicos
 
 | URL | Significado |
@@ -81,12 +77,17 @@ Arquivo enviado pelo editor e referenciado por `:::file{url name title?}`. Armaz
 | `/documents/{id\|uuid}` | Editor autenticado. |
 | `/documents/{id}/preview` | Prévia do rascunho (quem tem acesso). |
 
+## Workspace autenticado
+
+Chrome com trilho de ícones (tooltips no desktop). Não vale para leitura pública nem para o editor (RN-70).
+
+| URL | Significado |
+|---|---|
+| `/` | Dashboard: resumo da biblioteca, documentos recentes, atalhos. |
+| `/biblioteca` | Lista completa, busca e filtro por template. |
+| `/templates` | Templates editoriais do usuário. |
+| `/integrations` | Endpoint MCP, tokens pessoais e skill do agente. |
+
 ## Componentes living
 
-### Checklist
-
-Itens `- [ ]` / `- [x]` dentro de `:::checklist`. Quando o leitor pode editar o documento, o estado persiste no Markdown fonte. Sem permissão de edição, o navegador pode manter cache local (localStorage) — o Markdown no servidor prevalece quando editável.
-
-### Testcase
-
-Bloco `:::testcase` com atributos `id` (obrigatório, único), `status` (`pending` | `ok` | `partial` | `error`), `priority` (`low` | `medium` | `high`) e `title`. Corpo em Markdown livre (pré-condição, passos, resultado esperado). Status persiste no atributo do opener quando editável — inclusive testcases aninhados em `:::columns`. Em leitura pública editável, a release exibida é atualizada junto com o rascunho.
+Itens `- [ ]` / `- [x]` dentro de `:::checklist`. Na leitura interativa o visitante pode marcar no **próprio navegador** (localStorage). Isso **não** altera o Markdown nem sincroniza entre aparelhos.

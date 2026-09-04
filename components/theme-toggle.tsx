@@ -1,10 +1,9 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
-export function ThemeToggle({ compact = false }: { compact?: boolean }) {
+export function ThemeToggle({ className }: { className?: string }) {
   function toggle() {
     const next = !document.documentElement.classList.contains("dark");
     document.documentElement.classList.toggle("dark", next);
@@ -14,20 +13,15 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size={compact ? "icon-sm" : "sm"}
-          onClick={toggle}
-          aria-label="Alternar tema"
-        >
-          <Sun className="theme-icon-sun" />
-          <Moon className="theme-icon-moon" />
-          {compact ? null : <span>Tema</span>}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>Alternar tema</TooltipContent>
-    </Tooltip>
+    <button
+      type="button"
+      className={cn("theme-toggle", className)}
+      onClick={toggle}
+      aria-label="Alternar tema claro ou escuro"
+      title="Alternar tema"
+    >
+      <Sun className="theme-icon-sun" />
+      <Moon className="theme-icon-moon" />
+    </button>
   );
 }

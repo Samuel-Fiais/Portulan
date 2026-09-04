@@ -483,7 +483,7 @@ async function authenticateMcpRequest(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return Response.json(
-      { error: "Token MCP ausente. Gere um token pessoal no dashboard Portulan (Integrações → MCP)." },
+      { error: "Token MCP ausente. Gere um token pessoal na tela Integrações do Portulan." },
       { status: 401 },
     );
   }

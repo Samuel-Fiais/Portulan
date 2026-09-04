@@ -9,7 +9,7 @@ export default function NotFound() {
       <BrandMark />
       <FileQuestion className="size-10 text-muted-foreground" />
       <div><h1 className="font-mono text-2xl font-bold">Documento não encontrado</h1><p className="mt-2 text-muted-foreground">Ele pode ter sido removido ou o endereço está incorreto.</p></div>
-      <Button asChild><Link href="/"><ArrowLeft />Voltar à biblioteca</Link></Button>
+      <Button asChild><Link href="/biblioteca"><ArrowLeft />Voltar à biblioteca</Link></Button>
     </main>
   );
 }

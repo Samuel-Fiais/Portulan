@@ -214,7 +214,7 @@ export function DocumentShareDialog({
             {loading ? <LoaderCircle className="size-4 animate-spin text-muted-foreground" /> : null}
           </div>
           {hasAccessList ? (
-            <ul className="divide-y divide-border rounded-lg border border-border">
+            <ul className="divide-y divide-border rounded-none border border-border">
               {owner ? (
                 <li className="flex flex-wrap items-center justify-between gap-3 p-3">
                   <div className="flex min-w-0 items-center gap-3">
@@ -279,11 +279,11 @@ export function DocumentShareDialog({
               ))}
             </ul>
           ) : loading ? (
-            <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+            <p className="rounded-none border border-dashed border-border p-4 text-sm text-muted-foreground">
               Carregando pessoas com acesso…
             </p>
           ) : (
-            <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+            <p className="rounded-none border border-dashed border-border p-4 text-sm text-muted-foreground">
               Nenhum convite ainda. Adicione e-mails acima para compartilhar acesso privado.
             </p>
           )}

@@ -52,6 +52,10 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 - **RN-51** O agente opera com a identidade e as permissões daquele usuário — não há bypass de dono.
 - **RN-52** Preferir `update_document` em documento existente; não duplicar o assunto com `create_document`.
 
+## Chrome do workspace
+
+- **RN-70** A navegação do workspace aparece só em Dashboard, Biblioteca, Templates e Integrações. No desktop é um trilho de ícones com tooltips. Não aparece na leitura pública (`/d`, `/p`), na prévia do rascunho, na exportação PDF nem no editor.
+
 ## Revisão (hoje vs. planejado)
 
 - **RN-60** (hoje) Status `review` é rótulo. Não há comentários nem fila de aprovação.

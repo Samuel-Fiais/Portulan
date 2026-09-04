@@ -4,15 +4,22 @@ O que o produto **faz** e o que **fará**. Estado: `existe` · `parcial` · `pla
 
 Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backlog.md). Ao entregar, mude o estado aqui e lá.
 
+## Workspace
+
+| ID | Capacidade | Estado |
+|---|---|---|
+| F-navegacao | Trilho de ícones com tooltips no desktop; drawer com rótulos no viewport estreito | existe |
+| F-dashboard | Resumo da biblioteca, documentos recentes, novo documento e atalhos para as outras telas | existe |
+
 ## Biblioteca
 
 | ID | Capacidade | Estado |
 |---|---|---|
-| F-biblioteca | Listar documentos do usuário e compartilhados, com busca local em título/resumo/tags | existe |
+| F-biblioteca | Listar documentos do usuário e compartilhados, com busca local em título/resumo/tags, em tela própria | existe |
 | F-filtro-template | Filtrar a lista por template | existe |
 | F-filtro-status | Filtrar por rascunho / revisão / publicado / arquivado; cards de resumo clicáveis | planejado (`status-filter`) |
 | F-busca-corpo | Buscar também no conteúdo (UI e MCP) | planejado (`content-search`) |
-| F-stats | Contar documentos, publicados, em revisão, rascunhos | existe |
+| F-stats | Contar documentos, publicados, em revisão, rascunhos (no dashboard) | existe |
 
 ## Editor
 
@@ -62,11 +69,11 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 
 | ID | Capacidade | Estado |
 |---|---|---|
-| F-templates | Criar/editar/duplicar template particular; Default interno | existe |
+| F-templates | Criar/editar/duplicar template particular; Default interno; tela própria | existe |
 | F-logo | Logo do template e upload de imagens de relatório (Blob) | existe |
 | F-anexo | Upload de anexos de qualquer tipo em relatórios (`:::file`) com card e badge de extensão | existe |
 | F-auth | Login GitHub | existe |
-| F-mcp-token | Gerar e revogar token pessoal MCP | existe |
+| F-mcp-token | Gerar e revogar token pessoal MCP na tela Integrações; tokens ativos em tabela | existe |
 
 ## Agentes
 

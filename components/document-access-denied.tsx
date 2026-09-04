@@ -14,7 +14,7 @@ const messages = {
     title: "Você não tem acesso a este documento.",
     description:
       "Peça ao responsável para compartilhar o documento com o e-mail vinculado à sua conta GitHub. Convites pendentes só funcionam após login com o mesmo e-mail.",
-    action: { href: "/", label: "Voltar à biblioteca", icon: ArrowLeft },
+    action: { href: "/biblioteca", label: "Voltar à biblioteca", icon: ArrowLeft },
   },
 } as const;
 
