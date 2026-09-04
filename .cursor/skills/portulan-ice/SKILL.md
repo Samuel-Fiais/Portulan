@@ -31,13 +31,15 @@ Critério: só entra o que o código hoje não faz e que cabe no produto. Não i
 
 | Superfície | Arquivos |
 |---|---|
-| Biblioteca | `components/dashboard.tsx`, `lib/db/documents.ts` (`listDocuments`) |
+| Workspace | `components/workspace-sidebar.tsx`, `app/(workspace)/` |
+| Biblioteca | `components/library-panel.tsx`, `lib/db/documents.ts` (`listDocuments`) |
 | Editor | `components/document-editor.tsx`, `app/actions.ts` |
 | Markdown / blocos | `lib/markdown-components.ts`, `components/rich-markdown.tsx` |
 | Publicação / versões | `lib/db/documents.ts` (`publishDocument`, `documentReleases`), aba Histórico no editor |
 | Leitura pública | `components/public-document-view.tsx`, `components/report-preview.tsx`, `app/d/`, `app/p/` |
 | Compartilhar | `lib/document-share-policy.ts`, `components/document-share-dialog.tsx` |
-| MCP | `app/api/mcp/route.ts`, `.cursor/skills/portulan-mcp/SKILL.md` |
+| Templates | `components/templates-panel.tsx` |
+| MCP | `app/api/mcp/route.ts`, `.cursor/skills/portulan-mcp/SKILL.md`, `components/integrations-panel.tsx` |
 | Checklist living | `components/living-checklist.tsx`, `lib/living-document-storage.ts` (hoje: localStorage) |
 
 ## Saída

@@ -3,17 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import type { Session } from "next-auth";
-import { ChevronDown, LogOut, Moon, Sun } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-function toggleTheme() {
-  const next = !document.documentElement.classList.contains("dark");
-  document.documentElement.classList.toggle("dark", next);
-  const theme = next ? "dark" : "light";
-  localStorage.setItem("portulan-theme", theme);
-  localStorage.removeItem("festpay-docs-theme");
-}
-
-export function AuthControls({ session }: { session: Session | null }) {
+export function AuthControls({
+  session,
+  menuPlacement = "bottom",
+  compact = false,
+}: {
+  session: Session | null;
+  menuPlacement?: "bottom" | "top" | "rail";
+  compact?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +62,7 @@ export function AuthControls({ session }: { session: Session | null }) {
         type="button"
         className="auth-controls auth-menu-trigger"
         aria-label="Menu da conta"
+        title={login}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
@@ -69,25 +71,20 @@ export function AuthControls({ session }: { session: Session | null }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={avatar} alt="" className="auth-avatar" width={28} height={28} />
         ) : null}
-        <span className="auth-login">{login}</span>
-        <ChevronDown className="auth-menu-chevron" aria-hidden="true" />
+        {compact ? null : <span className="auth-login">{login}</span>}
+        {compact ? null : (
+          <ChevronDown className="auth-menu-chevron" aria-hidden="true" />
+        )}
       </button>
       {open ? (
-        <div className="auth-menu-panel" role="menu">
-          <button
-            type="button"
-            className="auth-menu-item"
-            role="menuitem"
-            onClick={() => {
-              toggleTheme();
-              setOpen(false);
-            }}
-          >
-            <Sun className="theme-icon-sun" />
-            <Moon className="theme-icon-moon" />
-            Tema
-          </button>
-          <div className="auth-menu-separator" role="separator" />
+        <div
+          className={cn(
+            "auth-menu-panel",
+            menuPlacement === "top" && "auth-menu-panel--top",
+            menuPlacement === "rail" && "auth-menu-panel--rail",
+          )}
+          role="menu"
+        >
           <button
             type="button"
             className="auth-menu-item auth-menu-item-destructive"

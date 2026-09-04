@@ -26,7 +26,7 @@ export function UserAvatar({ name, login, email, imageUrl, className, title }: U
         src={imageUrl}
         alt={label}
         title={label}
-        className={cn("size-7 rounded-full border border-border object-cover", className)}
+        className={cn("size-7 rounded-none object-cover", className)}
       />
     );
   }
@@ -35,7 +35,7 @@ export function UserAvatar({ name, login, email, imageUrl, className, title }: U
     <span
       title={label}
       className={cn(
-        "inline-flex size-7 items-center justify-center rounded-full border border-border bg-muted font-mono text-[10px] font-semibold uppercase text-muted-foreground",
+        "inline-flex size-7 items-center justify-center rounded-none bg-muted font-mono text-[10px] font-semibold uppercase text-muted-foreground",
         className,
       )}
     >

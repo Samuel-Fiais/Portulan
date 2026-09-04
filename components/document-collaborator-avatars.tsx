@@ -49,11 +49,11 @@ export function DocumentCollaboratorAvatars({
           <Tooltip key={person.id}>
             <TooltipTrigger asChild>
               {onClick ? (
-                <button type="button" className="rounded-full" onClick={onClick} aria-label={`${name} · ${roleLabels[person.role]}`}>
+                <button type="button" className="rounded-none" onClick={onClick} aria-label={`${name} · ${roleLabels[person.role]}`}>
                   {avatar}
                 </button>
               ) : (
-                <span className="inline-flex rounded-full">{avatar}</span>
+                <span className="inline-flex rounded-none">{avatar}</span>
               )}
             </TooltipTrigger>
             <TooltipContent sideOffset={6}>
@@ -66,7 +66,7 @@ export function DocumentCollaboratorAvatars({
       {overflow > 0 ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="inline-flex size-7 items-center justify-center rounded-full border border-border bg-muted font-mono text-[10px] font-semibold text-muted-foreground ring-2 ring-background">
+            <span className="inline-flex size-7 items-center justify-center rounded-none bg-muted font-mono text-[10px] font-semibold text-muted-foreground ring-2 ring-background">
               +{overflow}
             </span>
           </TooltipTrigger>

@@ -54,6 +54,15 @@ export type DocumentRecord = {
   disabled: boolean;
 };
 
+export type DocumentSummary = Omit<DocumentRecord, "content">;
+
+export type DocumentStats = {
+  total: number;
+  published: number;
+  review: number;
+  draft: number;
+};
+
 export type DocumentRelease = {
   id: string;
   documentId: string;

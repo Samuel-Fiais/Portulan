@@ -14,10 +14,12 @@ Regras: RN-07, RN-52.
 
 ## Editar e salvar
 
-1. Responsável ou editor altera título, resumo, Markdown, metadados ou template.
-2. Salvar grava o rascunho. Não publica. Não gera `/p` novo.
-3. Prévia ao lado reflete o rascunho; “Abrir prévia” abre o rascunho autenticado em outra aba.
-4. Anexos: na modal **Adicionar componente**, escolher **Arquivo**, enviar o arquivo (qualquer tipo, até 5 MB) e inserir `:::file{url name title?}`. Imagens continuam em **Imagem** (`:::figure`).
+1. Da Biblioteca (ou do dashboard, pelos recentes), a pessoa abre o documento.
+2. Responsável ou editor altera título, resumo, Markdown, metadados ou template.
+3. Salvar grava o rascunho. Não publica. Não gera `/p` novo.
+4. Prévia ao lado reflete o rascunho; “Abrir prévia” abre o rascunho autenticado em outra aba.
+5. Anexos: na modal **Adicionar componente**, escolher **Arquivo**, enviar o arquivo (qualquer tipo, até 5 MB) e inserir `:::file{url name title?}`. Imagens continuam em **Imagem** (`:::figure`).
+6. Voltar no editor retorna à Biblioteca.
 
 Regras: RN-01, RN-08, RN-11, RN-45, RN-46.
 

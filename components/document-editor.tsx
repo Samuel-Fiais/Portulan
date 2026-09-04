@@ -451,7 +451,7 @@ export function DocumentEditor({
       <header className="editor-topbar no-print">
         <div className="editor-topbar-inner">
         <div className="editor-context flex min-w-0 items-center gap-2">
-          <Button variant="ghost" size="icon" asChild><Link href="/" aria-label="Voltar"><ArrowLeft /></Link></Button>
+          <Button variant="ghost" size="icon" asChild><Link href="/biblioteca" aria-label="Voltar à biblioteca"><ArrowLeft /></Link></Button>
           <div className="min-w-0">
             <strong className="block truncate text-sm">{document.title}</strong>
             <small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small>
@@ -662,7 +662,7 @@ export function DocumentEditor({
                       <span>Identificador fixo; renomear o título não altera este link</span>
                       <code>/d/{document.slug}</code>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="version-history-actions flex items-center gap-2">
                       <Button type="button" variant="outline" size="xs" onClick={() => copyShareUrl(`/d/${document.slug}`, "Link estável")}><Link2 />Copiar link</Button>
                       <Button type="button" variant="outline" size="xs" asChild><Link href={`/d/${document.slug}`} target="_blank"><ExternalLink />Abrir</Link></Button>
                     </div>
@@ -683,7 +683,7 @@ export function DocumentEditor({
                           </span>
                           <code>/p/{release.id}</code>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="version-history-actions flex flex-wrap items-center gap-2">
                           <Button type="button" variant="outline" size="xs" onClick={() => copyShareUrl(`/p/${release.id}`, `Versão fixa v${release.version}`)}><Link2 />Copiar link</Button>
                           <Button type="button" variant="outline" size="xs" asChild><Link href={`/p/${release.id}`} target="_blank"><ExternalLink />Abrir</Link></Button>
                           {canEdit ? (

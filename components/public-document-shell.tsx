@@ -12,7 +12,7 @@ export function PublicDocumentShell({
       {notice ? <div className="draft-preview-notice no-print">{notice}</div> : null}
       <main className="public-document-main">{children}</main>
       <div className="public-document-theme-toggle no-print">
-        <ThemeToggle compact />
+        <ThemeToggle />
       </div>
     </div>
   );
