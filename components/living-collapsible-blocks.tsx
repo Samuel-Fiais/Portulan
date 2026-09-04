@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { InlineMarkdown } from "@/components/inline-markdown";
 import { resolvePropertyValue } from "@/lib/property-value";
+import { hrefFromValue } from "@/lib/report-links";
 
 function PropertyValueCell({ value, type }: { value: string; type: string }) {
   const resolved = resolvePropertyValue(value, type);
