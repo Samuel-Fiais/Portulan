@@ -45,7 +45,7 @@ const GLOBAL_EXAMPLES: AvoidErrorsExample[] = [
   },
   {
     label: "Path de API com `{walletId}`",
-    bad: ':::api{method="GET" path="/wallets/{walletId}"}',
+    bad: ':::api{method="GET" path="/wallets/"}{walletId}/grades"}',
     good: ':::api{method="GET" path="/api/v1/wallets/{walletId}/grades"}\n{\n  "items": []\n}\n:::',
   },
   {
