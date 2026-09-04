@@ -12,6 +12,35 @@ test("parseMarkdownBlocks trata :::report como diretiva de uma linha", () => {
   }
 });
 
+test("parseMarkdownBlocks ignora ::: de fechamento após :::report void", () => {
+  const source = [
+    ':::report{slug="roadmap" title="Roadmap" summary="Resumo."}',
+    ":::",
+    "",
+    "Texto depois.",
+  ].join("\n");
+
+  const blocks = parseMarkdownBlocks(source);
+  assert.equal(blocks.length, 2);
+  assert.equal(blocks[0].kind, "directive");
+  assert.equal(blocks[1].kind, "markdown");
+  if (blocks[1].kind === "markdown") {
+    assert.equal(blocks[1].body.trim(), "Texto depois.");
+    assert.doesNotMatch(blocks[1].body, /^:::/m);
+  }
+});
+
+test("parseMarkdownBlocks ignora ::: de fechamento após :::image void", () => {
+  const source = [
+    ':::image{src="https://example.com/a.png" alt="A"}',
+    ":::",
+  ].join("\n");
+
+  const blocks = parseMarkdownBlocks(source);
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].kind, "directive");
+});
+
 test("parseMarkdownBlocks trata :::image como diretiva de uma linha", () => {
   const source = [
     ':::image{src="https://a.png" alt="A"}',

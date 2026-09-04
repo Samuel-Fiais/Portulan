@@ -46,7 +46,11 @@ export type MarkdownBlock =
   | { kind: "directive"; directive: MarkdownDirective };
 
 /** Single-line directives that do not use a closing `:::`. */
-const VOID_DIRECTIVES = new Set(["image", "report"]);
+export const VOID_DIRECTIVES = new Set(["image", "report"]);
+
+function isClosingFence(line: string) {
+  return line.trim() === ":::";
+}
 
 export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
   const lines = source.split("\n");
@@ -79,6 +83,9 @@ export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
           body: "",
         },
       });
+      if (index + 1 < lines.length && isClosingFence(lines[index + 1])) {
+        index += 1;
+      }
       continue;
     }
 

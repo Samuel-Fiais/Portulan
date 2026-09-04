@@ -12,8 +12,14 @@ test("buildGlobalAvoidErrorsSection cobre regras de sintaxe e exemplos", () => {
   assert.equal(section.title, "Como evitar erros");
   assert.ok(section.syntaxRules.some((rule) => rule.includes("sem espaço")));
   assert.ok(section.syntaxRules.some((rule) => rule.includes("columns")));
+  assert.ok(section.syntaxRules.some((rule) => rule.includes(":::report")));
+  assert.ok(section.syntaxRules.some((rule) => rule.includes("<param>")));
   assert.ok(section.commonAgentFailures.some((item) => item.includes("HTML")));
+  assert.ok(section.commonAgentFailures.some((item) => item.includes("<walletId>")));
+  assert.ok(section.commonAgentFailures.some((item) => item.includes(":::report")));
   assert.ok(section.examples.some((example) => example.bad?.includes("{walletId}")));
+  assert.ok(section.examples.some((example) => example.bad?.includes("<walletId>")));
+  assert.ok(section.examples.some((example) => example.bad?.includes(':::report')));
 });
 
 test("getComponentAvoidErrors inclui armadilhas por componente", () => {
