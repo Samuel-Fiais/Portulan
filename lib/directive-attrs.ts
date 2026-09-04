@@ -34,3 +34,84 @@ export function parseDirectiveOpener(line: string): { name: string; attributeSou
 
   return null;
 }
+
+export type MarkdownDirective = {
+  name: string;
+  attributes: Record<string, string>;
+  body: string;
+};
+
+export type MarkdownBlock =
+  | { kind: "markdown"; body: string }
+  | { kind: "directive"; directive: MarkdownDirective };
+
+/** Single-line directives that do not use a closing `:::`. */
+const VOID_DIRECTIVES = new Set(["image", "report"]);
+
+export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
+  const lines = source.split("\n");
+  const blocks: MarkdownBlock[] = [];
+  let markdown: string[] = [];
+
+  const flushMarkdown = () => {
+    if (markdown.some((line) => line.trim())) {
+      blocks.push({ kind: "markdown", body: markdown.join("\n") });
+    }
+    markdown = [];
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const opener = parseDirectiveOpener(lines[index]);
+    if (!opener || lines[index] === ":::") {
+      markdown.push(lines[index]);
+      continue;
+    }
+
+    flushMarkdown();
+    const directiveName = opener.name.toLowerCase();
+
+    if (VOID_DIRECTIVES.has(directiveName)) {
+      blocks.push({
+        kind: "directive",
+        directive: {
+          name: directiveName,
+          attributes: parseAttributes(opener.attributeSource),
+          body: "",
+        },
+      });
+      continue;
+    }
+
+    const body: string[] = [];
+    const allowsNestedDirectives = directiveName === "columns";
+    let depth = 1;
+    index += 1;
+    while (index < lines.length) {
+      if (allowsNestedDirectives && parseDirectiveOpener(lines[index])) {
+        depth += 1;
+        body.push(lines[index]);
+        index += 1;
+        continue;
+      }
+      if (lines[index].trim() === ":::") {
+        depth -= 1;
+        if (depth === 0) break;
+        body.push(lines[index]);
+        index += 1;
+        continue;
+      }
+      body.push(lines[index]);
+      index += 1;
+    }
+    blocks.push({
+      kind: "directive",
+      directive: {
+        name: directiveName,
+        attributes: parseAttributes(opener.attributeSource),
+        body: body.join("\n").trim(),
+      },
+    });
+  }
+  flushMarkdown();
+  return blocks;
+}

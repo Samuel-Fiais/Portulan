@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useDeferredValue, useMemo, useRef, useState, useTransition, type CSSProperties } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Ban, Blocks, Check, ChevronRight, Copy, Download, ExternalLink, Eye, FileText, Globe, History, Link2, LoaderCircle, MoreHorizontal, PanelRight, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Ban, Blocks, Copy, Download, ExternalLink, Eye, FileText, Globe, History, Link2, LoaderCircle, MoreHorizontal, Plus, RotateCcw, Save, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, setDocumentDisabledAction, setDocumentReleaseDisabledAction, updateDocumentAction } from "@/app/actions";
-import { BrandMark } from "@/components/brand-mark";
+import { BlobImageUpload } from "@/components/blob-image-upload";
 import { DocumentCollaboratorAvatars } from "@/components/document-collaborator-avatars";
 import { DocumentShareDialog } from "@/components/document-share-dialog";
+import { ReportLinkCard } from "@/components/report-link-card";
 import { ReportPreview } from "@/components/report-preview";
 import { RichMarkdown } from "@/components/rich-markdown";
 import { StatusBadge, TemplateBadge, DisabledBadge } from "@/components/document-badges";
@@ -20,17 +21,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
-import { documentStatuses, statusMeta, type DocumentCollaborator, type DocumentRecord, type DocumentRelease, type TemplateRecord } from "@/lib/documents";
+import { documentStatuses, statusMeta, hasUnpublishedChanges, type DocumentCollaborator, type DocumentRecord, type DocumentRelease, type TemplateRecord } from "@/lib/documents";
 import {
   applyComponentProperties,
   defaultComponentProperties,
+  groupMarkdownComponentsByCategory,
   markdownComponents,
   type MarkdownComponent,
 } from "@/lib/markdown-components";
+import { reportPaletteStyle } from "@/lib/color-utils";
 import { cn, formatRelativeDate } from "@/lib/utils";
 
-type LinkableDocument = { id: string; slug: string; title: string };
+type LinkableDocument = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  templateName: string;
+  primaryColor: string;
+  secondaryColor: string;
+};
+
+const SPLIT_HANDLE_WIDTH = 5;
+const EDITOR_MIN_PX = 320;
+const PREVIEW_MIN_PX = 360;
+
+function clampEditorPaneWidth(width: number, workspaceWidth: number) {
+  const maxEditorWidth = workspaceWidth - PREVIEW_MIN_PX - SPLIT_HANDLE_WIDTH;
+  return Math.max(EDITOR_MIN_PX, Math.min(maxEditorWidth, width));
+}
 
 export function DocumentEditor({
   initialDocument,
@@ -51,10 +72,12 @@ export function DocumentEditor({
   const [document, setDocument] = useState(initialDocument);
   const [savedDocument, setSavedDocument] = useState(initialDocument);
   const [releases, setReleases] = useState(initialReleases);
-  const [previewVisible, setPreviewVisible] = useState(true);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [editorPaneWidth, setEditorPaneWidth] = useState<number | null>(null);
+  const [splitDragging, setSplitDragging] = useState(false);
+  const [documentCollaborators, setDocumentCollaborators] = useState(collaborators);
   const [exporting, setExporting] = useState(false);
   const [componentPickerOpen, setComponentPickerOpen] = useState(false);
-  const [reportLinkPickerOpen, setReportLinkPickerOpen] = useState(false);
   const [linkableDocuments, setLinkableDocuments] = useState<LinkableDocument[]>([]);
   const [reportLinkSearch, setReportLinkSearch] = useState("");
   const [componentSearch, setComponentSearch] = useState("");
@@ -63,8 +86,51 @@ export function DocumentEditor({
   const [pending, startTransition] = useTransition();
   const markdownEditorRef = useRef<HTMLTextAreaElement>(null);
   const markdownSelectionRef = useRef({ start: 0, end: 0 });
+  const workspaceRef = useRef<HTMLElement>(null);
   const dirty = useMemo(() => JSON.stringify(document) !== JSON.stringify(savedDocument), [document, savedDocument]);
+  const latestRelease = releases[0];
+  const canPublish = useMemo(() => hasUnpublishedChanges(document, latestRelease), [document, latestRelease]);
+
+  useEffect(() => {
+    setDocumentCollaborators(collaborators);
+  }, [collaborators]);
+
+  useEffect(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+
+    const syncEditorPaneWidth = () => {
+      setEditorPaneWidth((current) => {
+        if (current === null) return null;
+        return clampEditorPaneWidth(current, workspace.clientWidth);
+      });
+    };
+
+    const observer = new ResizeObserver(syncEditorPaneWidth);
+    observer.observe(workspace);
+    return () => observer.disconnect();
+  }, []);
+
   const deferredDocument = useDeferredValue(document);
+  const previewDocument = useMemo(() => {
+    const template = templates.find((item) => item.id === document.templateId);
+    return {
+      ...deferredDocument,
+      templateId: document.templateId,
+      templateName: template?.name ?? document.templateName,
+      primaryColor: template?.primaryColor ?? document.primaryColor,
+      secondaryColor: template?.secondaryColor ?? document.secondaryColor,
+      logoUrl: template?.logoUrl ?? document.logoUrl ?? null,
+    };
+  }, [
+    deferredDocument,
+    document.templateId,
+    document.templateName,
+    document.primaryColor,
+    document.secondaryColor,
+    document.logoUrl,
+    templates,
+  ]);
   const visibleLinkableDocuments = useMemo(() => {
     const query = reportLinkSearch.trim().toLocaleLowerCase("pt-BR");
     return query
@@ -80,51 +146,33 @@ export function DocumentEditor({
   const selectedMarkdownComponent = visibleMarkdownComponents.find((component) => component.id === selectedMarkdownComponentId)
     ?? visibleMarkdownComponents[0]
     ?? markdownComponents[0];
-  const previewPaletteStyle = useMemo(() => ({
-    "--report-accent": deferredDocument.primaryColor,
-    "--report-accent-2": deferredDocument.secondaryColor,
-  }) as CSSProperties, [deferredDocument.primaryColor, deferredDocument.secondaryColor]);
-  const selectedMarkdownComponentPreview = useMemo(
-    () => applyComponentProperties(selectedMarkdownComponent.preview, componentPropertyValues),
-    [selectedMarkdownComponent, componentPropertyValues],
+  const previewPaletteStyle = useMemo(
+    () => reportPaletteStyle(previewDocument.primaryColor, previewDocument.secondaryColor) as CSSProperties,
+    [previewDocument.primaryColor, previewDocument.secondaryColor],
   );
+  const componentGroups = useMemo(
+    () => groupMarkdownComponentsByCategory(visibleMarkdownComponents),
+    [visibleMarkdownComponents],
+  );
+  const selectedMarkdownComponentPreview = useMemo(() => {
+    const previewProperties = { ...componentPropertyValues };
+    if (selectedMarkdownComponent.pickerAction === "image-upload" && !previewProperties.src?.startsWith("http")) {
+      previewProperties.src = "/portulan-logo.png";
+    }
+    return applyComponentProperties(selectedMarkdownComponent.preview, previewProperties);
+  }, [selectedMarkdownComponent, componentPropertyValues]);
+  const canInsertSelectedComponent = useMemo(() => {
+    if (selectedMarkdownComponent.pickerAction === "image-upload") {
+      return Boolean(componentPropertyValues.src?.startsWith("http"));
+    }
+    if (selectedMarkdownComponent.pickerAction === "report-select") {
+      return Boolean(componentPropertyValues.slug && componentPropertyValues.title);
+    }
+    return true;
+  }, [selectedMarkdownComponent, componentPropertyValues]);
 
   function patch<K extends keyof DocumentRecord>(key: K, value: DocumentRecord[K]) {
     setDocument((current) => ({ ...current, [key]: value }));
-  }
-
-  function openReportLinkPicker() {
-    const editor = markdownEditorRef.current;
-    markdownSelectionRef.current = {
-      start: editor?.selectionStart ?? document.content.length,
-      end: editor?.selectionEnd ?? document.content.length,
-    };
-    setReportLinkSearch("");
-    setReportLinkPickerOpen(true);
-    startTransition(async () => {
-      const result = await listLinkableDocumentsAction(document.id);
-      if (!result.ok) {
-        toast.error(result.error);
-        setReportLinkPickerOpen(false);
-        return;
-      }
-      setLinkableDocuments(result.documents);
-    });
-  }
-
-  function insertReportLink(item: LinkableDocument) {
-    const { start, end } = markdownSelectionRef.current;
-    const snippet = `[${item.title}](/d/${item.slug})`;
-    const prefix = start > 0 && !document.content.slice(0, start).endsWith("\n\n") ? "\n\n" : "";
-    const suffix = end < document.content.length && !document.content.slice(end).startsWith("\n\n") ? "\n\n" : "";
-    const content = `${document.content.slice(0, start)}${prefix}${snippet}${suffix}${document.content.slice(end)}`;
-    patch("content", content);
-    setReportLinkPickerOpen(false);
-    requestAnimationFrame(() => {
-      markdownEditorRef.current?.focus();
-      const cursor = start + prefix.length + snippet.length;
-      markdownEditorRef.current?.setSelectionRange(cursor, cursor);
-    });
   }
 
   function openComponentPicker() {
@@ -134,9 +182,18 @@ export function DocumentEditor({
       end: editor?.selectionEnd ?? document.content.length,
     };
     setComponentSearch("");
+    setReportLinkSearch("");
     setSelectedMarkdownComponentId(markdownComponents[0].id);
     setComponentPropertyValues(defaultComponentProperties(markdownComponents[0]));
     setComponentPickerOpen(true);
+    startTransition(async () => {
+      const result = await listLinkableDocumentsAction(document.id);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setLinkableDocuments(result.documents);
+    });
   }
 
   function insertMarkdownComponent(component: MarkdownComponent) {
@@ -144,13 +201,16 @@ export function DocumentEditor({
     const selectedText = document.content.slice(start, end);
     const placeholder = "{{conteúdo}}";
     const configuredSnippet = applyComponentProperties(component.snippet, componentPropertyValues);
+    const placeholderText = component.pickerAction === "image-upload"
+      ? selectedText
+      : (selectedText || "Escreva aqui.");
     const placeholderIndex = configuredSnippet.indexOf(placeholder);
-    const snippet = configuredSnippet.replace(placeholder, selectedText || "Escreva aqui.");
+    const snippet = configuredSnippet.replace(placeholder, placeholderText);
     const prefix = start > 0 && !document.content.slice(0, start).endsWith("\n\n") ? "\n\n" : "";
     const suffix = end < document.content.length && !document.content.slice(end).startsWith("\n\n") ? "\n\n" : "";
     const content = `${document.content.slice(0, start)}${prefix}${snippet}${suffix}${document.content.slice(end)}`;
     const cursorStart = start + prefix.length + Math.max(placeholderIndex, 0);
-    const cursorEnd = cursorStart + (selectedText || "Escreva aqui.").length;
+    const cursorEnd = cursorStart + placeholderText.length;
 
     patch("content", content);
     setComponentPickerOpen(false);
@@ -169,6 +229,7 @@ export function DocumentEditor({
       templateName: template.name,
       primaryColor: template.primaryColor,
       secondaryColor: template.secondaryColor,
+      logoUrl: template.logoUrl,
     }));
   }
 
@@ -327,6 +388,34 @@ export function DocumentEditor({
     }
   }
 
+  function startSplitResize(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+
+    setSplitDragging(true);
+    window.document.body.style.cursor = "col-resize";
+    window.document.body.style.userSelect = "none";
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const rect = workspace.getBoundingClientRect();
+      const nextWidth = moveEvent.clientX - rect.left;
+      setEditorPaneWidth(clampEditorPaneWidth(nextWidth, rect.width));
+    };
+
+    const onUp = () => {
+      setSplitDragging(false);
+      window.document.body.style.cursor = "";
+      window.document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+
+    onMove(event.nativeEvent);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
   function openDraftPreview() {
     const previewWindow = window.open("", "_blank");
     if (!previewWindow) {
@@ -352,67 +441,133 @@ export function DocumentEditor({
     <div className="editor-shell">
       <header className="editor-topbar no-print">
         <div className="editor-topbar-inner">
-        <div className="editor-context flex min-w-0 items-center gap-3">
+        <div className="editor-context flex min-w-0 items-center gap-2">
           <Button variant="ghost" size="icon" asChild><Link href="/" aria-label="Voltar"><ArrowLeft /></Link></Button>
-          <BrandMark className="hidden sm:flex" />
-          <ChevronRight className="hidden size-3.5 text-border sm:block" />
-          <div className="min-w-0"><strong className="block truncate text-sm">{document.title}</strong><small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small></div>
-          {collaborators.length ? <DocumentCollaboratorAvatars collaborators={collaborators} className="hidden md:flex" /> : null}
+          <div className="min-w-0">
+            <strong className="block truncate text-sm">{document.title}</strong>
+            <small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small>
+          </div>
         </div>
-        <div className="editor-actions flex items-center gap-1.5">
-          <Button variant="outline" size="sm" className="hidden md:flex" onClick={() => setPreviewVisible(!previewVisible)}><PanelRight />{previewVisible ? "Ocultar preview" : "Mostrar preview"}</Button>
-          <Button variant="outline" size="sm" onClick={openDraftPreview}><Eye /><span className="hidden sm:inline">Abrir prévia</span></Button>
-          <Button variant="outline" size="sm" onClick={exportPdf} disabled={exporting || pending}>{exporting ? <LoaderCircle className="animate-spin" /> : <Download />}<span className="hidden sm:inline">{exporting ? "Gerando PDF" : "Exportar PDF"}</span></Button>
-          {isOwner ? <DocumentShareDialog documentId={document.id} initialCollaborators={collaborators} /> : null}
+        <div className="editor-actions flex items-center gap-2">
+          {documentCollaborators.length ? (
+            <DocumentCollaboratorAvatars
+              collaborators={documentCollaborators}
+              className="hidden md:flex"
+              onClick={isOwner ? () => setShareDialogOpen(true) : undefined}
+            />
+          ) : null}
+          <div className="flex items-center gap-1">
           {canEdit ? (
             <>
-              <Button variant="outline" size="sm" onClick={publish} disabled={pending}><Globe /><span className="hidden sm:inline">Publicar</span></Button>
-              <Button size="sm" onClick={save} disabled={!dirty || pending}>{pending ? <span className="saving-dot" /> : dirty ? <Save /> : <Check />}<span className="hidden sm:inline">{pending ? "Salvando" : dirty ? "Salvar" : "Salvo"}</span></Button>
-              {isOwner ? (
+              {dirty ? (
+                <Button size="sm" onClick={save} disabled={pending}>
+                  {pending ? <LoaderCircle className="animate-spin" /> : <Save />}
+                  <span className="hidden sm:inline">{pending ? "Salvando" : "Salvar"}</span>
+                </Button>
+              ) : null}
+              {canPublish ? (
+                <Button variant="outline" size="sm" onClick={publish} disabled={pending}>
+                  <Globe />
+                  <span className="hidden sm:inline">Publicar</span>
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button variant="outline" size="sm" disabled>
+                        <Globe />
+                        <span className="hidden sm:inline">Publicar</span>
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6}>Não há alterações em relação à última versão publicada</TooltipContent>
+                </Tooltip>
+              )}
               <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Mais ações"><MoreHorizontal /></Button></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={duplicate}><Copy />Duplicar documento</DropdownMenuItem>
+                  <DropdownMenuItem onClick={openDraftPreview}><Eye />Abrir prévia</DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportPdf} disabled={exporting || pending}>
+                    {exporting ? <LoaderCircle className="animate-spin" /> : <Download />}
+                    {exporting ? "Gerando PDF" : "Exportar PDF"}
+                  </DropdownMenuItem>
+                  {isOwner ? <DropdownMenuItem onClick={() => setShareDialogOpen(true)}><Share2 />Compartilhar</DropdownMenuItem> : null}
                   <DropdownMenuSeparator />
-                  {document.disabled ? (
-                    <DropdownMenuItem onClick={() => toggleDocumentDisabled(false)}><RotateCcw />Reativar documento</DropdownMenuItem>
-                  ) : (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive"><Ban />Desativar documento</DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Desativar este documento?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Todos os links públicos (/d/{document.slug} e /p/…) deixarão de exibir o conteúdo. Você poderá reativar depois.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => toggleDocumentDisabled(true)}>Desativar</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                  <DropdownMenuSeparator />
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive"><Trash2 />Excluir documento</DropdownMenuItem></AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Excluir este documento?</AlertDialogTitle><AlertDialogDescription>“{document.title}” será removido permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
-                      <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove}>Excluir definitivamente</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {isOwner ? <DropdownMenuItem onClick={duplicate}><Copy />Duplicar documento</DropdownMenuItem> : null}
+                  {isOwner ? (
+                    document.disabled ? (
+                      <DropdownMenuItem onClick={() => toggleDocumentDisabled(false)}><RotateCcw />Reativar documento</DropdownMenuItem>
+                    ) : (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive"><Ban />Desativar documento</DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Desativar este documento?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Todos os links públicos (/d/{document.slug} e /p/…) deixarão de exibir o conteúdo. Você poderá reativar depois.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => toggleDocumentDisabled(true)}>Desativar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )
+                  ) : null}
+                  {isOwner ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive"><Trash2 />Excluir documento</DropdownMenuItem></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader><AlertDialogTitle>Excluir este documento?</AlertDialogTitle><AlertDialogDescription>“{document.title}” será removido permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove}>Excluir definitivamente</AlertDialogAction></AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
-              ) : null}
             </>
-          ) : null}
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Mais ações"><MoreHorizontal /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={openDraftPreview}><Eye />Abrir prévia</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportPdf} disabled={exporting || pending}>
+                  {exporting ? <LoaderCircle className="animate-spin" /> : <Download />}
+                  {exporting ? "Gerando PDF" : "Exportar PDF"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          </div>
         </div>
         </div>
       </header>
+      {isOwner ? (
+        <DocumentShareDialog
+          documentId={document.id}
+          initialCollaborators={documentCollaborators}
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          onCollaboratorsChange={setDocumentCollaborators}
+          hideTrigger
+        />
+      ) : null}
 
-      <main className={cn("editor-workspace", !previewVisible && "preview-hidden")}>
+      <main
+        ref={workspaceRef}
+        className="editor-workspace"
+        style={
+          editorPaneWidth !== null
+            ? { gridTemplateColumns: `${editorPaneWidth}px ${SPLIT_HANDLE_WIDTH}px minmax(0, 1fr)` }
+            : undefined
+        }
+      >
         <section className="editor-pane no-print">
           <div className="editor-document-heading">
             <div className="flex flex-wrap items-center gap-2">
@@ -425,14 +580,11 @@ export function DocumentEditor({
           </div>
           <Tabs defaultValue="content" className="editor-tabs">
             <TabsList variant="line" className="editor-tabs-list"><TabsTrigger value="content"><FileText />Conteúdo</TabsTrigger><TabsTrigger value="metadata">Metadados</TabsTrigger><TabsTrigger value="history"><History />Histórico</TabsTrigger></TabsList>
-            <TabsContent value="content" className="editor-tab-content">
+            <TabsContent value="content" className="editor-tab-content editor-tab-content-markdown">
               <div className="markdown-hint">
                 <span>Markdown</span>
                 {canEdit ? (
-                  <div className="flex items-center gap-1">
-                    <Button type="button" variant="ghost" size="xs" onClick={openReportLinkPicker}><Link2 />Link para relatório</Button>
-                    <Button type="button" variant="ghost" size="xs" onClick={openComponentPicker}><Plus />Adicionar componente</Button>
-                  </div>
+                  <Button type="button" variant="ghost" size="xs" onClick={openComponentPicker}><Plus />Adicionar componente</Button>
                 ) : null}
               </div>
               <Textarea ref={markdownEditorRef} className="markdown-editor" value={document.content} onChange={(event) => patch("content", event.target.value)} spellCheck={false} aria-label="Conteúdo em Markdown" readOnly={!canEdit} />
@@ -559,9 +711,17 @@ export function DocumentEditor({
             </TabsContent>
           </Tabs>
         </section>
+        <div
+          className="editor-split-handle no-print"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Redimensionar editor e visualização"
+          data-dragging={splitDragging || undefined}
+          onPointerDown={startSplitResize}
+        />
         <section className="preview-pane">
           <div className="preview-label no-print"><span>Visualização</span><small>A impressão continua em A4</small></div>
-          <div className="preview-scroll"><ReportPreview document={deferredDocument} interactive /></div>
+          <div className="preview-scroll"><ReportPreview document={previewDocument} interactive /></div>
         </section>
       </main>
       <Dialog open={componentPickerOpen} onOpenChange={setComponentPickerOpen}>
@@ -572,43 +732,93 @@ export function DocumentEditor({
           </DialogHeader>
           <div className="markdown-component-browser">
             <div className="markdown-component-groups">
-              {(["Destaques", "Métricas e análise", "Planejamento e acompanhamento", "Gráficos", "Código e integrações", "Pessoas e colaboração", "Produto e pesquisa", "Operações e qualidade", "Documentação e referência", "Layout e composição", "Markdown"] as const).map((category) => {
-                const components = visibleMarkdownComponents.filter((component) => component.category === category);
-                if (!components.length) return null;
-              return <section className="markdown-component-section" key={category}><div className="markdown-component-category">{category}</div><div className="markdown-component-grid">{components.map((component) => <button type="button" className="markdown-component-option" data-active={component.id === selectedMarkdownComponent.id || undefined} key={component.id} onClick={() => { setSelectedMarkdownComponentId(component.id); setComponentPropertyValues(defaultComponentProperties(component)); }}><Blocks /><span><strong>{component.name}</strong><small>{component.description}</small></span></button>)}</div></section>;
-              })}
+              {componentGroups.map(({ category, components }) => (
+              <section className="markdown-component-section" key={category}>
+                <div className="markdown-component-category">{category}</div>
+                <div className="markdown-component-grid">
+                  {components.map((component) => (
+                    <button
+                      type="button"
+                      className="markdown-component-option"
+                      data-active={component.id === selectedMarkdownComponent.id || undefined}
+                      key={component.id}
+                      onClick={() => {
+                        setSelectedMarkdownComponentId(component.id);
+                        setComponentPropertyValues(defaultComponentProperties(component));
+                      }}
+                    >
+                      <Blocks />
+                      <span><strong>{component.name}</strong><small>{component.description}</small></span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              ))}
               {!visibleMarkdownComponents.length ? <p className="markdown-component-empty">Nenhum componente encontrado.</p> : null}
             </div>
             <aside className="markdown-component-preview-panel">
               <div className="markdown-component-category">Prévia</div>
-              <div className="markdown-component-preview"><article className="report-paper markdown-component-preview-paper" style={previewPaletteStyle}><div className="tmpl-body report-content"><RichMarkdown source={selectedMarkdownComponentPreview} /></div></article></div>
+              <div className="markdown-component-preview"><article className="report-paper markdown-component-preview-paper living-document" style={previewPaletteStyle}><div className="tmpl-body report-content"><RichMarkdown source={selectedMarkdownComponentPreview} interactive /></div></article></div>
               <strong>{selectedMarkdownComponent.name}</strong>
               <p>{selectedMarkdownComponent.description}</p>
+              {selectedMarkdownComponent.pickerAction === "image-upload" ? (
+                <div className="markdown-component-picker-action">
+                  <span>Arquivo</span>
+                  <BlobImageUpload
+                    purpose="report-image"
+                    documentId={document.id}
+                    label="Enviar imagem"
+                    disabled={pending}
+                    onUploaded={(url) => setComponentPropertyValues((current) => ({ ...current, src: url }))}
+                  />
+                  {!componentPropertyValues.src?.startsWith("http") ? (
+                    <p className="markdown-component-picker-hint">Envie uma imagem para habilitar a inserção.</p>
+                  ) : null}
+                </div>
+              ) : null}
+              {selectedMarkdownComponent.pickerAction === "report-select" ? (
+                <div className="markdown-component-report-picker">
+                  <span>Relatório publicado</span>
+                  <Input
+                    value={reportLinkSearch}
+                    onChange={(event) => setReportLinkSearch(event.target.value)}
+                    placeholder="Buscar relatório…"
+                    aria-label="Buscar relatório"
+                  />
+                  <div className="markdown-component-report-list">
+                    {pending && !linkableDocuments.length ? (
+                      <p className="markdown-component-picker-hint">Carregando relatórios…</p>
+                    ) : null}
+                    {!pending && !visibleLinkableDocuments.length ? (
+                      <p className="markdown-component-picker-hint">Nenhum relatório publicado encontrado.</p>
+                    ) : null}
+                    {visibleLinkableDocuments.map((item) => (
+                      <ReportLinkCard
+                        key={item.id}
+                        slug={item.slug}
+                        title={item.title}
+                        summary={item.summary}
+                        templateName={item.templateName}
+                        primaryColor={item.primaryColor}
+                        secondaryColor={item.secondaryColor}
+                        interactive
+                        selected={componentPropertyValues.slug === item.slug}
+                        onSelect={() => setComponentPropertyValues({
+                          slug: item.slug,
+                          title: item.title,
+                          summary: item.summary,
+                        })}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               {selectedMarkdownComponent.properties?.some((property) => property.options?.length) ? <div className="markdown-component-controls"><span>Testar propriedades</span>{selectedMarkdownComponent.properties.filter((property) => property.options?.length).map((property) => <label key={property.name}><code>{property.name}</code><select value={componentPropertyValues[property.name] ?? property.defaultValue ?? property.options?.[0] ?? ""} onChange={(event) => setComponentPropertyValues((current) => ({ ...current, [property.name]: event.target.value }))}>{property.options?.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>)}</div> : null}
               {selectedMarkdownComponent.properties?.length ? <div className="markdown-component-details"><span>Propriedades</span>{selectedMarkdownComponent.properties.map((property) => <div key={property.name}><code>{property.name}</code><small>{property.values}</small></div>)}</div> : null}
               {selectedMarkdownComponent.rules?.length ? <div className="markdown-component-details"><span>Regras</span><ul>{selectedMarkdownComponent.rules.map((rule) => <li key={rule}>{rule}</li>)}</ul></div> : null}
             </aside>
           </div>
-          <DialogFooter className="markdown-component-dialog-footer"><Button type="button" variant="outline" onClick={() => setComponentPickerOpen(false)}>Cancelar</Button><Button type="button" onClick={() => insertMarkdownComponent(selectedMarkdownComponent)}><Plus />Inserir componente</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={reportLinkPickerOpen} onOpenChange={setReportLinkPickerOpen}>
-        <DialogContent className="max-w-lg rounded-none p-0 shadow-none">
-          <DialogHeader className="markdown-component-dialog-header">
-            <div><DialogTitle>Link para relatório</DialogTitle><DialogDescription>Insere um link Markdown para a última versão publicada de outro documento.</DialogDescription></div>
-            <Input value={reportLinkSearch} onChange={(event) => setReportLinkSearch(event.target.value)} placeholder="Buscar relatório…" aria-label="Buscar relatório" autoFocus />
-          </DialogHeader>
-          <div className="report-link-picker-list">
-            {pending && !linkableDocuments.length ? <p className="report-link-picker-empty">Carregando relatórios…</p> : null}
-            {!pending && !visibleLinkableDocuments.length ? <p className="report-link-picker-empty">Nenhum relatório publicado encontrado.</p> : null}
-            {visibleLinkableDocuments.map((item) => (
-              <button type="button" className="report-link-picker-option" key={item.id} onClick={() => insertReportLink(item)}>
-                <FileText />
-                <span><strong>{item.title}</strong><small>/d/{item.slug}</small></span>
-              </button>
-            ))}
-          </div>
-          <DialogFooter className="markdown-component-dialog-footer"><Button type="button" variant="outline" onClick={() => setReportLinkPickerOpen(false)}>Cancelar</Button></DialogFooter>
+          <DialogFooter className="markdown-component-dialog-footer"><Button type="button" variant="outline" onClick={() => setComponentPickerOpen(false)}>Cancelar</Button><Button type="button" disabled={!canInsertSelectedComponent} onClick={() => insertMarkdownComponent(selectedMarkdownComponent)}><Plus />Inserir componente</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

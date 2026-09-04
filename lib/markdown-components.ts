@@ -16,7 +16,32 @@ export type MarkdownComponentCategory =
   | "Operações e qualidade"
   | "Documentação e referência"
   | "Layout e composição"
+  | "Imagens e mídia"
   | "Markdown";
+
+export const MARKDOWN_COMPONENT_CATEGORIES: MarkdownComponentCategory[] = [
+  "Destaques",
+  "Métricas e análise",
+  "Planejamento e acompanhamento",
+  "Gráficos",
+  "Código e integrações",
+  "Pessoas e colaboração",
+  "Produto e pesquisa",
+  "Operações e qualidade",
+  "Documentação e referência",
+  "Layout e composição",
+  "Imagens e mídia",
+  "Markdown",
+];
+
+export function groupMarkdownComponentsByCategory(components: MarkdownComponent[] = markdownComponents) {
+  return MARKDOWN_COMPONENT_CATEGORIES
+    .map((category) => ({
+      category,
+      components: components.filter((component) => component.category === category),
+    }))
+    .filter((group) => group.components.length > 0);
+}
 
 export type MarkdownComponent = {
   id: string;
@@ -27,6 +52,8 @@ export type MarkdownComponent = {
   preview: string;
   properties?: ComponentProperty[];
   rules?: string[];
+  /** Fluxo especial na modal Adicionar componente. */
+  pickerAction?: "image-upload" | "report-select";
 };
 
 export const markdownComponents: MarkdownComponent[] = [
@@ -61,8 +88,8 @@ export const markdownComponents: MarkdownComponent[] = [
   { id: "filetree", name: "Árvore de arquivos", description: "Estrutura de módulos ou diretórios.", category: "Código e integrações", snippet: ':::filetree{title="Estrutura"}\nsrc/\n└── {{conteúdo}}\n:::', preview: ':::filetree{title="Estrutura do módulo"}\nsrc/\n├── api/\n│   └── reports.ts\n└── components/\n    └── chart.tsx\n:::', properties: [{ name: "title", values: "texto opcional" }] },
   { id: "diff", name: "Diff", description: "Alterações de código destacadas por linha.", category: "Código e integrações", snippet: ':::diff{title="Alteração"}\n- linha anterior\n+ {{conteúdo}}\n:::', preview: ':::diff{title="Validação de versão"}\n- version += 1\n+ version += published ? 1 : 0\n:::', properties: [{ name: "title", values: "texto opcional" }] },
   { id: "env", name: "Variáveis de ambiente", description: "Configurações por chave, valor e escopo.", category: "Código e integrações", snippet: ":::env\n- NOME_DA_VARIAVEL | {{conteúdo}} | produção\n:::", preview: ":::env\n- DATABASE_URL | configurada | produção\n- FEATURE_FLAG | false | desenvolvimento\n:::", rules: ["Formato: chave | valor | escopo."] },
-  { id: "logs", name: "Logs", description: "Eventos técnicos com horário e nível.", category: "Código e integrações", snippet: ":::logs{level=\"INFO\"}\n- 10:42:18 | {{conteúdo}}\n:::", preview: ":::logs{level=\"WARN\"}\n- 10:42:18 | Publicação iniciada\n- 10:42:20 | Cache ainda não atualizado\n- 10:42:24 | Publicação concluída\n:::", properties: [{ name: "level", values: "INFO · WARN · ERROR", options: ["INFO", "WARN", "ERROR"], defaultValue: "WARN" }], rules: ["Formato: horário | nível opcional | mensagem."] },
-  { id: "tests", name: "Casos de teste", description: "Resultado e evidência de validação técnica.", category: "Código e integrações", snippet: ":::tests{status=\"PASS\"}\n- Nome do teste | {{conteúdo}}\n:::", preview: ":::tests{status=\"FAIL\"}\n- Publica nova versão | Snapshot criado com sucesso\n- Mantém link anterior | Versão anterior inalterada\n:::", properties: [{ name: "status", values: "PASS · FAIL", options: ["PASS", "FAIL"], defaultValue: "FAIL" }], rules: ["Formato: teste | estado opcional | observação."] },
+  { id: "logs", name: "Logs", description: "Eventos técnicos com horário e nível.", category: "Código e integrações", snippet: ":::logs{level=\"INFO\"}\n- 10:42:18 | {{conteúdo}}\n:::", preview: ":::logs{level=\"INFO\"}\n- 10:42:18 | INFO | Publicação iniciada\n- 10:42:20 | WARN | Cache ainda não atualizado\n- 10:42:24 | ERROR | Falha ao invalidar borda\n:::", properties: [{ name: "level", values: "INFO · WARN · ERROR", options: ["INFO", "WARN", "ERROR"], defaultValue: "WARN" }], rules: ["Formato: horário | nível opcional | mensagem."] },
+  { id: "tests", name: "Casos de teste", description: "Resultado e evidência de validação técnica.", category: "Código e integrações", snippet: ":::tests{status=\"PASS\"}\n- Nome do teste | {{conteúdo}}\n:::", preview: ":::tests{status=\"PASS\"}\n- Publica nova versão | PASS | Snapshot criado com sucesso\n- Mantém link anterior | FAIL | Versão anterior inalterada\n:::", properties: [{ name: "status", values: "PASS · FAIL", options: ["PASS", "FAIL"], defaultValue: "FAIL" }], rules: ["Formato: teste | estado opcional | observação."] },
   { id: "people", name: "Pessoas e papéis", description: "Responsáveis, funções e escopo de atuação.", category: "Pessoas e colaboração", snippet: ":::people{layout=\"directory\"}\n- Nome | Papel | {{conteúdo}}\n:::", preview: ":::people{layout=\"directory\"}\n- Marina Alves | Product manager | Estratégia e priorização\n- Rafael Costa | Tech lead | Arquitetura e entrega\n:::", properties: [{ name: "layout", values: "directory · cards", options: ["directory", "cards"], defaultValue: "directory" }], rules: ["Formato: nome | papel | escopo."] },
   { id: "agenda", name: "Agenda", description: "Pauta de reunião com responsável e duração.", category: "Pessoas e colaboração", snippet: ":::agenda\n- Tópico | Responsável | 10 min\n:::", preview: ":::agenda\n- Contexto e decisões | Marina | 10 min\n- Riscos do ciclo | Rafael | 15 min\n- Próximos compromissos | Time | 10 min\n:::", rules: ["Formato: tópico | responsável | duração."] },
   { id: "faq", name: "Perguntas frequentes", description: "Dúvidas e respostas expansíveis.", category: "Pessoas e colaboração", snippet: ":::faq{mode=\"expanded\"}\n- Pergunta | {{conteúdo}}\n:::", preview: ":::faq{mode=\"expanded\"}\n- Quem aprova a liberação? | A liderança técnica após a validação final.\n- Onde registrar evidências? | No item de entrega correspondente.\n:::", properties: [{ name: "mode", values: "expanded · collapsed", options: ["expanded", "collapsed"], defaultValue: "expanded" }], rules: ["Formato: pergunta | resposta."] },
@@ -71,11 +98,14 @@ export const markdownComponents: MarkdownComponent[] = [
   { id: "properties", name: "Propriedades", description: "Campos estruturados para contexto, estado e responsáveis.", category: "Documentação e referência", snippet: ":::properties\n- Status | Em revisão | status\n- Responsável | {{conteúdo}} | person\n:::", preview: ":::properties\n- Status | Em revisão | status\n- Responsável | Plataforma | person\n- Revisão | 18 set. | date\n:::", rules: ["Formato: campo | valor | tipo opcional (status, person, date, url)."] },
   { id: "daci", name: "Decisão DACI", description: "Papéis claros para decidir e executar.", category: "Pessoas e colaboração", snippet: ":::daci\n- Driver | {{conteúdo}}\n- Approver | Liderança técnica\n- Contributors | Produto, engenharia\n- Informed | Time ampliado\n:::", preview: ":::daci\n- Driver | Marina Alves\n- Approver | Rafael Costa\n- Contributors | Produto, dados e plataforma\n- Informed | Lideranças das áreas\n:::", rules: ["Formato: papel DACI | pessoa ou grupo."] },
   { id: "related", name: "Itens relacionados", description: "Registros vinculados e seu estado atual.", category: "Documentação e referência", snippet: ":::related\n- Documento ou item | Relação | {{conteúdo}}\n:::", preview: ":::related\n- Plano de rollout | Depende de | Em revisão\n- Painel de métricas | Referência | Atualizado\n:::", rules: ["Formato: item | relação | estado. Use para navegação contextual."] },
+  { id: "report", name: "Relatório", description: "Card com link para outro relatório publicado.", category: "Documentação e referência", snippet: ':::report{slug="exemplo" title="Título do relatório" summary="Resumo opcional."}', preview: ':::report{slug="roadmap-trimestral" title="Roadmap trimestral" summary="Prioridades e entregas do ciclo atual."}', pickerAction: "report-select", properties: [{ name: "slug", values: "slug do documento" }, { name: "title", values: "título exibido no card" }, { name: "summary", values: "resumo opcional" }], rules: ["Escolha um relatório publicado na prévia.", "O card aponta para o link estável /d/{slug}."] },
   { id: "slo", name: "SLO", description: "Meta e resultado atual de um serviço.", category: "Operações e qualidade", snippet: ":::slo{status=\"ok\"}\n- Serviço | 99,9% | 99,95%\n:::", preview: ":::slo{status=\"warn\"}\n- API pública | 99,9% | 99,97%\n- Processamento | 99,5% | 99,2%\n:::", properties: [{ name: "status", values: "ok · warn · err", options: ["ok", "warn", "err"], defaultValue: "warn" }], rules: ["Formato: serviço | meta | atual | estado opcional."] },
   { id: "changelog", name: "Changelog", description: "Versões, datas e principais mudanças.", category: "Operações e qualidade", snippet: ":::changelog\n- v1.0.0 | 02 set. | {{conteúdo}}\n:::", preview: ":::changelog\n- v1.4.0 | 02 set. | Publicação com histórico de versões.\n- v1.3.0 | 28 ago. | Componentes para relatórios.\n:::", rules: ["Formato: versão | data | descrição."] },
   { id: "glossary", name: "Glossário", description: "Termos importantes e suas definições.", category: "Documentação e referência", snippet: ":::glossary\n- Termo | {{conteúdo}}\n:::", preview: ":::glossary\n- SLO | Meta de confiabilidade acordada para um serviço.\n- Rollout | Liberação gradual de uma mudança.\n:::", rules: ["Formato: termo | definição."] },
   { id: "resources", name: "Recursos", description: "Links, documentos e referências relacionadas.", category: "Documentação e referência", snippet: ":::resources\n- Recurso | Tipo | {{conteúdo}}\n:::", preview: ":::resources\n- Guia de operação | Documento | Instruções para resposta a incidentes.\n- Painel de métricas | Dashboard | Acompanhamento em tempo real.\n:::", rules: ["Formato: recurso | tipo | descrição."] },
   { id: "columns", name: "Colunas", description: "Divide uma seção e aceita Markdown e componentes em cada coluna.", category: "Layout e composição", snippet: ":::columns{count=\"2\"}\n### Coluna 1\n\n{{conteúdo}}\n\n---\n\n### Coluna 2\n\nConteúdo complementar.\n:::", preview: ":::columns{count=\"2\"}\n### Resultado\n\n:::stats\n- Cobertura | 91% | ↑ 6 p.p. | up\n:::\n\n---\n\n### Próxima ação\n\n:::checklist\n- [ ] Validar em produção | sexta-feira\n:::\n:::", properties: [{ name: "count", values: "2 · 3 · 4 colunas", options: ["2", "3", "4"], defaultValue: "2" }], rules: ["Separe cada coluna com uma linha contendo apenas ---.", "Cada coluna pode conter Markdown e outros componentes."] },
+  { id: "image", name: "Imagem", description: "Figura com legenda opcional. Envie o arquivo na prévia.", category: "Imagens e mídia", snippet: ':::figure{src="" alt="Descrição da imagem" size="medium" align="center"}\n{{conteúdo}}\n:::', preview: ':::figure{src="/portulan-logo.png" alt="Exemplo de imagem" size="medium" align="center"}\nLegenda opcional.\n:::', pickerAction: "image-upload", properties: [{ name: "src", values: "URL pública da imagem" }, { name: "alt", values: "texto alternativo" }, { name: "size", values: "small · medium · large · full", options: ["small", "medium", "large", "full"], defaultValue: "medium" }, { name: "align", values: "left · center · right", options: ["left", "center", "right"], defaultValue: "center" }], rules: ["Envie a imagem na prévia antes de inserir.", "O corpo do bloco vira a legenda (opcional)."] },
+  { id: "gallery", name: "Galeria", description: "Grade de imagens lado a lado.", category: "Imagens e mídia", snippet: ':::gallery{columns="2"}\n- https:// | Legenda A\n- https:// | Legenda B\n:::', preview: ':::gallery{columns="2"}\n- /portulan-logo.png | Visão geral\n- /portulan-logo-on-dark.png | Versão escura\n:::', properties: [{ name: "columns", values: "2 · 3 colunas", options: ["2", "3"], defaultValue: "2" }], rules: ["Formato: URL | legenda opcional.", "Use URLs do Blob Portulan sempre que possível."] },
   { id: "section", name: "Seção", description: "Título editorial principal.", category: "Markdown", snippet: "## {{conteúdo}}", preview: "## Decisão e próximos passos" },
   { id: "subtitle", name: "Subtítulo", description: "Título secundário dentro de uma seção.", category: "Markdown", snippet: "### {{conteúdo}}", preview: "### Critérios de aceite" },
   { id: "list", name: "Lista", description: "Itens informativos sem checkbox.", category: "Markdown", snippet: "- {{conteúdo}}", preview: "- A alteração não impacta o fluxo atual.\n- O monitoramento será acompanhado por sete dias." },
@@ -93,11 +123,18 @@ export function getDirectiveName(component: MarkdownComponent) {
 }
 
 export function defaultComponentProperties(component: MarkdownComponent) {
-  return Object.fromEntries(
+  const options = Object.fromEntries(
     (component.properties ?? [])
       .filter((property) => property.options?.length)
       .map((property) => [property.name, property.defaultValue ?? property.options?.[0] ?? ""]),
   );
+  if (component.pickerAction === "image-upload") {
+    return { ...options, src: "", alt: "Descrição da imagem" };
+  }
+  if (component.pickerAction === "report-select") {
+    return { slug: "", title: "", summary: "" };
+  }
+  return options;
 }
 
 export function applyComponentProperties(source: string, properties: Record<string, string>) {
@@ -138,7 +175,7 @@ function inferBodyFormat(component: MarkdownComponent): "pipe-rows" | "free-mark
   if (component.id === "columns") return "mixed";
   const directive = getDirectiveName(component);
   if (!directive) return "free-markdown";
-  if (["alert", "callout", "banner", "decision", "terminal", "filetree", "diff", "api"].includes(directive)) {
+  if (["alert", "callout", "banner", "decision", "terminal", "filetree", "diff", "api", "image", "figure", "report"].includes(directive)) {
     return "free-markdown";
   }
   if (component.rules?.some((rule) => rule.toLowerCase().includes("formato:"))) return "pipe-rows";
@@ -179,7 +216,7 @@ export function listMarkdownComponentsForMcp() {
     description: component.description,
     preview: component.preview,
     attributes: summarizeAttributes(component),
-    kind: component.category === "Markdown" ? "markdown" : "directive",
+    kind: getDirectiveName(component) ? "directive" : "markdown",
   }));
 }
 

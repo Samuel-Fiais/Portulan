@@ -3,11 +3,11 @@ import "server-only";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { documentShares, documents, users } from "@/lib/db/schema";
+import { normalizeShareEmail, validateShareInvite, validateShareRoleUpdate } from "@/lib/document-share-policy";
 import type { DocumentShareRecord, DocumentShareRole } from "@/lib/documents";
+import { getUserById } from "@/lib/users";
 
-export function normalizeShareEmail(email: string) {
-  return email.trim().toLowerCase();
-}
+export { normalizeShareEmail } from "@/lib/document-share-policy";
 
 function mapShareRow(
   row: typeof documentShares.$inferSelect,
@@ -98,15 +98,33 @@ export async function addDocumentShare(
   email: string,
   role: DocumentShareRole,
   invitedBy: string,
-) {
+): Promise<{ ok: true; share: DocumentShareRecord } | { ok: false; error: string }> {
   const db = await getDb();
   const normalized = normalizeShareEmail(email);
+
+  const [document] = await db
+    .select({ userId: documents.userId })
+    .from(documents)
+    .where(eq(documents.id, documentId))
+    .limit(1);
+  const owner = document?.userId ? await getUserById(document.userId) : null;
+  const existingShares = await listDocumentShares(documentId);
 
   const [invitee] = await db
     .select({ id: users.id, email: users.email })
     .from(users)
     .where(or(eq(users.email, normalized), sql`LOWER(${users.email}) = ${normalized}`))
     .limit(1);
+
+  const validation = validateShareInvite({
+    email: normalized,
+    role,
+    ownerId: document?.userId ?? null,
+    ownerEmail: owner?.email ?? null,
+    inviteeUserId: invitee?.id ?? null,
+    existingShares,
+  });
+  if (!validation.ok) return validation;
 
   const [created] = await db
     .insert(documentShares)
@@ -116,10 +134,6 @@ export async function addDocumentShare(
       role,
       invitedBy,
       userId: invitee?.id ?? null,
-    })
-    .onConflictDoUpdate({
-      target: [documentShares.documentId, documentShares.email],
-      set: { role, invitedBy, userId: invitee?.id ?? null },
     })
     .returning();
 
@@ -136,11 +150,22 @@ export async function addDocumentShare(
     .limit(1);
 
   return row
-    ? mapShareRow(row.share, { login: row.userLogin, name: row.userName, avatarUrl: row.userAvatarUrl })
-    : null;
+    ? { ok: true as const, share: mapShareRow(row.share, { login: row.userLogin, name: row.userName, avatarUrl: row.userAvatarUrl }) }
+    : { ok: false as const, error: "Não foi possível adicionar o compartilhamento." };
 }
 
-export async function updateDocumentShareRole(shareId: string, documentId: string, role: DocumentShareRole) {
+export async function updateDocumentShareRole(
+  shareId: string,
+  documentId: string,
+  role: DocumentShareRole,
+): Promise<{ ok: true; share: DocumentShareRecord } | { ok: false; error: string }> {
+  const existingShares = await listDocumentShares(documentId);
+  const current = existingShares.find((share) => share.id === shareId);
+  if (!current) return { ok: false, error: "Compartilhamento não encontrado." };
+
+  const validation = validateShareRoleUpdate(current.role, role);
+  if (!validation.ok) return validation;
+
   const db = await getDb();
   const updated = await db
     .update(documentShares)
@@ -148,9 +173,12 @@ export async function updateDocumentShareRole(shareId: string, documentId: strin
     .where(and(eq(documentShares.id, shareId), eq(documentShares.documentId, documentId)))
     .returning({ id: documentShares.id });
 
-  if (!updated.length) return null;
+  if (!updated.length) return { ok: false, error: "Compartilhamento não encontrado." };
   const shares = await listDocumentShares(documentId);
-  return shares.find((share) => share.id === shareId) ?? null;
+  const share = shares.find((item) => item.id === shareId);
+  return share
+    ? { ok: true, share }
+    : { ok: false, error: "Compartilhamento não encontrado." };
 }
 
 export async function revokeDocumentShare(shareId: string, documentId: string) {
@@ -187,7 +215,7 @@ export async function listDocumentCollaborators(documentId: string, ownerId: str
 
   if (ownerId) {
     const [owner] = await db
-      .select({ id: users.id, login: users.login, name: users.name, avatarUrl: users.avatarUrl })
+      .select({ id: users.id, login: users.login, name: users.name, avatarUrl: users.avatarUrl, email: users.email })
       .from(users)
       .where(eq(users.id, ownerId))
       .limit(1);
@@ -198,6 +226,7 @@ export async function listDocumentCollaborators(documentId: string, ownerId: str
         name: owner.name,
         avatarUrl: owner.avatarUrl,
         role: "owner",
+        email: owner.email ?? undefined,
       });
     }
   }

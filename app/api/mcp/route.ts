@@ -331,6 +331,9 @@ const mcpHandler = createMcpHandler((server) => {
     async ({ id, template_id, ...changes }) => {
       const result = await publishDocument(id, { ...changes, templateId: template_id }, await requireAccessContext());
       if (!result) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+      if ("noChanges" in result) {
+        return { ...textResult({ error: "Não há alterações em relação à última versão publicada." }), isError: true };
+      }
       return textResult({
         document: result.document,
         release: result.release,
@@ -427,8 +430,10 @@ const mcpHandler = createMcpHandler((server) => {
         return { ...textResult({ error: "Apenas o responsável pode compartilhar." }), isError: true };
       }
 
-      const share = await addDocumentShare(document.id, parsed.data.email, parsed.data.role, ctx.userId!);
-      return share ? textResult({ share }) : { ...textResult({ error: "Não foi possível compartilhar." }), isError: true };
+      const result = await addDocumentShare(document.id, parsed.data.email, parsed.data.role, ctx.userId!);
+      return result.ok
+        ? textResult({ share: result.share })
+        : { ...textResult({ error: result.error }), isError: true };
     },
   );
 

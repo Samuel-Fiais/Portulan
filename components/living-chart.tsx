@@ -1,13 +1,9 @@
 "use client";
 
-import { useCallback, type CSSProperties, type MouseEvent } from "react";
-import { toast } from "sonner";
+import type { CSSProperties } from "react";
 
-export type ChartPoint = {
-  label: string;
-  value: number;
-  target?: number;
-};
+import type { ChartPoint } from "@/lib/chart-directive";
+import { livingChartTip } from "@/lib/living-interaction";
 
 type LivingChartProps = {
   title: string;
@@ -18,81 +14,25 @@ type LivingChartProps = {
 
 const CHART_COLORS = ["var(--accent)", "var(--accent-2)", "var(--s-ok)", "var(--s-warn)"];
 
-function showChartToast(title: string, label: string, value: number | string, interactive?: boolean) {
-  if (!interactive) return;
-  toast(`${label}`, {
-    description: title ? `${title} · ${value}` : String(value),
-    classNames: {
-      toast: "portulan-toast",
-      title: "portulan-toast-title",
-      description: "portulan-toast-description",
-    },
-  });
-}
-
-function interactiveProps(
-  interactive: boolean | undefined,
-  title: string,
-  label: string,
-  value: number | string,
-  onActivate?: (event: MouseEvent) => void,
-) {
-  if (!interactive) return {};
-  return {
-    className: "fp-chart-interactive",
-    role: "button" as const,
-    tabIndex: 0,
-    onClick: (event: MouseEvent) => {
-      event.stopPropagation();
-      onActivate?.(event);
-      showChartToast(title, label, value, interactive);
-    },
-    onKeyDown: (event: React.KeyboardEvent) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        showChartToast(title, label, value, interactive);
-      }
-    },
-  };
-}
-
 export function LivingChart({ title, type, points, interactive = false }: LivingChartProps) {
-  const notify = useCallback(
-    (label: string, value: number | string) => {
-      showChartToast(title, label, value, interactive);
-    },
-    [interactive, title],
-  );
-
   const max = Math.max(...points.map((point) => point.value), 1);
   const total = Math.max(points.reduce((sum, point) => sum + point.value, 0), 1);
 
   if (type === "gauge") {
     const point = points[0];
     const value = Math.max(0, Math.min(100, point?.value ?? 0));
+    const label = point?.label || "Resultado atual";
     return (
       <figure className="fp-chart fp-chart-gauge">
         <figcaption>{title}</figcaption>
         <div
-          className={`fp-gauge ${interactive ? "fp-chart-interactive" : ""}`}
+          className="fp-gauge"
           style={{ "--gauge-value": `${value}%` } as CSSProperties}
-          {...(interactive
-            ? {
-                role: "button",
-                tabIndex: 0,
-                onClick: () => notify(point?.label || "Resultado atual", `${value}%`),
-                onKeyDown: (event: React.KeyboardEvent) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    notify(point?.label || "Resultado atual", `${value}%`);
-                  }
-                },
-              }
-            : {})}
+          {...livingChartTip(interactive, title, label, `${value}%`, "fp-gauge")}
         >
           <div>
             <strong>{value}%</strong>
-            <span>{point?.label || "Resultado atual"}</span>
+            <span>{label}</span>
           </div>
         </div>
       </figure>
@@ -122,7 +62,7 @@ export function LivingChart({ title, type, points, interactive = false }: Living
             {points.map((point, index) => (
               <li
                 key={point.label}
-                {...interactiveProps(interactive, title, point.label, point.value)}
+                {...livingChartTip(interactive, title, point.label, point.value)}
               >
                 <i style={{ background: CHART_COLORS[index % CHART_COLORS.length] }} />
                 <span>{point.label}</span>
@@ -147,8 +87,7 @@ export function LivingChart({ title, type, points, interactive = false }: Living
                 width: `${Math.max((point.value / total) * 100, 2)}%`,
                 background: CHART_COLORS[index % CHART_COLORS.length],
               }}
-              title={interactive ? undefined : `${point.label}: ${point.value}`}
-              {...interactiveProps(interactive, title, point.label, point.value)}
+              {...livingChartTip(interactive, title, point.label, point.value)}
             />
           ))}
         </div>
@@ -156,7 +95,7 @@ export function LivingChart({ title, type, points, interactive = false }: Living
           {points.map((point, index) => (
             <li
               key={point.label}
-              {...interactiveProps(interactive, title, point.label, point.value)}
+              {...livingChartTip(interactive, title, point.label, point.value)}
             >
               <i style={{ background: CHART_COLORS[index % CHART_COLORS.length] }} />
               <span>{point.label}</span>
@@ -180,7 +119,12 @@ export function LivingChart({ title, type, points, interactive = false }: Living
           {targets.map((point) => (
             <div
               key={point.label}
-              {...interactiveProps(interactive, title, point.label, `${point.value} (meta ${point.target})`)}
+              {...livingChartTip(
+                interactive,
+                title,
+                point.label,
+                `${point.value} (meta ${point.target})`,
+              )}
             >
               <div>
                 <span>{point.label}</span>
@@ -232,7 +176,7 @@ export function LivingChart({ title, type, points, interactive = false }: Living
                   <i
                     className={point.value < 0 ? "negative" : undefined}
                     style={{ height: `${Math.max((Math.abs(point.value) / columnMaximum) * 100, 3)}%` }}
-                    {...interactiveProps(interactive, title, point.label, point.value)}
+                    {...livingChartTip(interactive, title, point.label, point.value)}
                   />
                 </span>
                 <small>{point.label}</small>
@@ -251,15 +195,14 @@ export function LivingChart({ title, type, points, interactive = false }: Living
           <div className="fp-chart-line">
             <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" aria-label={title}>
               <polyline points={coordinates} />
-              {pointsWithCoordinates.map((point) => (
-                <circle
-                  key={point.label}
-                  cx={point.x}
-                  cy={point.y}
-                  r="4"
-                  {...interactiveProps(interactive, title, point.label, point.value)}
-                />
-              ))}
+              {pointsWithCoordinates.map((point) => {
+                const tip = livingChartTip(interactive, title, point.label, point.value);
+                return (
+                  <g key={point.label} {...tip}>
+                    <circle cx={point.x} cy={point.y} r="4" />
+                  </g>
+                );
+              })}
             </svg>
             <div>
               {points.map((point) => (
@@ -282,14 +225,10 @@ export function LivingChart({ title, type, points, interactive = false }: Living
             {pointsWithCoordinates.map((point) => {
               const labelX = Math.max(20, Math.min(width - 20, point.x));
               const labelY = point.y < 42 ? point.y + 26 : point.y - 14;
+              const tip = livingChartTip(interactive, title, point.label, point.value);
               return (
-                <g key={point.label}>
-                  <circle
-                    cx={point.x}
-                    cy={point.y}
-                    r="4"
-                    {...interactiveProps(interactive, title, point.label, point.value)}
-                  />
+                <g key={point.label} {...tip}>
+                  <circle cx={point.x} cy={point.y} r="4" />
                   <text x={labelX} y={labelY}>
                     {point.value}
                   </text>
@@ -317,7 +256,7 @@ export function LivingChart({ title, type, points, interactive = false }: Living
             <div>
               <i
                 style={{ width: `${(point.value / max) * 100}%`, background: CHART_COLORS[index % CHART_COLORS.length] }}
-                {...interactiveProps(interactive, title, point.label, point.value)}
+                {...livingChartTip(interactive, title, point.label, point.value)}
               />
               <strong>{point.value}</strong>
             </div>
@@ -326,50 +265,4 @@ export function LivingChart({ title, type, points, interactive = false }: Living
       </div>
     </figure>
   );
-}
-
-export function parseChartDirective(body: string, attributes: Record<string, string>) {
-  const points = body
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !/^[-–—−]\s*$/.test(line))
-    .map((line) => line.replace(/^[-*]\s+/, "").split("|").map((part) => part.trim()));
-
-  const rawType = attributes.type ?? "";
-  const type = ["bar", "line", "area", "column", "donut", "gauge", "spark", "stacked", "target"].includes(rawType)
-    ? rawType
-    : "bar";
-
-  if (type === "target") {
-    return {
-      type,
-      title: attributes.title || "Meta e realizado",
-      points: points
-        .map(([label, rawValue, rawTarget]) => ({
-          label,
-          value: Number.parseFloat((rawValue ?? "").replace(",", ".")),
-          target: Number.parseFloat((rawTarget ?? "").replace(",", ".")),
-        }))
-        .filter((point) => point.label && Number.isFinite(point.value) && Number.isFinite(point.target)),
-    };
-  }
-
-  return {
-    type,
-    title:
-      attributes.title ||
-      (type === "column"
-        ? "Comparativo"
-        : type === "gauge"
-          ? "Indicador"
-          : type === "donut" || type === "stacked"
-            ? "Distribuição"
-            : type === "line" || type === "area" || type === "spark"
-              ? "Evolução"
-              : "Comparativo"),
-    points: points
-      .map(([label, rawValue]) => ({ label, value: Number.parseFloat((rawValue ?? "").replace(",", ".")) }))
-      .filter((point) => point.label && Number.isFinite(point.value)),
-  };
 }

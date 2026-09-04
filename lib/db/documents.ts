@@ -9,13 +9,15 @@ import {
 } from "@/lib/db/document-shares";
 import { documentReleases, documents, templates, users } from "@/lib/db/schema";
 import { getDefaultTemplate, resolveTemplateForUser } from "@/lib/db/templates";
-import type {
-  DocumentAccessLevel,
-  DocumentInput,
-  DocumentRecord,
-  DocumentRelease,
-  DocumentStatus,
-  PublicReleaseResult,
+import {
+  hasUnpublishedChanges,
+  type DocumentAccessLevel,
+  type DocumentInput,
+  type DocumentPublishSnapshot,
+  type DocumentRecord,
+  type DocumentRelease,
+  type DocumentStatus,
+  type PublicReleaseResult,
 } from "@/lib/documents";
 
 export type DocumentAccessContext = {
@@ -436,10 +438,15 @@ export async function listLinkableDocuments(
       id: documents.id,
       slug: documents.slug,
       title: documents.title,
+      summary: documents.summary,
+      templateName: templates.name,
+      primaryColor: templates.primaryColor,
+      secondaryColor: templates.secondaryColor,
       updatedAt: documents.updatedAt,
     })
     .from(documents)
     .innerJoin(documentReleases, eq(documents.id, documentReleases.documentId))
+    .innerJoin(templates, eq(documents.templateId, templates.id))
     .where(
       and(
         ...(clauses.length ? clauses : []),
@@ -449,7 +456,15 @@ export async function listLinkableDocuments(
     )
     .orderBy(desc(documents.updatedAt));
 
-  return rows.map(({ id, slug, title }) => ({ id, slug, title }));
+  return rows.map(({ id, slug, title, summary, templateName, primaryColor, secondaryColor }) => ({
+    id,
+    slug,
+    title,
+    summary,
+    templateName,
+    primaryColor,
+    secondaryColor,
+  }));
 }
 
 export async function listDocumentReleases(documentId: string) {
@@ -474,11 +489,61 @@ export async function listDocumentReleases(documentId: string) {
   );
 }
 
+async function resolvePublishSnapshot(
+  current: DocumentRecord,
+  merged: Pick<DocumentRecord, "title" | "summary" | "templateId" | "author" | "team" | "tags" | "content">,
+  ctx: DocumentAccessContext,
+): Promise<DocumentPublishSnapshot> {
+  if (merged.templateId === current.templateId) {
+    return {
+      title: merged.title,
+      summary: merged.summary,
+      templateId: merged.templateId,
+      templateName: current.templateName,
+      primaryColor: current.primaryColor,
+      secondaryColor: current.secondaryColor,
+      logoUrl: current.logoUrl,
+      author: merged.author,
+      team: merged.team,
+      tags: merged.tags,
+      content: merged.content,
+    };
+  }
+
+  let templateName = current.templateName;
+  let primaryColor = current.primaryColor;
+  let secondaryColor = current.secondaryColor;
+  let logoUrl = current.logoUrl;
+  if (ctx.userId) {
+    const template = await resolveTemplateForUser(merged.templateId, ctx.userId);
+    if (template) {
+      templateName = template.name;
+      primaryColor = template.primaryColor;
+      secondaryColor = template.secondaryColor;
+      logoUrl = template.logoUrl ?? null;
+    }
+  }
+
+  return {
+    title: merged.title,
+    summary: merged.summary,
+    templateId: merged.templateId,
+    templateName,
+    primaryColor,
+    secondaryColor,
+    logoUrl,
+    author: merged.author,
+    team: merged.team,
+    tags: merged.tags,
+    content: merged.content,
+  };
+}
+
 export async function publishDocument(
   id: string,
   input: Partial<DocumentInput> = {},
   ctx: DocumentAccessContext = {},
-) {
+): Promise<{ document: DocumentRecord; release: DocumentRelease } | { noChanges: true } | null> {
   const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
   if (!current || !(await canEditDocument(current, ctx))) return null;
 
@@ -498,18 +563,23 @@ export async function publishDocument(
     tags: input.tags ?? current.tags,
     content: input.content ?? current.content,
   };
-  const now = new Date().toISOString();
-  const slug = input.title ? await uniqueSlug(input.title, id) : current.slug;
-  const [latestRelease] = await db
-    .select({ version: documentReleases.version })
+
+  const [latestReleaseRow] = await db
+    .select()
     .from(documentReleases)
     .where(eq(documentReleases.documentId, id))
     .orderBy(desc(documentReleases.version))
     .limit(1);
+  const latestRelease = latestReleaseRow ? mapReleaseRow(latestReleaseRow) : null;
+  const candidateSnapshot = await resolvePublishSnapshot(current, merged, ctx);
+  if (!hasUnpublishedChanges(candidateSnapshot, latestRelease)) {
+    return { noChanges: true };
+  }
+
+  const now = new Date().toISOString();
+  const slug = input.title ? await uniqueSlug(input.title, id) : current.slug;
   const nextVersion = (latestRelease?.version ?? 0) + 1;
 
-  // Publicar é uma decisão explícita: cada publicação cria um snapshot
-  // imutável, inclusive quando o rascunho não mudou desde a última versão.
   await db
     .update(documents)
     .set({

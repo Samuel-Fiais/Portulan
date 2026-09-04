@@ -7,21 +7,6 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/": ["./portulan-skill.md"],
   },
-  turbopack: {
-    rules: {
-      "*.md": {
-        loaders: ["raw-loader"],
-        as: "*.js",
-      },
-    },
-  },
-  webpack: (config) => {
-    config.module.rules.push({
-      test: /\.md$/i,
-      type: "asset/source",
-    });
-    return config;
-  },
 };
 
 export default nextConfig;

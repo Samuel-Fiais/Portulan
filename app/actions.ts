@@ -24,7 +24,6 @@ import {
   updateDocumentShareRole,
   updateTemplate,
 } from "@/lib/db";
-import { getUserById } from "@/lib/users";
 import { documentAccessContext } from "@/lib/access-context";
 import {
   documentInputSchema,
@@ -99,6 +98,9 @@ export async function publishDocumentAction(id: string, input: unknown) {
 
   const result = await publishDocument(id, parsed.data, await accessContext(session.user.id));
   if (!result) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if ("noChanges" in result) {
+    return { ok: false as const, error: "Não há alterações em relação à última versão publicada." };
+  }
   revalidatePath("/");
   revalidatePath(`/documents/${id}`);
   revalidatePath(`/documents/${result.document.slug}`);
@@ -265,17 +267,12 @@ export async function addDocumentShareAction(documentId: string, input: unknown)
     return { ok: false as const, error: "Apenas o responsável pode compartilhar este documento." };
   }
 
-  const owner = await getUserById(session.user.id);
-  if (owner?.email && parsed.data.email === owner.email) {
-    return { ok: false as const, error: "Você já é o responsável deste documento." };
-  }
-
-  const share = await addDocumentShare(documentId, parsed.data.email, parsed.data.role, session.user.id);
-  if (!share) return { ok: false as const, error: "Não foi possível adicionar o compartilhamento." };
+  const result = await addDocumentShare(documentId, parsed.data.email, parsed.data.role, session.user.id);
+  if (!result.ok) return { ok: false as const, error: result.error };
 
   revalidatePath(`/documents/${documentId}`);
   revalidatePath(`/documents/${document.slug}`);
-  return { ok: true as const, share };
+  return { ok: true as const, share: result.share };
 }
 
 export async function updateDocumentShareAction(documentId: string, shareId: string, input: unknown) {
@@ -294,11 +291,11 @@ export async function updateDocumentShareAction(documentId: string, shareId: str
   }
 
   const share = await updateDocumentShareRole(shareId, documentId, parsed.data.role);
-  if (!share) return { ok: false as const, error: "Compartilhamento não encontrado." };
+  if (!share.ok) return { ok: false as const, error: share.error };
 
   revalidatePath(`/documents/${documentId}`);
   revalidatePath(`/documents/${document.slug}`);
-  return { ok: true as const, share };
+  return { ok: true as const, share: share.share };
 }
 
 export async function revokeDocumentShareAction(documentId: string, shareId: string) {

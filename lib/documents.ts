@@ -139,6 +139,84 @@ export type DocumentInput = Pick<
   "title" | "summary" | "templateId" | "status" | "author" | "team" | "tags" | "content"
 >;
 
+export type DocumentPublishSnapshot = Pick<
+  DocumentRecord,
+  | "title"
+  | "summary"
+  | "templateId"
+  | "templateName"
+  | "primaryColor"
+  | "secondaryColor"
+  | "logoUrl"
+  | "author"
+  | "team"
+  | "tags"
+  | "content"
+>;
+
+export function documentToPublishSnapshot(document: DocumentRecord): DocumentPublishSnapshot {
+  return {
+    title: document.title,
+    summary: document.summary,
+    templateId: document.templateId,
+    templateName: document.templateName,
+    primaryColor: document.primaryColor,
+    secondaryColor: document.secondaryColor,
+    logoUrl: document.logoUrl,
+    author: document.author,
+    team: document.team,
+    tags: document.tags,
+    content: document.content,
+  };
+}
+
+export function releaseToPublishSnapshot(release: DocumentRelease): DocumentPublishSnapshot {
+  return {
+    title: release.title,
+    summary: release.summary,
+    templateId: release.templateId,
+    templateName: release.templateName,
+    primaryColor: release.primaryColor,
+    secondaryColor: release.secondaryColor,
+    logoUrl: release.logoUrl,
+    author: release.author,
+    team: release.team,
+    tags: release.tags,
+    content: release.content,
+  };
+}
+
+function publishTagsEqual(left: string[], right: string[]) {
+  if (left.length !== right.length) return false;
+  const sortedLeft = [...left].sort();
+  const sortedRight = [...right].sort();
+  return sortedLeft.every((tag, index) => tag === sortedRight[index]);
+}
+
+export function publishSnapshotsEqual(left: DocumentPublishSnapshot, right: DocumentPublishSnapshot) {
+  return (
+    left.title === right.title
+    && left.summary === right.summary
+    && left.templateId === right.templateId
+    && left.templateName === right.templateName
+    && left.primaryColor === right.primaryColor
+    && left.secondaryColor === right.secondaryColor
+    && left.logoUrl === right.logoUrl
+    && left.author === right.author
+    && left.team === right.team
+    && publishTagsEqual(left.tags, right.tags)
+    && left.content === right.content
+  );
+}
+
+export function hasUnpublishedChanges(
+  document: DocumentPublishSnapshot,
+  latestRelease: DocumentRelease | null | undefined,
+) {
+  if (!latestRelease) return true;
+  return !publishSnapshotsEqual(document, releaseToPublishSnapshot(latestRelease));
+}
+
 export type TemplateInput = Pick<TemplateRecord, "name" | "primaryColor" | "secondaryColor" | "logoUrl" | "content">;
 
 export const statusMeta: Record<DocumentStatus, { label: string; tone: string }> = {

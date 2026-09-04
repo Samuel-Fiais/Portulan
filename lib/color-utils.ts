@@ -89,6 +89,68 @@ export function relativeLuminance(hex: string) {
   return 0.2126 * channelToLinear(red) + 0.7152 * channelToLinear(green) + 0.0722 * channelToLinear(blue);
 }
 
+export const REPORT_PAPER_LIGHT_BG = "#ffffff";
+export const REPORT_PAPER_DARK_BG = "#111111";
+export const MIN_ACCENT_CONTRAST = 4.5;
+
+export function contrastRatio(foreground: string, background: string) {
+  const left = relativeLuminance(foreground);
+  const right = relativeLuminance(background);
+  const [lighter, darker] = left > right ? [left, right] : [right, left];
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function mixHex(from: string, to: string, amount: number) {
+  const [fromRed, fromGreen, fromBlue] = hexToRgb(normalizeHex(from, "#000000"));
+  const [toRed, toGreen, toBlue] = hexToRgb(normalizeHex(to, "#000000"));
+  return rgbToHex(
+    fromRed + (toRed - fromRed) * amount,
+    fromGreen + (toGreen - fromGreen) * amount,
+    fromBlue + (toBlue - fromBlue) * amount,
+  );
+}
+
+/** Keep hue, shift value (then mix) until the color meets WCAG contrast on a paper background. */
+export function adaptColorForBackground(hex: string, background: string, minRatio = MIN_ACCENT_CONTRAST) {
+  const color = normalizeHex(hex, "#000000");
+  if (contrastRatio(color, background) >= minRatio) return color;
+
+  const [hue, saturation, value] = rgbToHsv(...hexToRgb(color));
+  const lighten = relativeLuminance(background) < 0.45;
+  const step = lighten ? 1 : -1;
+
+  for (let delta = 1; delta <= 100; delta += 1) {
+    const nextValue = Math.max(0, Math.min(100, value + step * delta));
+    const candidate = rgbToHex(...hsvToRgb(hue, saturation, nextValue));
+    if (contrastRatio(candidate, background) >= minRatio) return candidate;
+    if (nextValue === 0 || nextValue === 100) break;
+  }
+
+  const mixTarget = lighten ? "#ffffff" : "#000000";
+  for (let amount = 0.04; amount <= 1; amount += 0.04) {
+    const candidate = mixHex(color, mixTarget, amount);
+    if (contrastRatio(candidate, background) >= minRatio) return candidate;
+  }
+
+  return mixTarget;
+}
+
+export function reportPaletteStyle(primaryColor: string, secondaryColor: string) {
+  const primaryLight = adaptColorForBackground(primaryColor, REPORT_PAPER_LIGHT_BG);
+  const primaryDark = adaptColorForBackground(primaryColor, REPORT_PAPER_DARK_BG);
+  const secondaryLight = adaptColorForBackground(secondaryColor, REPORT_PAPER_LIGHT_BG);
+  const secondaryDark = adaptColorForBackground(secondaryColor, REPORT_PAPER_DARK_BG);
+
+  return {
+    "--report-accent-light": primaryLight,
+    "--report-accent-dark": primaryDark,
+    "--report-accent-2-light": secondaryLight,
+    "--report-accent-2-dark": secondaryDark,
+    "--report-ink-light": pickContrastInkColor(primaryLight),
+    "--report-ink-dark": pickContrastInkColor(primaryDark),
+  };
+}
+
 /** Ink color for text on a solid or gradient badge background (white on dark, near-black on light). */
 export function pickContrastInkColor(...colors: string[]) {
   const normalized = colors.map((color) => normalizeHex(color, "#000000"));

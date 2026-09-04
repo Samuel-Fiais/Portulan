@@ -1,0 +1,27 @@
+---
+description: Modelo de produto Portulan — ler antes de mudar comportamento e atualizar na mesma sessão.
+alwaysApply: true
+---
+
+# Modelo de produto
+
+A fonte de verdade de negócio está em `docs/product/` (`dominio.md`, `regras.md`, `funcionalidades.md`, `fluxos.md`). Não substitua isso por leitura exploratória do código.
+
+## Antes de implementar
+
+1. Siga o fluxo em `docs/product/README.md` (ler modelo → backlog → contrato `RN`/`F` → código → fechar modelo).
+2. Cite a regra (`RN-xx`) ou a funcionalidade (`F-…`) que está em jogo.
+3. Se a tarefa for priorizar melhorias, siga também `.cursor/skills/portulan-ice/SKILL.md`.
+4. Não comece pelo código. Se a regra ainda não existe, escreva-a primeiro.
+
+## Depois de implementar (obrigatório)
+
+Na mesma sessão, antes de declarar concluído, atualize o modelo:
+
+- Invariante nova ou diferente → `docs/product/regras.md`
+- Capacidade nova, removida ou com estado diferente → `docs/product/funcionalidades.md`
+- Entidade/status/limite → `docs/product/dominio.md`
+- Jornada → `docs/product/fluxos.md`
+- Item ICE entregue → estado em `funcionalidades.md` e em `.cursor/skills/portulan-ice/backlog.md`
+
+Não descreva caminhos de código no modelo de produto.

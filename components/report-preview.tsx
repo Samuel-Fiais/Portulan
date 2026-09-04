@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { ReportBrandLogo, reportPrintLogoStyle } from "@/components/report-brand-logo";
 import { RichMarkdown } from "@/components/rich-markdown";
+import { reportPaletteStyle } from "@/lib/color-utils";
 import { statusMeta, type DocumentRecord } from "@/lib/documents";
 import { formatDate } from "@/lib/utils";
 
@@ -18,8 +19,7 @@ export function ReportPreview({
   publishedBy?: string | null;
 }) {
   const paletteStyle = {
-    "--report-accent": document.primaryColor,
-    "--report-accent-2": document.secondaryColor,
+    ...reportPaletteStyle(document.primaryColor, document.secondaryColor),
     "--print-logo": reportPrintLogoStyle(document.logoUrl),
   } as CSSProperties;
   const livingKey = documentKey ?? `doc-${document.id}-v${document.version}`;

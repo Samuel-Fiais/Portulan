@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties, type MouseEvent } from "react";
-import { toast } from "sonner";
+import { useCallback, useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { InlineMarkdown } from "@/components/inline-markdown";
 import {
