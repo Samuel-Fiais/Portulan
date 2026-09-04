@@ -126,6 +126,9 @@ function pipeRowsPitfalls(component: MarkdownComponent): string[] {
   return [
     `Use linhas iniciadas com \`-\`, colunas separadas por \`|\` — não tabelas GFM.`,
     `Não coloque \`|\` no início/fim da linha como cabeçalho de tabela Markdown.`,
+    directive === "properties" || directive === "kv"
+      ? "Valores podem usar Markdown inline (`[rótulo](url)`, **negrito**, `código`); URLs cruas viram link automático."
+      : "",
     directive === "stats"
       ? "Se não houver variação/delta, omita colunas extras — não use `-` como placeholder."
       : "",

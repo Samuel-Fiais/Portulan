@@ -45,6 +45,7 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 - **RN-44** `:::testcase` exige `id` único no documento. Status permitidos: `pending`, `ok`, `partial`, `error`. Preferir testcase a tabelas largas para cenários de QA.
 - **RN-45** Upload de anexo de relatório (`:::file`) aceita qualquer tipo de arquivo até 5 MB; imagens em `:::figure` continuam restritas a PNG, JPG, WEBP, SVG e GIF. Logo de template permanece só imagem.
 - **RN-46** `:::file` exige `url` e `name` (nome original com extensão). O card renderizado mostra a extensão em destaque e link para abrir/baixar o arquivo.
+- **RN-47** Em blocos de linhas com colunas (`:::properties`, `:::kv` e similares), a coluna **valor** aceita Markdown inline (links, negrito, código) com a mesma política de segurança do restante do relatório; URLs cruas continuam virando link automático quando aplicável.
 
 ## MCP
 
