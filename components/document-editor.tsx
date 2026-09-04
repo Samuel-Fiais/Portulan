@@ -7,6 +7,7 @@ import { ArrowLeft, Ban, Blocks, Copy, Download, ExternalLink, Eye, FileText, Gl
 import { toast } from "sonner";
 import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, setDocumentDisabledAction, setDocumentReleaseDisabledAction, updateDocumentAction } from "@/app/actions";
 import { BlobImageUpload } from "@/components/blob-image-upload";
+import { BlobFileUpload } from "@/components/blob-file-upload";
 import { DocumentCollaboratorAvatars } from "@/components/document-collaborator-avatars";
 import { DocumentShareDialog } from "@/components/document-share-dialog";
 import { ReportLinkCard } from "@/components/report-link-card";
@@ -159,11 +160,19 @@ export function DocumentEditor({
     if (selectedMarkdownComponent.pickerAction === "image-upload" && !previewProperties.src?.startsWith("http")) {
       previewProperties.src = "/portulan-logo.png";
     }
+    if (selectedMarkdownComponent.pickerAction === "file-upload" && !previewProperties.url?.startsWith("http")) {
+      previewProperties.url = "https://example.com/especificacao.pdf";
+      previewProperties.name = previewProperties.name || "especificacao.pdf";
+      previewProperties.title = previewProperties.title || "Especificação técnica";
+    }
     return applyComponentProperties(selectedMarkdownComponent.preview, previewProperties);
   }, [selectedMarkdownComponent, componentPropertyValues]);
   const canInsertSelectedComponent = useMemo(() => {
     if (selectedMarkdownComponent.pickerAction === "image-upload") {
       return Boolean(componentPropertyValues.src?.startsWith("http"));
+    }
+    if (selectedMarkdownComponent.pickerAction === "file-upload") {
+      return Boolean(componentPropertyValues.url?.startsWith("http") && componentPropertyValues.name?.trim());
     }
     if (selectedMarkdownComponent.pickerAction === "report-select") {
       return Boolean(componentPropertyValues.slug && componentPropertyValues.title);
@@ -773,6 +782,25 @@ export function DocumentEditor({
                   />
                   {!componentPropertyValues.src?.startsWith("http") ? (
                     <p className="markdown-component-picker-hint">Envie uma imagem para habilitar a inserção.</p>
+                  ) : null}
+                </div>
+              ) : null}
+              {selectedMarkdownComponent.pickerAction === "file-upload" ? (
+                <div className="markdown-component-picker-action">
+                  <span>Arquivo</span>
+                  <BlobFileUpload
+                    documentId={document.id}
+                    label="Enviar arquivo"
+                    disabled={pending}
+                    onUploaded={({ url, name }) => setComponentPropertyValues((current) => ({
+                      ...current,
+                      url,
+                      name,
+                      title: current.title?.trim() || name.replace(/\.[^.]+$/, ""),
+                    }))}
+                  />
+                  {!componentPropertyValues.url?.startsWith("http") ? (
+                    <p className="markdown-component-picker-hint">Envie um arquivo (qualquer tipo, até 5 MB) para habilitar a inserção.</p>
                   ) : null}
                 </div>
               ) : null}

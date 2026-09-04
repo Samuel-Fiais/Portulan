@@ -56,7 +56,7 @@ export type MarkdownComponent = {
   properties?: ComponentProperty[];
   rules?: string[];
   /** Fluxo especial na modal Adicionar componente. */
-  pickerAction?: "image-upload" | "report-select";
+  pickerAction?: "image-upload" | "file-upload" | "report-select";
 };
 
 export const markdownComponents: MarkdownComponent[] = [
@@ -109,6 +109,7 @@ export const markdownComponents: MarkdownComponent[] = [
   { id: "resources", name: "Recursos", description: "Links, documentos e referências relacionadas.", category: "Documentação e referência", snippet: ":::resources\n- Recurso | Tipo | {{conteúdo}}\n:::", preview: ":::resources\n- Guia de operação | Documento | Instruções para resposta a incidentes.\n- Painel de métricas | Dashboard | Acompanhamento em tempo real.\n:::", rules: ["Formato: recurso | tipo | descrição."] },
   { id: "columns", name: "Colunas", description: "Divide uma seção e aceita Markdown e componentes em cada coluna.", category: "Layout e composição", snippet: ":::columns{count=\"2\"}\n### Coluna 1\n\n{{conteúdo}}\n\n---\n\n### Coluna 2\n\nConteúdo complementar.\n:::", preview: ":::columns{count=\"2\"}\n### Resultado\n\n:::stats\n- Cobertura | 91% | ↑ 6 p.p. | up\n:::\n\n---\n\n### Próxima ação\n\n:::checklist\n- [ ] Validar em produção | sexta-feira\n:::\n:::", properties: [{ name: "count", values: "2 · 3 · 4 colunas", options: ["2", "3", "4"], defaultValue: "2" }], rules: ["Separe cada coluna com uma linha contendo apenas ---.", "Cada coluna pode conter Markdown e outros componentes."] },
   { id: "image", name: "Imagem", description: "Figura com legenda opcional. Envie o arquivo na prévia.", category: "Imagens e mídia", snippet: ':::figure{src="" alt="Descrição da imagem" size="medium" align="center"}\n{{conteúdo}}\n:::', preview: ':::figure{src="/portulan-logo.png" alt="Exemplo de imagem" size="medium" align="center"}\nLegenda opcional.\n:::', pickerAction: "image-upload", properties: [{ name: "src", values: "URL pública da imagem" }, { name: "alt", values: "texto alternativo" }, { name: "size", values: "small · medium · large · full", options: ["small", "medium", "large", "full"], defaultValue: "medium" }, { name: "align", values: "left · center · right", options: ["left", "center", "right"], defaultValue: "center" }], rules: ["Envie a imagem na prévia antes de inserir.", "O corpo do bloco vira a legenda (opcional)."] },
+  { id: "file", name: "Arquivo", description: "Anexo para download com badge de extensão. Envie o arquivo na prévia.", category: "Imagens e mídia", snippet: ':::file{url="" name="" title=""}', preview: ':::file{url="https://example.com/spec.pdf" name="especificacao.pdf" title="Especificação técnica"}', pickerAction: "file-upload", properties: [{ name: "url", values: "URL pública do arquivo (obrigatório)" }, { name: "name", values: "nome original com extensão (obrigatório)" }, { name: "title", values: "título exibido no card (opcional; padrão: name sem extensão)" }], rules: ["Envie o arquivo na prévia antes de inserir.", "Qualquer tipo de arquivo até 5 MB.", "A extensão do name aparece em destaque no card."] },
   { id: "gallery", name: "Galeria", description: "Grade de imagens lado a lado.", category: "Imagens e mídia", snippet: ':::gallery{columns="2"}\n- https:// | Legenda A\n- https:// | Legenda B\n:::', preview: ':::gallery{columns="2"}\n- /portulan-logo.png | Visão geral\n- /portulan-logo-on-dark.png | Versão escura\n:::', properties: [{ name: "columns", values: "2 · 3 colunas", options: ["2", "3"], defaultValue: "2" }], rules: ["Formato: URL | legenda opcional.", "Use URLs do Blob Portulan sempre que possível."] },
   { id: "section", name: "Seção", description: "Título editorial principal.", category: "Markdown", snippet: "## {{conteúdo}}", preview: "## Decisão e próximos passos" },
   { id: "subtitle", name: "Subtítulo", description: "Título secundário dentro de uma seção.", category: "Markdown", snippet: "### {{conteúdo}}", preview: "### Critérios de aceite" },
@@ -134,6 +135,9 @@ export function defaultComponentProperties(component: MarkdownComponent) {
   );
   if (component.pickerAction === "image-upload") {
     return { ...options, src: "", alt: "Descrição da imagem" };
+  }
+  if (component.pickerAction === "file-upload") {
+    return { url: "", name: "", title: "" };
   }
   if (component.pickerAction === "report-select") {
     return { slug: "", title: "", summary: "" };
@@ -179,7 +183,7 @@ export function inferBodyFormatForComponent(component: MarkdownComponent): "pipe
   if (component.id === "columns") return "mixed";
   const directive = getDirectiveName(component);
   if (!directive) return "free-markdown";
-  if (["alert", "callout", "banner", "decision", "terminal", "filetree", "diff", "api", "image", "figure", "report", "testcase"].includes(directive)) {
+  if (["alert", "callout", "banner", "decision", "terminal", "filetree", "diff", "api", "image", "figure", "file", "report", "testcase"].includes(directive)) {
     return "free-markdown";
   }
   if (component.rules?.some((rule) => rule.toLowerCase().includes("formato:"))) return "pipe-rows";

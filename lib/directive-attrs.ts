@@ -46,7 +46,7 @@ export type MarkdownBlock =
   | { kind: "directive"; directive: MarkdownDirective };
 
 /** Single-line directives that do not use a closing `:::`. */
-export const VOID_DIRECTIVES = new Set(["image", "report"]);
+export const VOID_DIRECTIVES = new Set(["image", "report", "file"]);
 
 function isClosingFence(line: string) {
   return line.trim() === ":::";

@@ -17,8 +17,9 @@ Regras: RN-07, RN-52.
 1. Responsável ou editor altera título, resumo, Markdown, metadados ou template.
 2. Salvar grava o rascunho. Não publica. Não gera `/p` novo.
 3. Prévia ao lado reflete o rascunho; “Abrir prévia” abre o rascunho autenticado em outra aba.
+4. Anexos: na modal **Adicionar componente**, escolher **Arquivo**, enviar o arquivo (qualquer tipo, até 5 MB) e inserir `:::file{url name title?}`. Imagens continuam em **Imagem** (`:::figure`).
 
-Regras: RN-01, RN-08, RN-11.
+Regras: RN-01, RN-08, RN-11, RN-45, RN-46.
 
 ## Publicar
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { InlineMarkdown } from "@/components/inline-markdown";
+import { fileExtensionLabel } from "@/lib/blob-storage";
 
 type GalleryItem = {
   src: string;
@@ -106,6 +107,45 @@ export function LivingFigure({
         />
       ) : null}
     </figure>
+  );
+}
+
+function displayFileTitle(name: string, title?: string) {
+  const trimmedTitle = title?.trim();
+  if (trimmedTitle) return trimmedTitle;
+  const base = name.trim().split(/[\\/]/).pop() ?? name;
+  return base.replace(/\.[^.]+$/, "") || base;
+}
+
+export function LivingFileCard({
+  url,
+  name,
+  title,
+}: {
+  url?: string;
+  name?: string;
+  title?: string;
+}) {
+  if (!url?.trim() || !name?.trim()) return null;
+
+  const extension = fileExtensionLabel(name);
+  const label = displayFileTitle(name, title);
+
+  return (
+    <a
+      href={url}
+      className="fp-file-card"
+      target="_blank"
+      rel="noopener noreferrer"
+      download={name}
+    >
+      <span className="fp-file-card-badge" aria-label={`Tipo ${extension}`}>{extension}</span>
+      <div className="fp-file-card-body">
+        <strong className="fp-file-card-title">{label}</strong>
+        <span className="fp-file-card-name">{name}</span>
+        <span className="fp-file-card-action"><Download aria-hidden /> Abrir ou baixar</span>
+      </div>
+    </a>
   );
 }
 

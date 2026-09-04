@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildBlobPath, isPortulanBlobUrl, validateBlobImage } from "./blob-storage.ts";
+import { buildBlobPath, fileExtensionLabel, isPortulanBlobUrl, validateBlobFile, validateBlobImage } from "./blob-storage.ts";
 
 test("buildBlobPath organiza logos de template por usuário", () => {
   const path = buildBlobPath({
@@ -24,9 +24,30 @@ test("buildBlobPath organiza imagens de relatório por documento", () => {
   assert.match(path, /diagrama\.webp$/);
 });
 
+test("buildBlobPath organiza anexos de relatório em files/", () => {
+  const path = buildBlobPath({
+    purpose: "report-file",
+    userId: "user-1",
+    documentId: "doc-7",
+    fileName: "contrato.pdf",
+  });
+  assert.match(path, /^portulan\/users\/user-1\/documents\/doc-7\/files\//);
+  assert.match(path, /contrato\.pdf$/);
+});
+
 test("validateBlobImage rejeita tipos não suportados", () => {
   const result = validateBlobImage({ type: "application/pdf", size: 1000, name: "file.pdf" });
   assert.equal(result.ok, false);
+});
+
+test("validateBlobFile aceita qualquer tipo dentro do limite", () => {
+  const result = validateBlobFile({ size: 1000, name: "file.pdf" });
+  assert.equal(result.ok, true);
+});
+
+test("fileExtensionLabel extrai extensão em maiúsculas", () => {
+  assert.equal(fileExtensionLabel("relatorio.Q3.pdf"), "PDF");
+  assert.equal(fileExtensionLabel("archive"), "FILE");
 });
 
 test("isPortulanBlobUrl reconhece URLs do store", () => {

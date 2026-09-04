@@ -11,7 +11,7 @@ import { LivingTestcase } from "@/components/living-testcase";
 import { LivingCodeBlock, LivingTable } from "@/components/living-code-block";
 import { LivingFaq, LivingGlossary, LivingProperties, LivingRelated, LivingResources } from "@/components/living-collapsible-blocks";
 import { LivingFileTree } from "@/components/living-filetree";
-import { LivingFigure, LivingGallery } from "@/components/living-media";
+import { LivingFigure, LivingFileCard, LivingGallery } from "@/components/living-media";
 import { LivingApi, LivingDiff, LivingEnv, LivingKv, LivingLogs, LivingTerminal, LivingTests } from "@/components/living-tech-blocks";
 import { parseChartDirective } from "@/lib/chart-directive";
 import { parseMarkdownBlocks, type MarkdownDirective } from "@/lib/markdown-blocks";
@@ -151,6 +151,10 @@ function DirectiveRenderer({ directive, living }: { directive: MarkdownDirective
         interactive={living.interactive}
       />
     );
+  }
+  if (directive.name === "file") {
+    const { url, name, title } = directive.attributes;
+    return <LivingFileCard url={url} name={name} title={title} />;
   }
   if (directive.name === "report") {
     const { slug, title, summary } = directive.attributes;
