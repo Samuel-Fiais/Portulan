@@ -38,7 +38,7 @@ const COMMON_AGENT_FAILURES = [
   "Usar `:::checklist` para critérios informativos — prefira bullets `- item` sem checkbox.",
   "Duplicar `id` em `:::testcase` no mesmo documento.",
   "Usar `<param>` solto no texto (ex.: `/wallets/<walletId>/grades`) — prefira `{walletId}` ou inline code; o renderer preserva o literal, mas HTML bruto no Markdown não é suportado.",
-  "Adicionar `:::` de fechamento após `:::report` ou `:::image` — vaza texto literal na página pública.",
+  "Adicionar corpo ou `:::` de fechamento após `:::report` ou `:::image` — o texto acidental vaza na página pública.",
 ] as const;
 
 const GLOBAL_EXAMPLES: AvoidErrorsExample[] = [
@@ -68,8 +68,8 @@ const GLOBAL_EXAMPLES: AvoidErrorsExample[] = [
     good: "Chame GET `/api/v1/wallets/<walletId>/grades` ou use `{walletId}` no texto.",
   },
   {
-    label: "Fence extra após :::report void",
-    bad: ':::report{slug="roadmap" title="Roadmap" summary="Resumo."}\n:::',
+    label: "Corpo ou fence após :::report void",
+    bad: ':::report{slug="roadmap" title="Roadmap" summary="Resumo."}\nGuia de implementação\n:::',
     good: ':::report{slug="roadmap" title="Roadmap" summary="Resumo."}',
   },
 ];
@@ -151,10 +151,10 @@ function freeMarkdownPitfalls(component: MarkdownComponent): string[] {
     pitfalls.push("Preserve quebras de linha do corpo; não substitua por HTML.");
   }
   if (component.id === "report" || directive === "report") {
-    pitfalls.push("Diretiva void: uma linha só, sem corpo nem `:::` de fechamento.");
+    pitfalls.push("Diretiva void: uma linha só — sem corpo, sem texto extra e sem `:::` de fechamento.");
   }
   if (directive === "image") {
-    pitfalls.push("Diretiva void: uma linha só, sem corpo nem `:::` de fechamento.");
+    pitfalls.push("Diretiva void: uma linha só — sem corpo, sem texto extra e sem `:::` de fechamento.");
   }
   if (directive === "figure") {
     pitfalls.push("Use `:::figure{...}` com `src` e `alt`; legenda opcional no corpo antes do fechamento.");

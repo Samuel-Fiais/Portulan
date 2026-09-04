@@ -52,6 +52,22 @@ function isClosingFence(line: string) {
   return line.trim() === ":::";
 }
 
+/** Discards accidental void-directive body until a blank line, closing `:::`, or another directive opener. */
+export function skipVoidDirectiveTail(lines: string[], startIndex: number) {
+  let index = startIndex;
+  while (index < lines.length) {
+    const line = lines[index];
+    if (isClosingFence(line)) {
+      index += 1;
+      break;
+    }
+    if (line.trim() === "") break;
+    if (parseDirectiveOpener(line)) break;
+    index += 1;
+  }
+  return index;
+}
+
 export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
   const lines = source.split("\n");
   const blocks: MarkdownBlock[] = [];
@@ -83,9 +99,7 @@ export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
           body: "",
         },
       });
-      if (index + 1 < lines.length && isClosingFence(lines[index + 1])) {
-        index += 1;
-      }
+      index = skipVoidDirectiveTail(lines, index + 1) - 1;
       continue;
     }
 

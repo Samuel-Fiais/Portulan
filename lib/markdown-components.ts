@@ -201,17 +201,20 @@ function buildSyntaxSteps(component: MarkdownComponent) {
   const steps = [
     `Abra o bloco com \`:::${directive}\` seguido imediatamente de \`{attr="valor"}\` quando houver atributos — sem espaço antes de \`{\`.`,
     attributeHint,
-    bodyFormat === "pipe-rows"
-      ? "No corpo, use linhas iniciadas com `-`, separando colunas com `|` conforme as regras — não use tabelas GFM."
-      : bodyFormat === "mixed"
-        ? "No corpo, separe colunas com uma linha contendo apenas `---`; cada coluna aceita Markdown e outros componentes."
-        : "No corpo, escreva Markdown livre (texto, listas, parágrafos ou código).",
   ];
-  if (!VOID_DIRECTIVES.has(directive)) {
+  if (VOID_DIRECTIVES.has(directive)) {
+    steps.push("Sem corpo — o card vem só dos atributos; não escreva texto nem `:::` após a linha.");
+    steps.push("Deixe linha em branco antes e depois; consulte `avoidErrors` deste componente para armadilhas comuns.");
+  } else {
+    steps.push(
+      bodyFormat === "pipe-rows"
+        ? "No corpo, use linhas iniciadas com `-`, separando colunas com `|` conforme as regras — não use tabelas GFM."
+        : bodyFormat === "mixed"
+          ? "No corpo, separe colunas com uma linha contendo apenas `---`; cada coluna aceita Markdown e outros componentes."
+          : "No corpo, escreva Markdown livre (texto, listas, parágrafos ou código).",
+    );
     steps.push("Feche o bloco com uma linha contendo apenas `:::`.");
     steps.push("Deixe linha em branco antes e depois do bloco; consulte `avoidErrors` deste componente para armadilhas comuns.");
-  } else {
-    steps.push("Não adicione `:::` de fechamento — esta diretiva ocupa uma única linha.");
   }
   return steps;
 }
