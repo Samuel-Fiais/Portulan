@@ -9,8 +9,9 @@ export const BLOB_IMAGE_TYPES = [
 ] as const;
 
 export const BLOB_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const BLOB_MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-export type BlobUploadPurpose = "template-logo" | "report-image";
+export type BlobUploadPurpose = "template-logo" | "report-image" | "report-file";
 
 export function sanitizeBlobFileName(fileName: string) {
   const base = fileName.trim().split(/[\\/]/).pop() ?? "image";
@@ -39,10 +40,11 @@ export function buildBlobPath(input: {
   }
 
   if (!input.documentId?.trim()) {
-    throw new Error("documentId é obrigatório para imagens de relatório.");
+    throw new Error("documentId é obrigatório para arquivos de relatório.");
   }
 
-  return `${BLOB_ROOT}/users/${input.userId}/documents/${input.documentId}/images/${stamp}-${safeName}`;
+  const folder = input.purpose === "report-file" ? "files" : "images";
+  return `${BLOB_ROOT}/users/${input.userId}/documents/${input.documentId}/${folder}/${stamp}-${safeName}`;
 }
 
 export function validateBlobImage(file: Pick<File, "type" | "size" | "name">) {
@@ -56,6 +58,22 @@ export function validateBlobImage(file: Pick<File, "type" | "size" | "name">) {
     return { ok: false as const, error: "Arquivo inválido." };
   }
   return { ok: true as const };
+}
+
+export function validateBlobFile(file: Pick<File, "size" | "name">) {
+  if (file.size > BLOB_MAX_FILE_BYTES) {
+    return { ok: false as const, error: "O arquivo deve ter no máximo 5 MB." };
+  }
+  if (!file.name.trim()) {
+    return { ok: false as const, error: "Arquivo inválido." };
+  }
+  return { ok: true as const };
+}
+
+export function fileExtensionLabel(fileName: string) {
+  const base = fileName.trim().split(/[\\/]/).pop() ?? fileName;
+  const match = base.match(/\.([^.]+)$/);
+  return match?.[1]?.toUpperCase() ?? "FILE";
 }
 
 export function isPortulanBlobUrl(url: string) {

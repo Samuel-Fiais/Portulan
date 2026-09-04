@@ -883,6 +883,14 @@ button.fp-report-card { cursor: pointer; font: inherit; }
 .fp-report-card-summary { margin: 0; color: var(--text-2, var(--muted-foreground)); font-size: 13px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .fp-report-card-chevron { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted-foreground); opacity: 0; transition: opacity 0.15s ease, transform 0.15s ease; }
 a.fp-report-card:hover .fp-report-card-chevron { opacity: 0.55; transform: translateX(1px); }
+.fp-file-card { display: flex; align-items: start; gap: 14px; width: 100%; max-width: 520px; margin: 0 0 var(--sp-5); padding: 14px 16px; border: 1px solid var(--border); background: var(--surface); color: inherit; text-align: left; text-decoration: none; break-inside: avoid; transition: border-color .15s ease, box-shadow .15s ease; }
+a.fp-file-card:hover { border-color: var(--report-accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--report-accent) 20%, transparent); }
+.fp-file-card-badge { display: grid; place-items: center; min-width: 52px; height: 52px; padding: 0 8px; flex-shrink: 0; border: 1px solid color-mix(in srgb, var(--report-accent) 30%, var(--border)); background: color-mix(in srgb, var(--report-accent) 8%, var(--bg)); color: var(--report-accent); font: 800 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.fp-file-card-body { display: grid; gap: 4px; min-width: 0; }
+.fp-file-card-title { font-size: 15px; line-height: 1.35; }
+.fp-file-card-name { color: var(--muted-foreground); font: 500 11px/1.4 var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-file-card-action { display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; color: var(--report-accent); font-size: 12px; font-weight: 600; }
+.fp-file-card-action svg { width: 14px; height: 14px; }
 .markdown-component-picker-action,
 .markdown-component-report-picker { display: grid; gap: 8px; margin-bottom: 12px; }
 .markdown-component-picker-action > span,

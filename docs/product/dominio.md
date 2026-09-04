@@ -68,6 +68,10 @@ Credencial pessoal (`ptl_…`). Expira em 30d, 60d, 1 ano ou nunca. Autentica o 
 
 Bloco do catálogo (alerta, gráfico, checklist, …). A modal **Adicionar componente** e o MCP leem o mesmo catálogo. Novo bloco = uma entrada no catálogo, não uma lista paralela no editor.
 
+### Anexo (Blob)
+
+Arquivo enviado pelo editor e referenciado por `:::file{url name title?}`. Armazenado em `portulan/users/{userId}/documents/{documentId}/files/`. Limite: 5 MB por arquivo. Imagens em `:::figure` usam o prefixo `…/images/` e tipos MIME de imagem.
+
 ## Identificadores públicos
 
 | URL | Significado |

@@ -97,7 +97,7 @@ function directiveSlicesInRange(lines: string[], startLine: number, endLine: num
     if (!opener || lines[lineIndex] === ":::") continue;
 
     const name = opener.name.toLowerCase();
-    if (name === "image" || name === "report") {
+    if (name === "image" || name === "report" || name === "file") {
       slices.push({
         name,
         attributes: Object.fromEntries(Array.from(opener.attributeSource.matchAll(/([\w-]+)="([^"]*)"/g), (m) => [m[1], m[2]])),

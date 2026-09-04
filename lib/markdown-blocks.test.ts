@@ -41,6 +41,28 @@ test("parseMarkdownBlocks ignora ::: de fechamento após :::image void", () => {
   assert.equal(blocks[0].kind, "directive");
 });
 
+test("parseMarkdownBlocks trata :::file como diretiva de uma linha", () => {
+  const blocks = parseMarkdownBlocks(':::file{url="https://x/blob.pdf" name="spec.pdf" title="Spec"}');
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].kind, "directive");
+  if (blocks[0].kind === "directive") {
+    assert.equal(blocks[0].directive.name, "file");
+    assert.equal(blocks[0].directive.attributes.name, "spec.pdf");
+    assert.equal(blocks[0].directive.body, "");
+  }
+});
+
+test("parseMarkdownBlocks ignora ::: de fechamento após :::file void", () => {
+  const source = [
+    ':::file{url="https://x/blob.pdf" name="spec.pdf" title="Spec"}',
+    ":::",
+  ].join("\n");
+
+  const blocks = parseMarkdownBlocks(source);
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].kind, "directive");
+});
+
 test("parseMarkdownBlocks trata :::image como diretiva de uma linha", () => {
   const source = [
     ':::image{src="https://a.png" alt="A"}',

@@ -1,6 +1,6 @@
 import type { BlobUploadPurpose } from "@/lib/blob-storage";
 
-export async function uploadBlobImage(input: {
+async function uploadBlobAsset(input: {
   file: File;
   purpose: BlobUploadPurpose;
   documentId?: string;
@@ -19,8 +19,28 @@ export async function uploadBlobImage(input: {
 
   const payload = await response.json().catch(() => ({})) as { url?: string; error?: string };
   if (!response.ok || !payload.url) {
-    throw new Error(payload.error ?? "Não foi possível enviar a imagem.");
+    throw new Error(payload.error ?? "Não foi possível enviar o arquivo.");
   }
 
   return payload.url;
+}
+
+export async function uploadBlobImage(input: {
+  file: File;
+  purpose: Extract<BlobUploadPurpose, "template-logo" | "report-image">;
+  documentId?: string;
+  templateId?: string;
+}) {
+  return uploadBlobAsset(input);
+}
+
+export async function uploadBlobFile(input: {
+  file: File;
+  documentId: string;
+}) {
+  return uploadBlobAsset({
+    file: input.file,
+    purpose: "report-file",
+    documentId: input.documentId,
+  });
 }

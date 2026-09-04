@@ -6,10 +6,11 @@ import { documentAccessContext } from "@/lib/access-context";
 import {
   buildBlobPath,
   type BlobUploadPurpose,
+  validateBlobFile,
   validateBlobImage,
 } from "@/lib/blob-storage";
 
-const purposes = new Set<BlobUploadPurpose>(["template-logo", "report-image"]);
+const purposes = new Set<BlobUploadPurpose>(["template-logo", "report-image", "report-file"]);
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -36,14 +37,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Tipo de upload inválido." }, { status: 400 });
   }
 
-  const validation = validateBlobImage(file);
+  const validation = purpose === "report-file"
+    ? validateBlobFile(file)
+    : validateBlobImage(file);
   if (!validation.ok) {
     return Response.json({ error: validation.error }, { status: 400 });
   }
 
-  if (purpose === "report-image") {
+  if (purpose === "report-image" || purpose === "report-file") {
     if (!documentId) {
-      return Response.json({ error: "documentId é obrigatório para imagens de relatório." }, { status: 400 });
+      return Response.json({ error: "documentId é obrigatório para arquivos de relatório." }, { status: 400 });
     }
     const ctx = await documentAccessContext(userId);
     const document = await getDocument(documentId, ctx);

@@ -22,7 +22,7 @@ export function BlobImageUpload({
   size = "default",
   className,
 }: {
-  purpose: BlobUploadPurpose;
+  purpose: Extract<BlobUploadPurpose, "template-logo" | "report-image">;
   documentId?: string;
   templateId?: string;
   onUploaded: (url: string) => void;

@@ -64,6 +64,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 |---|---|---|
 | F-templates | Criar/editar/duplicar template particular; Default interno | existe |
 | F-logo | Logo do template e upload de imagens de relatório (Blob) | existe |
+| F-anexo | Upload de anexos de qualquer tipo em relatórios (`:::file`) com card e badge de extensão | existe |
 | F-auth | Login GitHub | existe |
 | F-mcp-token | Gerar e revogar token pessoal MCP | existe |
 
