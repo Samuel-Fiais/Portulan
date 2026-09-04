@@ -67,3 +67,31 @@ test("parseTestcaseStatus faz fallback para pending", () => {
   assert.equal(parseTestcaseStatus("partial"), "partial");
   assert.equal(parseTestcaseStatus("unknown"), "pending");
 });
+
+const NESTED_COLUMNS = `## 01 — QA
+
+:::columns{count="2"}
+### Cenários
+
+:::testcase{id="TC-NESTED" status="pending" priority="high" title="Dentro de colunas"}
+**Passos:** executar fluxo
+:::
+
+---
+
+### Evidências
+Texto livre.
+:::
+`;
+
+test("updateTestcaseStatusInMarkdown encontra testcase aninhado em columns", () => {
+  const updated = updateTestcaseStatusInMarkdown(NESTED_COLUMNS, "TC-NESTED", "ok");
+  assert.ok(updated);
+  assert.match(updated!, /:::testcase\{[^}]*id="TC-NESTED"[^}]*status="ok"/);
+  assert.doesNotMatch(updated!, /TC-NESTED"[^}]*status="pending"/);
+});
+
+test("testcaseIdExists reconhece testcase aninhado em columns", () => {
+  assert.equal(testcaseIdExists(NESTED_COLUMNS, "TC-NESTED"), true);
+  assert.equal(testcaseIdExists(NESTED_COLUMNS, "TC-MISSING"), false);
+});

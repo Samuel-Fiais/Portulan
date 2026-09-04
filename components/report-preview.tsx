@@ -15,6 +15,7 @@ export function ReportPreview({
   documentKey,
   publishedBy,
   persistable = false,
+  releaseId,
   onContentChange,
 }: {
   document: DocumentRecord;
@@ -23,6 +24,7 @@ export function ReportPreview({
   documentKey?: string;
   publishedBy?: string | null;
   persistable?: boolean;
+  releaseId?: string | null;
   onContentChange?: (content: string) => void;
 }) {
   const [livingContent, setLivingContent] = useState(document.content);
@@ -104,6 +106,7 @@ export function ReportPreview({
       interactive={isLiving}
       persistable={persistable}
       documentId={document.id}
+      releaseId={releaseId}
       documentKey={livingKey}
       content={livingContent}
       onContentChange={handleContentChange}

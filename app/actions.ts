@@ -21,6 +21,7 @@ import {
   setDocumentDisabled,
   setDocumentReleaseDisabled,
   updateDocument,
+  updateDocumentLivingContent,
   updateDocumentShareRole,
   updateTemplate,
 } from "@/lib/db";
@@ -75,7 +76,11 @@ export async function updateDocumentAction(id: string, input: unknown) {
   return { ok: true as const, document };
 }
 
-export async function updateDocumentContentAction(documentId: string, content: string) {
+export async function updateDocumentContentAction(
+  documentId: string,
+  content: string,
+  releaseId?: string | null,
+) {
   const session = await auth();
   if (!session?.user?.id) {
     return { ok: false as const, error: "Faça login para editar documentos." };
@@ -84,13 +89,15 @@ export async function updateDocumentContentAction(documentId: string, content: s
   const parsed = documentUpdateSchema.safeParse({ content });
   if (!parsed.success) return { ok: false as const, error: "Conteúdo inválido." };
 
-  const document = await updateDocument(documentId, parsed.data, await accessContext(session.user.id));
+  const ctx = await accessContext(session.user.id);
+  const document = await updateDocumentLivingContent(documentId, parsed.data.content!, ctx, releaseId);
   if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
   revalidatePath("/");
   revalidatePath(`/documents/${documentId}`);
   revalidatePath(`/documents/${document.slug}`);
   revalidatePath(`/documents/${document.id}/preview`);
   revalidatePath(`/d/${document.slug}`);
+  if (releaseId) revalidatePath(`/p/${releaseId}`);
   return { ok: true as const, document };
 }
 
