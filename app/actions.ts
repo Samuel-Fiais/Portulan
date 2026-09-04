@@ -75,6 +75,25 @@ export async function updateDocumentAction(id: string, input: unknown) {
   return { ok: true as const, document };
 }
 
+export async function updateDocumentContentAction(documentId: string, content: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para editar documentos." };
+  }
+
+  const parsed = documentUpdateSchema.safeParse({ content });
+  if (!parsed.success) return { ok: false as const, error: "Conteúdo inválido." };
+
+  const document = await updateDocument(documentId, parsed.data, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  revalidatePath("/");
+  revalidatePath(`/documents/${documentId}`);
+  revalidatePath(`/documents/${document.slug}`);
+  revalidatePath(`/documents/${document.id}/preview`);
+  revalidatePath(`/d/${document.slug}`);
+  return { ok: true as const, document };
+}
+
 export async function deleteDocumentAction(id: string) {
   const session = await auth();
   if (!session?.user?.id) {

@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { DocumentAccessDenied } from "@/components/document-access-denied";
 import { DraftDocumentPreview } from "@/components/draft-document-preview";
-import { getDocument } from "@/lib/db";
+import { canEditDocument, getDocument } from "@/lib/db";
 import { documentAccessContext } from "@/lib/access-context";
 import { documentHasAnyShares, isPrivateOwnedDocument } from "@/lib/db/document-shares";
 import type { Metadata } from "next";
@@ -34,5 +34,5 @@ export default async function DraftPreviewPage({ params }: Props) {
     notFound();
   }
 
-  return <DraftDocumentPreview document={document} />;
+  return <DraftDocumentPreview document={document} persistable={await canEditDocument(document, ctx)} />;
 }

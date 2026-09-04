@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { PublicDocumentUnavailable } from "@/components/public-document-unavailable";
 import { PublicDocumentView } from "@/components/public-document-view";
-import { resolvePublicLatestReleaseBySlug } from "@/lib/db";
+import { canEditDocument, getDocument, resolvePublicLatestReleaseBySlug } from "@/lib/db";
+import { documentAccessContext } from "@/lib/access-context";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -30,7 +32,11 @@ export default async function LatestDocumentPage({ params }: Props) {
   }
 
   if (result.access === "ok") {
-    return <PublicDocumentView release={result.release} />;
+    const session = await auth();
+    const ctx = await documentAccessContext(session?.user?.id);
+    const source = await getDocument(result.release.documentId, ctx);
+    const persistable = source ? await canEditDocument(source, ctx) : false;
+    return <PublicDocumentView release={result.release} persistable={persistable} />;
   }
 
   notFound();

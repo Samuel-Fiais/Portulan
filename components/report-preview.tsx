@@ -1,6 +1,9 @@
-import type { CSSProperties } from "react";
+"use client";
+
+import { useEffect, useState, type CSSProperties } from "react";
 import { ReportBrandLogo, reportPrintLogoStyle } from "@/components/report-brand-logo";
 import { RichMarkdown } from "@/components/rich-markdown";
+import { LivingDocumentProvider } from "@/components/living-document-context";
 import { reportPaletteStyle } from "@/lib/color-utils";
 import { statusMeta, type DocumentRecord } from "@/lib/documents";
 import { formatDate } from "@/lib/utils";
@@ -11,21 +14,37 @@ export function ReportPreview({
   interactive = false,
   documentKey,
   publishedBy,
+  persistable = false,
+  onContentChange,
 }: {
   document: DocumentRecord;
   publicView?: boolean;
   interactive?: boolean;
   documentKey?: string;
   publishedBy?: string | null;
+  persistable?: boolean;
+  onContentChange?: (content: string) => void;
 }) {
+  const [livingContent, setLivingContent] = useState(document.content);
+
+  useEffect(() => {
+    setLivingContent(document.content);
+  }, [document.content]);
+
   const paletteStyle = {
     ...reportPaletteStyle(document.primaryColor, document.secondaryColor),
     "--print-logo": reportPrintLogoStyle(document.logoUrl),
   } as CSSProperties;
   const livingKey = documentKey ?? `doc-${document.id}-v${document.version}`;
   const isLiving = interactive && Boolean(livingKey);
+  const previewDocument = { ...document, content: livingContent };
 
-  return (
+  const handleContentChange = (content: string) => {
+    setLivingContent(content);
+    onContentChange?.(content);
+  };
+
+  const report = (
     <article className={`report-paper${isLiving ? " living-document" : ""}`} style={paletteStyle}>
       <table className="template-document-table">
       <thead><tr><th>
@@ -57,7 +76,7 @@ export function ReportPreview({
       </header>
       </td></tr></tbody>
       <tbody className="tmpl-body report-content">
-        <RichMarkdown source={document.content} tableRows interactive={isLiving} documentKey={livingKey} />
+        <RichMarkdown source={previewDocument.content} tableRows interactive={isLiving} documentKey={livingKey} />
       </tbody>
       <tfoot><tr><td>
       <footer className="tmpl-footer keep-together">
@@ -76,5 +95,20 @@ export function ReportPreview({
       </td></tr></tfoot>
       </table>
     </article>
+  );
+
+  if (!isLiving) return report;
+
+  return (
+    <LivingDocumentProvider
+      interactive={isLiving}
+      persistable={persistable}
+      documentId={document.id}
+      documentKey={livingKey}
+      content={livingContent}
+      onContentChange={handleContentChange}
+    >
+      {report}
+    </LivingDocumentProvider>
   );
 }

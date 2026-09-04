@@ -11,7 +11,7 @@ Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable
 
 1. App rodando: `npm run dev` (Node 20+) no repo Portulan
 2. Endpoint: `http://localhost:3000/api/mcp`
-3. Servidor MCP: `portulan` v0.6.0
+3. Servidor MCP: `portulan` v0.7.0
 
 Sem o dev server, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
 
@@ -68,10 +68,11 @@ Authorization: Bearer <MCP_API_KEY>
 
 No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
 
-## Ferramentas (16)
+## Ferramentas (17)
 
 | Ferramenta | Quando usar |
 |---|---|
+| `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo |
 | `list_documents` | Descobrir o que existe; buscar por título, tag, tipo ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |
@@ -177,8 +178,9 @@ Irreversível. Confirme com o usuário antes.
 ### Escolher componente Markdown
 
 ```
-1. list_markdown_components → descobrir diretivas e previews
-2. explain_markdown_component(name) → sintaxe, atributos e exemplos antes de escrever
+1. get_system_guide → visão completa (produto, componentes, living, QA)
+2. list_markdown_components → descobrir diretivas e previews
+3. explain_markdown_component(name) → sintaxe, atributos e exemplos antes de escrever
 ```
 
 Templates internos também podem ter nome, paleta e conteúdo-base ajustados; não podem ser excluídos. Templates particulares só podem ser alterados ou excluídos pelo respectivo usuário.
@@ -187,6 +189,7 @@ Templates internos também podem ter nome, paleta e conteúdo-base ajustados; n�
 
 | Conteúdo | Use |
 |---|---|
+| Cenários de QA / aceite | `:::testcase` com id estável e status durável |
 | Tarefas com status (feito/pendente) | `:::checklist` com `- [ ]` / `- [x]` |
 | Critérios, sintomas, “quando escalar” | bullets Markdown (`- item`) |
 | Passos sequenciais | `:::steps` |
@@ -209,8 +212,25 @@ Diretivas suportadas:
 | `:::steps` | `- título \| corpo` |
 | `:::timeline{state="current"}` | `- data \| título \| corpo \| estado opcional`; `state`: `done` ou `current` |
 | `:::checklist` | Tarefas rastreáveis com `- [ ]` ou `- [x]` · subtítulo opcional após `\|` |
+| `:::testcase{id="PRD-01" status="pending" priority="high" title="…"}` | Cenário de QA; corpo Markdown livre; status: pending · ok · partial · error |
+
+**Living:** checklist e testcase persistem no Markdown quando o usuário pode editar o documento (prévia do editor, rascunho e links públicos com sessão editor). PDF/impressão exibe badge estático.
 
 **Quando NÃO usar `:::checklist`:** critérios, sintomas, condições ou listas informativas (“quando escalar”, “sinais de alerta”) → use bullets Markdown normais (`- item`) no corpo da seção, **não** dentro de `:::checklist`. O `-` vira lista com marcador; checkbox só com `[ ]` / `[x]`.
+
+**Preferir `:::testcase` a tabelas largas** para registrar execução de cenários de QA.
+
+Exemplo testcase:
+
+```markdown
+:::testcase{id="PRD-01" status="pending" priority="high" title="Limite semanal ainda disponível"}
+**Pré-condição:** conta ativa
+
+**Passos:** GET /availability
+
+**Resultado esperado:** remaining > 0
+:::
+```
 
 **Stats:** se não houver delta, omita a terceira coluna — não use `-` como placeholder (`- Label | valor` basta).
 | `:::kv` | `- chave \| valor` |
@@ -294,7 +314,7 @@ curl -sS -X POST http://localhost:3000/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 16 ferramentas.
+Deve listar 17 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

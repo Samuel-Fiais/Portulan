@@ -48,7 +48,8 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | F-tema | Alternar claro/escuro na vista pública | existe |
 | F-indice | TOC com âncoras em `##` / `###` | planejado (`toc-anchors`) |
 | F-mermaid | Renderizar fence ` ```mermaid ` com paleta do template | planejado (`mermaid`) |
-| F-living | Checklist, gráficos e blocos interativos na leitura | existe (checklist só no navegador) |
+| F-living | Checklist, testcase, gráficos e blocos interativos na leitura | existe |
+| F-living-persist | Estado de checklist/testcase persiste no Markdown quando editável | existe |
 
 ## Colaboração
 
@@ -74,3 +75,4 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | F-mcp-templates | CRUD e preview de templates | existe |
 | F-mcp-share | listar, convidar, revogar compartilhamentos | existe |
 | F-mcp-catalogo | listar e explicar componentes Markdown | existe |
+| F-mcp-guia | get_system_guide — guia completo gerado do catálogo e do produto | existe |

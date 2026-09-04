@@ -721,7 +721,7 @@ export function DocumentEditor({
         />
         <section className="preview-pane">
           <div className="preview-label no-print"><span>Visualização</span><small>A impressão continua em A4</small></div>
-          <div className="preview-scroll"><ReportPreview document={previewDocument} interactive /></div>
+          <div className="preview-scroll"><ReportPreview document={previewDocument} interactive persistable={canEdit} onContentChange={(content) => patch("content", content)} /></div>
         </section>
       </main>
       <Dialog open={componentPickerOpen} onOpenChange={setComponentPickerOpen}>

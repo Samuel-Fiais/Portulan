@@ -28,6 +28,7 @@ import { documentAccessContext } from "@/lib/access-context";
 import { documentShareInputSchema } from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
+import { buildSystemGuide, getMcpServerVersion } from "@/lib/system-guide";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -174,6 +175,17 @@ const mcpHandler = createMcpHandler((server) => {
         ...preview,
       });
     },
+  );
+
+  server.registerTool(
+    "get_system_guide",
+    {
+      title: "Guia do sistema Portulan",
+      description:
+        "Retorna guia completo e atualizado: produto, publicação, autenticação MCP, catálogo de componentes Markdown, comportamentos living e boas práticas de QA. Preferir esta ferramenta quando não souber como escrever conteúdo.",
+      inputSchema: z.object({}),
+    },
+    async () => textResult({ guide: buildSystemGuide() }),
   );
 
   server.registerTool(
@@ -462,9 +474,9 @@ const mcpHandler = createMcpHandler((server) => {
     },
   );
 }, {
-  serverInfo: { name: "portulan", version: "0.6.0" },
+  serverInfo: { name: "portulan", version: getMcpServerVersion() },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{slug}) aponta sempre para a última versão; publicPath (/p/{releaseId}) fixa uma versão específica. Use list_markdown_components e explain_markdown_component para escrever diretivas ::: corretamente. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{slug}) aponta sempre para a última versão; publicPath (/p/{releaseId}) fixa uma versão específica. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro; use list_markdown_components e explain_markdown_component para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {

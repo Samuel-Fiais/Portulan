@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { InlineMarkdown } from "@/components/inline-markdown";
+import { useLivingDocument } from "@/components/living-document-context";
 import {
   checklistItemFingerprint,
   readChecklistItemChecked,
@@ -21,11 +22,17 @@ function ChecklistRow({
   item,
   interactive,
   documentKey,
+  persistable,
+  sectionIndex,
+  blockIndex,
   onToggle,
 }: {
   item: ChecklistItem;
   interactive: boolean;
   documentKey: string;
+  persistable: boolean;
+  sectionIndex: number;
+  blockIndex: number;
   onToggle: (fingerprint: string, checked: boolean) => void;
 }) {
   const [checked, setChecked] = useState(item.initialChecked);
@@ -35,8 +42,12 @@ function ChecklistRow({
       setChecked(item.initialChecked);
       return;
     }
+    if (persistable) {
+      setChecked(item.initialChecked);
+      return;
+    }
     setChecked(readChecklistItemChecked(documentKey, item.fingerprint, item.initialChecked));
-  }, [documentKey, interactive, item.fingerprint, item.initialChecked]);
+  }, [documentKey, interactive, item.fingerprint, item.initialChecked, persistable]);
 
   const toggle = useCallback(() => {
     if (!interactive || !item.hasCheckbox) return;
@@ -64,6 +75,8 @@ function ChecklistRow({
       tabIndex={interactive && item.hasCheckbox ? 0 : undefined}
       onClick={interactive && item.hasCheckbox ? toggle : undefined}
       onKeyDown={handleKeyDown}
+      data-section-index={sectionIndex}
+      data-block-index={blockIndex}
     >
       {item.hasCheckbox ? (
         <span className="check-box" aria-hidden="true">
@@ -99,17 +112,24 @@ export function LivingChecklist({
   sectionIndex: number;
   blockIndex: number;
 }) {
-  const hasAnyCheckbox = items.some(([rawTitle]) => /^\[[ xX]\]/.test(rawTitle));
+  const living = useLivingDocument();
+  const persistable = Boolean(living?.persistable);
+  const canInteract = interactive && (living ? living.interactive : Boolean(documentKey));
 
   const handleToggle = useCallback(
     (fingerprint: string, checked: boolean) => {
-      if (!documentKey) return;
-      writeChecklistItemChecked(documentKey, fingerprint, checked);
+      if (living) {
+        living.toggleChecklistItem(sectionIndex, blockIndex, fingerprint, checked);
+        return;
+      }
+      if (documentKey) {
+        writeChecklistItemChecked(documentKey, fingerprint, checked);
+      }
     },
-    [documentKey],
+    [blockIndex, documentKey, living, sectionIndex],
   );
 
-  if (!hasAnyCheckbox) {
+  if (!items.some(([rawTitle]) => /^\[[ xX]\]/.test(rawTitle))) {
     return (
       <ul className="fp-doc-list">
         {items.map(([title, sub], index) => (
@@ -148,8 +168,11 @@ export function LivingChecklist({
         <ChecklistRow
           key={item.fingerprint}
           item={item}
-          interactive={interactive}
+          interactive={canInteract}
           documentKey={documentKey}
+          persistable={persistable}
+          sectionIndex={sectionIndex}
+          blockIndex={blockIndex}
           onToggle={handleToggle}
         />
       ))}

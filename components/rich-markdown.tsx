@@ -6,6 +6,7 @@ import { InlineMarkdown } from "@/components/inline-markdown";
 import { isPlaceholderToken } from "@/lib/inline-markdown";
 import { LivingChart } from "@/components/living-chart";
 import { LivingChecklist } from "@/components/living-checklist";
+import { LivingTestcase } from "@/components/living-testcase";
 import { LivingCodeBlock, LivingTable } from "@/components/living-code-block";
 import { LivingFaq, LivingGlossary, LivingProperties, LivingRelated, LivingResources } from "@/components/living-collapsible-blocks";
 import { LivingFileTree } from "@/components/living-filetree";
@@ -233,6 +234,20 @@ function DirectiveRenderer({ directive, living }: { directive: MarkdownDirective
         documentKey={living.documentKey}
         sectionIndex={living.sectionIndex}
         blockIndex={living.blockIndex}
+      />
+    );
+  }
+  if (directive.name === "testcase") {
+    const { id, title = "", priority = "medium", status = "pending" } = directive.attributes;
+    if (!id) return null;
+    return (
+      <LivingTestcase
+        testcaseId={id}
+        title={title}
+        priority={priority}
+        initialStatus={status}
+        body={directive.body}
+        interactive={living.interactive}
       />
     );
   }

@@ -914,6 +914,54 @@ button.fp-report-card { cursor: pointer; }
 .fp-check-item-plain .check-text::before { content: "—"; margin-right: var(--sp-2); color: var(--text-3); }
 .check-sub { margin-top: 2px; color: var(--text-3); font: 400 11px/1.4 var(--font-mono); }
 
+.fp-testcase {
+  margin: 0 0 var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border);
+  break-inside: avoid;
+}
+.fp-testcase-header { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.fp-testcase-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.fp-testcase-id {
+  font: 600 11px/1 var(--font-mono);
+  letter-spacing: .04em;
+  white-space: nowrap;
+  color: var(--text-2);
+}
+.fp-testcase-priority {
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  font: 600 9px/20px var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.fp-testcase-priority.priority-high { border-color: color-mix(in srgb, var(--s-err) 35%, var(--border)); color: var(--s-err); }
+.fp-testcase-priority.priority-medium { border-color: color-mix(in srgb, var(--s-warn) 35%, var(--border)); color: var(--s-warn); }
+.fp-testcase-priority.priority-low { border-color: var(--border); color: var(--text-3); }
+.fp-testcase-title { margin: 0; font: 600 15px/1.35 var(--font-mono); color: var(--text); }
+.fp-testcase-status-control { justify-content: flex-start; }
+.fp-testcase-status-control button[data-status="ok"][aria-pressed="true"] { border-color: var(--s-ok); color: var(--s-ok); }
+.fp-testcase-status-control button[data-status="partial"][aria-pressed="true"] { border-color: var(--s-warn); color: var(--s-warn); }
+.fp-testcase-status-control button[data-status="error"][aria-pressed="true"] { border-color: var(--s-err); color: var(--s-err); }
+.fp-testcase-status-badge {
+  justify-self: start;
+  height: 22px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  font: 600 9px/22px var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.fp-testcase.status-ok .fp-testcase-status-badge { border-color: var(--s-ok); color: var(--s-ok); background: var(--s-ok-bg); }
+.fp-testcase.status-partial .fp-testcase-status-badge { border-color: var(--s-warn); color: var(--s-warn); background: var(--s-warn-bg); }
+.fp-testcase.status-error .fp-testcase-status-badge { border-color: var(--s-err); color: var(--s-err); background: var(--s-err-bg); }
+.fp-testcase.status-pending .fp-testcase-status-badge { color: var(--text-3); }
+.fp-testcase-body { color: var(--text-2); font-size: 14px; line-height: 1.65; }
+.fp-testcase-paragraph { margin: 0 0 var(--sp-3); }
+.fp-testcase-paragraph:last-child { margin-bottom: 0; }
+.fp-testcase-hint { margin: var(--sp-3) 0 0; color: var(--text-3); font-size: 11px; line-height: 1.4; }
+
 .report-paper.living-document .fp-living-tip {
   position: relative;
   cursor: help;
@@ -1597,6 +1645,10 @@ html:has(.pdf-export-page), body:has(.pdf-export-page) { margin: 0; background: 
   .step-content { padding-bottom: 3mm; } .step-title { padding-top: 1.5mm; font-size: 8.5pt; } .step-body { font-size: 8.5pt; }
   .fp-tl-item { grid-template-columns: 22mm 1px 1fr; gap: 0 3mm; } .tl-content { padding-bottom: 3mm; } .tl-date, .tl-title, .tl-body { font-size: 8pt; }
   .fp-checklist { gap: 1.5mm; } .fp-check-item { padding: 2mm 2.5mm; } .check-text { font-size: 8.5pt; } .check-sub { font-size: 7pt; }
+  .fp-testcase { padding: 2.5mm 3mm; margin-bottom: 3mm; }
+  .fp-testcase-title { font-size: 9pt; }
+  .fp-testcase-body, .fp-testcase-paragraph { font-size: 8.5pt; }
+  .fp-testcase-status-control, .fp-testcase-hint { display: none !important; }
   .fp-kv { margin-bottom: 3mm; } .fp-kv-row { grid-template-columns: 34mm 1fr; } .fp-kv-key, .fp-kv-val { padding: 2mm 2.5mm; font-size: 8pt; }
   .fp-table-wrap { margin: 3mm 0; } .fp-table { font-size: 8pt; } .fp-table th, .fp-table td { padding: 2mm 2.5mm; }
   .fp-code-block { margin: 3mm 0; border-color: #aaa; background: #f5f5f5; }
@@ -1605,7 +1657,7 @@ html:has(.pdf-export-page), body:has(.pdf-export-page) { margin: 0; background: 
   .report-tags { margin: 0; padding-top: 3mm; font-size: 7pt; }
   .global-print-header { display: none !important; }
   .print-running-footer { display: none !important; }
-  .fp-alert, .fp-callout, .fp-banner, .fp-stat, .fp-card, .fp-step, .fp-check-item, .fp-tl-item, .fp-kv-row, .fp-table-wrap, .report-code { break-inside: avoid; page-break-inside: avoid; }
+  .fp-alert, .fp-callout, .fp-banner, .fp-stat, .fp-card, .fp-step, .fp-check-item, .fp-tl-item, .fp-kv-row, .fp-table-wrap, .report-code, .fp-testcase { break-inside: avoid; page-break-inside: avoid; }
 }
 
 /* The PDF endpoint owns the physical A4 sheet. Running header/footer sit on the page edge;

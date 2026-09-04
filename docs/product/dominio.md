@@ -77,6 +77,12 @@ Bloco do catálogo (alerta, gráfico, checklist, …). A modal **Adicionar compo
 | `/documents/{id\|slug}` | Editor autenticado. |
 | `/documents/{id}/preview` | Prévia do rascunho (quem tem acesso). |
 
-## Checklist living
+## Componentes living
 
-Itens `- [ ]` / `- [x]` dentro de `:::checklist`. Na leitura interativa o visitante pode marcar no **próprio navegador** (localStorage). Isso **não** altera o Markdown nem sincroniza entre aparelhos.
+### Checklist
+
+Itens `- [ ]` / `- [x]` dentro de `:::checklist`. Quando o leitor pode editar o documento, o estado persiste no Markdown fonte. Sem permissão de edição, o navegador pode manter cache local (localStorage) — o Markdown no servidor prevalece quando editável.
+
+### Testcase
+
+Bloco `:::testcase` com atributos `id` (obrigatório, único), `status` (`pending` | `ok` | `partial` | `error`), `priority` (`low` | `medium` | `high`) e `title`. Corpo em Markdown livre (pré-condição, passos, resultado esperado). Status persiste no atributo do opener quando editável.
