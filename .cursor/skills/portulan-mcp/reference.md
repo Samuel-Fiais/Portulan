@@ -43,11 +43,15 @@ MCP_API_KEY=
 
 Use esse corpo com `create_template`. Para `update_template`, acrescente o `id` e envie apenas os campos a mudar. `delete_template` recebe `{ "id": "..." }` e só exclui templates particulares; modelos internos podem ser editados, mas não excluídos.
 
+### `get_system_guide`
+
+Sem parâmetros. Retorna `guide` gerado em tempo real a partir de `lib/system-guide.ts` e do catálogo em `lib/markdown-components.ts`. Inclui `avoidErrors` (**Como evitar erros**) com regras globais, exemplos ruim/bom e falhas comuns de agentes; cada entrada do catálogo traz `avoidErrors` específicos.
+
 ### `list_markdown_components`, `explain_markdown_component`
 
 `list_markdown_components` não exige parâmetros e retorna o catálogo compartilhado com o editor (`lib/markdown-components.ts`).
 
-`explain_markdown_component` recebe `{ "name": "alert" }` (id, título pt-BR ou diretiva) e devolve passos, atributos, regras e exemplos. Retorna erro se o componente for desconhecido.
+`explain_markdown_component` recebe `{ "name": "alert" }` (id, título pt-BR ou diretiva) e devolve passos, atributos, regras, campo `avoidErrors` (armadilhas) e exemplos. Retorna erro se o componente for desconhecido.
 
 ---
 

@@ -6,6 +6,7 @@ import {
   MARKDOWN_COMPONENT_CATEGORIES,
   type MarkdownComponent,
 } from "./markdown-components.ts";
+import { buildGlobalAvoidErrorsSection, getComponentAvoidErrors } from "./markdown-pitfalls.ts";
 import { TESTCASE_STATUS_LABELS, TESTCASE_STATUSES } from "./living-document-mutations.ts";
 
 const MCP_SERVER_VERSION = "0.7.0";
@@ -78,6 +79,7 @@ function componentGuideEntry(component: MarkdownComponent) {
     living: LIVING_COMPONENT_IDS.has(component.id),
     attributes: explanation?.attributes ?? [],
     rules: explanation?.rules ?? [],
+    avoidErrors: explanation?.avoidErrors ?? getComponentAvoidErrors(component),
     syntax: explanation?.syntax,
     steps: explanation?.steps ?? [],
     examples: explanation?.examples ?? [],
@@ -139,6 +141,7 @@ export function buildSystemGuide() {
     },
     livingBehavior: livingBehaviorSection(),
     qaGuidelines: qaGuidelinesSection(),
+    avoidErrors: buildGlobalAvoidErrorsSection(),
   };
 }
 

@@ -182,7 +182,7 @@ const mcpHandler = createMcpHandler((server) => {
     {
       title: "Guia do sistema Portulan",
       description:
-        "Retorna guia completo e atualizado: produto, publicação, autenticação MCP, catálogo de componentes Markdown, comportamentos living e boas práticas de QA. Preferir esta ferramenta quando não souber como escrever conteúdo.",
+        "Retorna guia completo e atualizado: produto, publicação, autenticação MCP, catálogo de componentes Markdown, seção Como evitar erros (armadilhas de sintaxe), comportamentos living e boas práticas de QA. Preferir esta ferramenta quando não souber como escrever conteúdo.",
       inputSchema: z.object({}),
     },
     async () => textResult({ guide: buildSystemGuide() }),
@@ -202,7 +202,7 @@ const mcpHandler = createMcpHandler((server) => {
     "explain_markdown_component",
     {
       title: "Explicar componente Markdown",
-      description: "Retorna sintaxe, atributos, formato do corpo e exemplos para um componente por id, nome ou diretiva.",
+      description: "Retorna sintaxe, atributos, formato do corpo, armadilhas (avoidErrors) e exemplos para um componente por id, nome ou diretiva.",
       inputSchema: z.object({
         name: z.string().min(1).describe("Id (ex.: alert), título pt-BR (ex.: Alerta) ou diretiva (ex.: stats)"),
       }),
@@ -476,7 +476,7 @@ const mcpHandler = createMcpHandler((server) => {
 }, {
   serverInfo: { name: "portulan", version: getMcpServerVersion() },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{slug}) aponta sempre para a última versão; publicPath (/p/{releaseId}) fixa uma versão específica. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro; use list_markdown_components e explain_markdown_component para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{slug}) aponta sempre para a última versão; publicPath (/p/{releaseId}) fixa uma versão específica. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {

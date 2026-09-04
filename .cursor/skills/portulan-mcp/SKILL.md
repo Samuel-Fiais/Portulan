@@ -72,7 +72,7 @@ No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quan
 
 | Ferramenta | Quando usar |
 |---|---|
-| `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo |
+| `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo (inclui seção **Como evitar erros**) |
 | `list_documents` | Descobrir o que existe; buscar por título, tag, tipo ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |
@@ -88,7 +88,7 @@ No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quan
 | `preview_template` | Resumo leve de um template (títulos + trecho inicial) |
 | `delete_template` | Remover definitivamente um template particular |
 | `list_markdown_components` | Catálogo de diretivas `:::` e Markdown do editor |
-| `explain_markdown_component` | Sintaxe, atributos e exemplos de um componente |
+| `explain_markdown_component` | Sintaxe, atributos, armadilhas (`avoidErrors`) e exemplos de um componente |
 
 Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 
@@ -178,10 +178,12 @@ Irreversível. Confirme com o usuário antes.
 ### Escolher componente Markdown
 
 ```
-1. get_system_guide → visão completa (produto, componentes, living, QA)
+1. get_system_guide → visão completa (produto, componentes, living, QA, **Como evitar erros**)
 2. list_markdown_components → descobrir diretivas e previews
-3. explain_markdown_component(name) → sintaxe, atributos e exemplos antes de escrever
+3. explain_markdown_component(name) → sintaxe, atributos, campo avoidErrors e exemplos antes de escrever
 ```
+
+Leia `guide.avoidErrors` em `get_system_guide` antes de escrever blocos `:::`. Erros comuns: espaço antes de `{` na abertura, fechamento que não é só `:::`, tabelas GFM no lugar de linhas `- col | col`, aninhar diretivas fora de `:::columns`, e `}` de path API fora das aspas do atributo.
 
 Templates internos também podem ter nome, paleta e conteúdo-base ajustados; não podem ser excluídos. Templates particulares só podem ser alterados ou excluídos pelo respectivo usuário.
 
