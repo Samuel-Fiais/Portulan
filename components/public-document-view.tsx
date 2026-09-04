@@ -18,6 +18,7 @@ export function PublicDocumentView({
         publicView
         interactive
         documentKey={release.id}
+        releaseId={persistable ? release.id : null}
         publishedBy={release.publishedByLogin ?? release.publishedByName}
         persistable={persistable}
       />

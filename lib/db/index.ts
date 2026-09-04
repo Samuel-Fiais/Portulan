@@ -19,6 +19,7 @@ export {
   setDocumentDisabled,
   setDocumentReleaseDisabled,
   updateDocument,
+  updateDocumentLivingContent,
   type DocumentAccessContext,
 } from "@/lib/db/documents";
 

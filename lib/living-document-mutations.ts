@@ -1,4 +1,4 @@
-import { parseDirectiveOpener, parseMarkdownBlocks } from "./directive-attrs.ts";
+import { parseDirectiveOpener } from "./directive-attrs.ts";
 import { checklistItemFingerprint } from "./living-document-storage.ts";
 
 export type TestcaseStatus = "pending" | "ok" | "partial" | "error";
@@ -287,13 +287,16 @@ export function checklistFingerprintExists(
   return findChecklistTarget(lines, sectionIndex, blockIndex, itemFingerprint) !== null;
 }
 
-/** Validates testcase id exists in markdown. */
+/** Validates testcase id exists in markdown (including nested inside :::columns). */
 export function testcaseIdExists(content: string, testcaseId: string) {
-  const blocks = parseMarkdownBlocks(content);
-  return blocks.some(
-    (block) =>
-      block.kind === "directive"
-      && block.directive.name === "testcase"
-      && block.directive.attributes.id === testcaseId,
-  );
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const opener = parseDirectiveOpener(line);
+    if (!opener || opener.name.toLowerCase() !== "testcase") continue;
+    const attributes = Object.fromEntries(
+      Array.from(opener.attributeSource.matchAll(/([\w-]+)="([^"]*)"/g), (match) => [match[1], match[2]]),
+    );
+    if (attributes.id === testcaseId) return true;
+  }
+  return false;
 }

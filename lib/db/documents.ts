@@ -305,6 +305,34 @@ export async function updateDocument(
   return getDocument(id, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership });
 }
 
+/** Persists living-document mutations (checklist/testcase) to draft and, when provided, the release being viewed. */
+export async function updateDocumentLivingContent(
+  id: string,
+  content: string,
+  ctx: DocumentAccessContext = {},
+  releaseId?: string | null,
+) {
+  const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
+  if (!current || !(await canEditDocument(current, ctx))) return null;
+
+  const db = await getDb();
+  const now = new Date().toISOString();
+
+  await db
+    .update(documents)
+    .set({ content, updatedAt: now })
+    .where(eq(documents.id, id));
+
+  if (releaseId) {
+    await db
+      .update(documentReleases)
+      .set({ content })
+      .where(and(eq(documentReleases.id, releaseId), eq(documentReleases.documentId, id)));
+  }
+
+  return getDocument(id, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership });
+}
+
 export async function deleteDocument(id: string, ctx: DocumentAccessContext = {}) {
   const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
   if (!current || !canMutateDocument(current, ctx)) return false;

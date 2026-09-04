@@ -85,4 +85,4 @@ Itens `- [ ]` / `- [x]` dentro de `:::checklist`. Quando o leitor pode editar o 
 
 ### Testcase
 
-Bloco `:::testcase` com atributos `id` (obrigatório, único), `status` (`pending` | `ok` | `partial` | `error`), `priority` (`low` | `medium` | `high`) e `title`. Corpo em Markdown livre (pré-condição, passos, resultado esperado). Status persiste no atributo do opener quando editável.
+Bloco `:::testcase` com atributos `id` (obrigatório, único), `status` (`pending` | `ok` | `partial` | `error`), `priority` (`low` | `medium` | `high`) e `title`. Corpo em Markdown livre (pré-condição, passos, resultado esperado). Status persiste no atributo do opener quando editável — inclusive testcases aninhados em `:::columns`. Em leitura pública editável, a release exibida é atualizada junto com o rascunho.

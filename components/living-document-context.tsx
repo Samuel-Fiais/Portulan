@@ -39,6 +39,7 @@ export function LivingDocumentProvider({
   interactive,
   persistable,
   documentId,
+  releaseId,
   documentKey,
   content,
   onContentChange,
@@ -47,6 +48,7 @@ export function LivingDocumentProvider({
   interactive: boolean;
   persistable: boolean;
   documentId: string;
+  releaseId?: string | null;
   documentKey: string;
   content: string;
   onContentChange?: (content: string) => void;
@@ -64,11 +66,11 @@ export function LivingDocumentProvider({
     pendingPersistRef.current = null;
     if (!nextContent || !persistable) return;
 
-    const result = await updateDocumentContentAction(documentId, nextContent);
+    const result = await updateDocumentContentAction(documentId, nextContent, releaseId);
     if (!result.ok) {
       toast.error(result.error);
     }
-  }, [documentId, persistable]);
+  }, [documentId, persistable, releaseId]);
 
   const schedulePersist = useCallback(
     (nextContent: string) => {
