@@ -421,7 +421,7 @@ article.report-paper.markdown-component-preview-paper .tmpl-section { margin: 0;
 .report-content tr { break-inside: avoid; page-break-inside: avoid; }
 .report-code { margin: 6mm 0; overflow: auto; border: 1px solid #d4d4d4; border-top: 3px solid var(--report-accent); background: #f7f7f7; padding: 5mm; white-space: pre-wrap; word-break: break-word; font: 400 10px/1.65 "IBM Plex Mono", monospace; break-inside: avoid; page-break-inside: avoid; }
 .report-inline-code { border: 0; border-radius: 4px; background: color-mix(in srgb, var(--report-accent, var(--accent)) 14%, transparent); padding: 0.12em 0.4em; color: color-mix(in srgb, var(--text, #111) 78%, var(--report-accent, var(--accent))); font: 500 0.875em/1.5 "IBM Plex Mono", monospace; box-decoration-break: clone; -webkit-box-decoration-break: clone; vertical-align: baseline; }
-.report-content a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.report-content a:not(.fp-report-card) { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .report-tags { display: flex; flex-wrap: wrap; gap: 4mm; margin: 0 19mm 13mm; padding-top: 6mm; border-top: 1px solid #d4d4d4; color: #888; font: 500 9px/1 "IBM Plex Mono", monospace; }
 .print-running-header, .print-running-footer { display: none; }
 .keep-together { break-inside: avoid; page-break-inside: avoid; }
@@ -866,16 +866,23 @@ article.report-paper.markdown-component-preview-paper .tmpl-section { margin: 0;
 .fp-gallery-item { margin: 0; break-inside: avoid; }
 .fp-gallery-item img { display: block; width: 100%; height: auto; border: 1px solid var(--border); background: var(--surface); }
 .fp-gallery-item figcaption { margin-top: var(--sp-2); color: var(--text-2); font-size: 12px; line-height: 1.45; }
-.fp-report-card { display: flex; align-items: start; gap: 12px; width: 100%; margin: 0 0 var(--sp-5); padding: 14px 16px; border: 1px solid var(--border); border-left: 4px solid var(--report-accent); background: linear-gradient(135deg, color-mix(in srgb, var(--report-accent) 5%, var(--bg)), color-mix(in srgb, var(--report-accent-2) 4%, var(--bg))); color: inherit; text-align: left; text-decoration: none; break-inside: avoid; }
-a.fp-report-card:hover { border-color: var(--report-accent); }
-button.fp-report-card { cursor: pointer; }
-.fp-report-card--selected { border-color: var(--report-accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--report-accent) 35%, transparent); }
-.fp-report-card-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid color-mix(in srgb, var(--report-accent) 25%, var(--border)); background: var(--bg); color: var(--report-accent); }
-.fp-report-card-body { display: grid; gap: 4px; min-width: 0; }
+.fp-report-card { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 var(--sp-5); padding: 12px 14px; border: 1px solid var(--border); border-left: 2px solid var(--report-accent); border-radius: 2px; background: var(--surface, var(--background)); color: var(--text); text-align: left; text-decoration: none; break-inside: avoid; transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease; }
+.report-content a.fp-report-card,
+.report-content a.fp-report-card * { color: inherit; text-decoration: none; }
+a.fp-report-card:hover { border-color: color-mix(in srgb, var(--report-accent) 40%, var(--border)); background: color-mix(in srgb, var(--report-accent) 5%, var(--surface, var(--background))); }
+a.fp-report-card:hover .fp-report-card-title { color: var(--report-accent); }
+a.fp-report-card:focus-visible,
+button.fp-report-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+button.fp-report-card { cursor: pointer; font: inherit; }
+.fp-report-card--selected { border-color: var(--report-accent); background: color-mix(in srgb, var(--report-accent) 7%, var(--surface, var(--background))); box-shadow: 0 0 0 1px color-mix(in srgb, var(--report-accent) 22%, transparent); }
+.fp-report-card-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--report-accent); opacity: 0.9; }
+.fp-report-card-icon svg { width: 18px; height: 18px; stroke-width: 1.75; }
+.fp-report-card-body { display: grid; gap: 2px; min-width: 0; flex: 1; }
 .fp-report-card-template { color: var(--report-accent); font: 700 9px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.fp-report-card-title { font-size: 15px; line-height: 1.35; }
-.fp-report-card-summary { margin: 0; color: var(--text-2); font-size: 12px; line-height: 1.5; }
-.fp-report-card-path { color: var(--muted-foreground); font: 500 10px/1.4 var(--font-mono); }
+.fp-report-card-title { color: var(--text); font-size: 14px; font-weight: 600; line-height: 1.35; transition: color 0.15s ease; }
+.fp-report-card-summary { margin: 0; color: var(--text-2, var(--muted-foreground)); font-size: 13px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fp-report-card-chevron { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted-foreground); opacity: 0; transition: opacity 0.15s ease, transform 0.15s ease; }
+a.fp-report-card:hover .fp-report-card-chevron { opacity: 0.55; transform: translateX(1px); }
 .markdown-component-picker-action,
 .markdown-component-report-picker { display: grid; gap: 8px; margin-bottom: 12px; }
 .markdown-component-picker-action > span,
@@ -1027,11 +1034,15 @@ button.fp-report-card { cursor: pointer; }
   outline-offset: 2px;
 }
 .report-paper.living-document a.fp-report-card {
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 .report-paper.living-document a.fp-report-card:hover {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 6%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface, var(--bg)));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.report-paper.living-document a.fp-report-card:hover .fp-report-card-title {
+  color: var(--accent);
 }
 .report-paper.living-document .fp-chart-interactive {
   cursor: help;
