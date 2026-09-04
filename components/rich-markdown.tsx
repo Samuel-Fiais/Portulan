@@ -1,6 +1,6 @@
 import { type CSSProperties, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { InlineMarkdown } from "@/components/inline-markdown";
 import { isPlaceholderToken } from "@/lib/inline-markdown";
@@ -90,7 +90,7 @@ function MarkdownCode({ children, className, node }: { children?: ReactNode; cla
 function Markdown({ children, interactive = false }: { children: string; interactive?: boolean }) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={portulanRemarkPlugins}
       components={{
         h2: ({ children }) => <h2 className="report-section-title">{children}</h2>,
         h3: ({ children }) => <h3 className="report-subtitle">{children}</h3>,

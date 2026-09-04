@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
 import { useLivingDocument } from "@/components/living-document-context";
 import {
   parseTestcasePriority,
@@ -21,7 +21,7 @@ const PRIORITY_LABELS = {
 function TestcaseBody({ source }: { source: string }) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={portulanRemarkPlugins}
       components={{
         p: ({ children }) => <p className="fp-testcase-paragraph">{children}</p>,
         ul: ({ children }) => <ul className="fp-doc-list">{children}</ul>,

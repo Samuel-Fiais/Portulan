@@ -41,3 +41,10 @@ test("explainMarkdownComponent retorna passos, exemplos e avoidErrors", () => {
   assert.ok(explanation?.avoidErrors?.length);
   assert.equal(explainMarkdownComponent("inexistente"), null);
 });
+
+test("explainMarkdownComponent de report não pede fence de fechamento", () => {
+  const explanation = explainMarkdownComponent("report");
+  assert.ok(explanation);
+  assert.ok(explanation?.steps.some((step) => /Não adicione `:::`/.test(step)));
+  assert.ok(!explanation?.steps.some((step) => /Feche o bloco/.test(step)));
+});

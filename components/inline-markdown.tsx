@@ -1,14 +1,14 @@
 "use client";
 
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
 import { isPlaceholderToken, prepareInlineMarkdown } from "@/lib/inline-markdown";
 
 export function InlineMarkdown({ children }: { children: string }) {
   if (!children.trim() || isPlaceholderToken(children)) return null;
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={portulanRemarkPlugins}
       allowedElements={["p", "strong", "em", "a", "code", "del"]}
       unwrapDisallowed
       components={{

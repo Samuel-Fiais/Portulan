@@ -1,3 +1,4 @@
+import { VOID_DIRECTIVES } from "./directive-attrs.ts";
 import { getComponentAvoidErrors } from "./markdown-pitfalls.ts";
 
 export type ComponentProperty = {
@@ -205,9 +206,13 @@ function buildSyntaxSteps(component: MarkdownComponent) {
       : bodyFormat === "mixed"
         ? "No corpo, separe colunas com uma linha contendo apenas `---`; cada coluna aceita Markdown e outros componentes."
         : "No corpo, escreva Markdown livre (texto, listas, parágrafos ou código).",
-    "Feche o bloco com uma linha contendo apenas `:::`.",
-    "Deixe linha em branco antes e depois do bloco; consulte `avoidErrors` deste componente para armadilhas comuns.",
   ];
+  if (!VOID_DIRECTIVES.has(directive)) {
+    steps.push("Feche o bloco com uma linha contendo apenas `:::`.");
+    steps.push("Deixe linha em branco antes e depois do bloco; consulte `avoidErrors` deste componente para armadilhas comuns.");
+  } else {
+    steps.push("Não adicione `:::` de fechamento — esta diretiva ocupa uma única linha.");
+  }
   return steps;
 }
 

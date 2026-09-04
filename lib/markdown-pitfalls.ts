@@ -22,7 +22,9 @@ const GLOBAL_SYNTAX_RULES = [
   "Deixe **linha em branco** antes e depois de cada bloco `:::…` para o parser não colar parágrafos ao bloco.",
   "Blocos com corpo em colunas usam linhas `- coluna | coluna` — **não** tabelas GFM (`| A | B |` com linha `---`).",
   "Somente `:::columns` pode conter outras diretivas `:::` aninhadas; em alert, checklist, stats etc. o primeiro `:::` isolado encerra o bloco.",
+  "`:::report` e `:::image` são diretivas void (uma linha) — sem corpo nem linha `:::` de fechamento.",
   "Chaves `}` dentro de valores (ex.: `path=\"/wallets/{walletId}\"`) ficam **dentro** das aspas do atributo — nunca feche `}` do opener antes das aspas.",
+  "Placeholders com `<param>` no corpo Markdown (fora de inline code) são interpretados como HTML e podem sumir na renderização — prefira `{param}` ou backticks.",
   "Não invente nomes de bloco: consulte `list_markdown_components` ou este guia antes de escrever uma diretiva desconhecida.",
 ] as const;
 
@@ -35,6 +37,8 @@ const COMMON_AGENT_FAILURES = [
   "Misturar linguagem errada em fences (ex.: JSON dentro de ` ```ts `) ou omitir fence em blocos de código soltos.",
   "Usar `:::checklist` para critérios informativos — prefira bullets `- item` sem checkbox.",
   "Duplicar `id` em `:::testcase` no mesmo documento.",
+  "Usar `<param>` solto no texto (ex.: `/wallets/<walletId>/grades`) — prefira `{walletId}` ou inline code; o renderer preserva o literal, mas HTML bruto no Markdown não é suportado.",
+  "Adicionar `:::` de fechamento após `:::report` ou `:::image` — vaza texto literal na página pública.",
 ] as const;
 
 const GLOBAL_EXAMPLES: AvoidErrorsExample[] = [
@@ -57,6 +61,16 @@ const GLOBAL_EXAMPLES: AvoidErrorsExample[] = [
     label: "Aninhamento proibido (use columns)",
     bad: ":::alert{variant=\"warning\" title=\"Aviso\"}\n:::checklist\n- [ ] Item\n:::\n:::",
     good: ":::columns{count=\"2\"}\n:::alert{variant=\"warning\" title=\"Aviso\"}\nContexto.\n:::\n\n---\n\n:::checklist\n- [ ] Item\n:::\n:::",
+  },
+  {
+    label: "Placeholder OpenAPI com colchetes angulares no texto",
+    bad: "Chame GET /api/v1/wallets/<walletId>/grades",
+    good: "Chame GET `/api/v1/wallets/<walletId>/grades` ou use `{walletId}` no texto.",
+  },
+  {
+    label: "Fence extra após :::report void",
+    bad: ':::report{slug="roadmap" title="Roadmap" summary="Resumo."}\n:::',
+    good: ':::report{slug="roadmap" title="Roadmap" summary="Resumo."}',
   },
 ];
 
@@ -139,7 +153,10 @@ function freeMarkdownPitfalls(component: MarkdownComponent): string[] {
   if (component.id === "report" || directive === "report") {
     pitfalls.push("Diretiva void: uma linha só, sem corpo nem `:::` de fechamento.");
   }
-  if (component.id === "image" || directive === "figure") {
+  if (directive === "image") {
+    pitfalls.push("Diretiva void: uma linha só, sem corpo nem `:::` de fechamento.");
+  }
+  if (directive === "figure") {
     pitfalls.push("Use `:::figure{...}` com `src` e `alt`; legenda opcional no corpo antes do fechamento.");
   }
   return pitfalls;
