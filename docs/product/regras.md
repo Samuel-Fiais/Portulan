@@ -10,10 +10,10 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 - **RN-02** Publicar só é permitido se o rascunho difere da última release (título, resumo, template/paleta/logo, autor, time, tags ou conteúdo). Sem diferença, recusar.
 - **RN-03** Publicar cria um snapshot imutável, avança `version` e passa o status editorial para publicado.
 - **RN-04** Links `/p/{id}` já emitidos não mudam de conteúdo quando o rascunho é editado ou republicado.
-- **RN-05** `/d/{slug}` aponta sempre para a release habilitada mais recente daquele documento.
+- **RN-05** `/d/{uuid}` aponta sempre para a release habilitada mais recente daquele documento.
 - **RN-06** Excluir documento é irreversível e exige o UUID (`id`), não o slug.
 - **RN-07** Título 3–180, resumo ≤ 500, autor/time ≤ 100, até 12 tags (1–40), conteúdo ≤ 250.000.
-- **RN-08** (comportamento atual, candidato a mudança ICE `stable-slug`) Alterar o título **regenera** o slug. Isso pode quebrar `/d/{slug}` e cards `:::report`.
+- **RN-08** O slug público (`/d/{uuid}`) é um UUID definido na criação do documento. Renomear o título **não** altera o slug. Dois documentos podem ter o mesmo título. Slugs legados derivados do título continuam resolvendo via tabela de aliases até expirarem.
 
 ## Acesso
 
@@ -40,7 +40,7 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 
 - **RN-40** `:::checklist` é só para tarefas rastreáveis (`- [ ]` / `- [x]`). Critérios, sintomas e listas informativas usam bullets Markdown.
 - **RN-41** Novo bloco de relatório entra no catálogo único. Não há segunda lista de categorias no editor.
-- **RN-42** Card `:::report` aponta para o link estável `/d/{slug}` de um documento **publicado**. `:::report` e `:::image` são diretivas void (uma linha, só atributos): corpo acidental ou `:::` de fechamento é descartado na renderização e não deve ser escrito pelo autor.
+- **RN-42** Card `:::report` aponta para o link estável `/d/{uuid}` de um documento **publicado**. `:::report` e `:::image` são diretivas void (uma linha, só atributos): corpo acidental ou `:::` de fechamento é descartado na renderização e não deve ser escrito pelo autor.
 - **RN-43** Checklist e testcase com estado durável: quando o leitor autenticado pode editar o documento, toggles reescrevem o Markdown fonte (`- [ ]`/`[x]` ou `status` do testcase) via salvamento debounced no rascunho **e**, em leitura pública editável (`/d/` ou `/p/` com permissão), também na release exibida — para o estado sobreviver ao refresh da mesma URL. Sem permissão de edição, checklist pode usar cache local do navegador; testcase permanece somente leitura.
 - **RN-44** `:::testcase` exige `id` único no documento. Status permitidos: `pending`, `ok`, `partial`, `error`. Preferir testcase a tabelas largas para cenários de QA.
 - **RN-45** Upload de anexo de relatório (`:::file`) aceita qualquer tipo de arquivo até 5 MB; imagens em `:::figure` continuam restritas a PNG, JPG, WEBP, SVG e GIF. Logo de template permanece só imagem.

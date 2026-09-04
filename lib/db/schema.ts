@@ -106,6 +106,17 @@ export const documentReleases = portulanSchema.table(
   ],
 );
 
+export const documentSlugAliases = portulanSchema.table(
+  "document_slug_aliases",
+  {
+    slug: text("slug").primaryKey(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("idx_document_slug_aliases_document_id").on(table.documentId)],
+);
+
 export const documentShares = portulanSchema.table(
   "document_shares",
   {

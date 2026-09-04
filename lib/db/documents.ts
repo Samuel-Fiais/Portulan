@@ -2,12 +2,13 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { and, count, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { createDocumentSlug } from "@/lib/document-slug";
 import { getDb } from "@/lib/db/client";
 import {
   getDocumentShareRole,
   listSharedDocumentIds,
 } from "@/lib/db/document-shares";
-import { documentReleases, documents, templates, users } from "@/lib/db/schema";
+import { documentReleases, documentSlugAliases, documents, templates, users } from "@/lib/db/schema";
 import { getDefaultTemplate, resolveTemplateForUser } from "@/lib/db/templates";
 import {
   hasUnpublishedChanges,
@@ -132,29 +133,27 @@ export function canMutateDocument(document: DocumentRecord, ctx: DocumentAccessC
   return document.userId === ctx.userId;
 }
 
-async function uniqueSlug(title: string, currentId?: string) {
+async function resolveDocumentId(identifier: string): Promise<string | null> {
   const db = await getDb();
-  const base = slugify(title);
-  let slug = base;
-  let suffix = 2;
 
-  while (true) {
-    const [match] = await db.select({ id: documents.id }).from(documents).where(eq(documents.slug, slug)).limit(1);
-    if (!match || match.id === currentId) return slug;
-    slug = `${base}-${suffix++}`;
-  }
-}
+  const [byId] = await db.select({ id: documents.id }).from(documents).where(eq(documents.id, identifier)).limit(1);
+  if (byId) return byId.id;
 
-function slugify(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "documento";
+  const [bySlug] = await db.select({ id: documents.id }).from(documents).where(eq(documents.slug, identifier)).limit(1);
+  if (bySlug) return bySlug.id;
+
+  const [byAlias] = await db
+    .select({ documentId: documentSlugAliases.documentId })
+    .from(documentSlugAliases)
+    .where(eq(documentSlugAliases.slug, identifier))
+    .limit(1);
+  return byAlias?.documentId ?? null;
 }
 
 async function fetchDocumentRow(idOrSlug: string) {
+  const documentId = await resolveDocumentId(idOrSlug);
+  if (!documentId) return [];
+
   const db = await getDb();
   return db
     .select({
@@ -166,7 +165,7 @@ async function fetchDocumentRow(idOrSlug: string) {
     })
     .from(documents)
     .innerJoin(templates, eq(documents.templateId, templates.id))
-    .where(or(eq(documents.id, idOrSlug), eq(documents.slug, idOrSlug)))
+    .where(eq(documents.id, documentId))
     .limit(1);
 }
 
@@ -237,7 +236,7 @@ export async function createDocument(
       : (await getDefaultTemplate());
   const id = options?.id ?? randomUUID();
   const now = new Date().toISOString();
-  const slug = options?.slug ?? (await uniqueSlug(input.title, id));
+  const slug = options?.slug ?? createDocumentSlug(id);
   const publishedAt = input.status === "published" ? now : null;
 
   await db.insert(documents).values({
@@ -279,13 +278,11 @@ export async function updateDocument(
   const next = { ...current, ...input, templateId };
   const now = new Date().toISOString();
   const publishedAt = next.status === "published" ? current.publishedAt ?? now : null;
-  const slug = input.title ? await uniqueSlug(input.title, id) : current.slug;
   const db = await getDb();
 
   await db
     .update(documents)
     .set({
-      slug,
       title: next.title,
       summary: next.summary,
       templateId: next.templateId,
@@ -396,23 +393,29 @@ export async function resolvePublicReleaseById(releaseId: string): Promise<Publi
 }
 
 export async function getLatestDocumentReleaseBySlug(slug: string) {
+  const documentId = await resolveDocumentId(slug);
+  if (!documentId) return null;
+
   const db = await getDb();
   const [row] = await db
     .select({ release: documentReleases })
     .from(documents)
     .innerJoin(documentReleases, eq(documents.id, documentReleases.documentId))
-    .where(eq(documents.slug, slug))
+    .where(eq(documents.id, documentId))
     .orderBy(desc(documentReleases.version), desc(documentReleases.publishedAt))
     .limit(1);
   return row ? mapReleaseRow(row.release) : null;
 }
 
 export async function resolvePublicLatestReleaseBySlug(slug: string): Promise<PublicReleaseResult> {
+  const documentId = await resolveDocumentId(slug);
+  if (!documentId) return { access: "not_found" };
+
   const db = await getDb();
   const [documentRow] = await db
     .select({ id: documents.id, disabled: documents.disabled, slug: documents.slug })
     .from(documents)
-    .where(eq(documents.slug, slug))
+    .where(eq(documents.id, documentId))
     .limit(1);
 
   if (!documentRow) return { access: "not_found" };
@@ -605,13 +608,11 @@ export async function publishDocument(
   }
 
   const now = new Date().toISOString();
-  const slug = input.title ? await uniqueSlug(input.title, id) : current.slug;
   const nextVersion = (latestRelease?.version ?? 0) + 1;
 
   await db
     .update(documents)
     .set({
-      slug,
       title: merged.title,
       summary: merged.summary,
       templateId: merged.templateId,

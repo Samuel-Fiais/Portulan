@@ -26,7 +26,7 @@ Rascunho vivo. Não é o que o público vê.
 | Campo | Papel |
 |---|---|
 | `id` | UUID. Identidade estável. Exclusão exige este id. |
-| `slug` | Identificador na URL estável `/d/{slug}`. Hoje é regenerado se o título muda (ver RN-08). |
+| `slug` | UUID fixo na URL estável `/d/{uuid}`. Definido na criação; **não** muda ao renomear o título (RN-08). Slugs legados (título) redirecionam via alias. |
 | `title`, `summary` | Título (3–180) e resumo (até 500). |
 | `status` | `draft` · `review` · `published` · `archived`. Rótulo editorial; não dispara fluxo sozinho. |
 | `templateId` | Paleta, logo e conteúdo-base. |
@@ -76,9 +76,9 @@ Arquivo enviado pelo editor e referenciado por `:::file{url name title?}`. Armaz
 
 | URL | Significado |
 |---|---|
-| `/d/{slug}` | Sempre a última versão publicada **habilitada**. |
+| `/d/{uuid}` | Sempre a última versão publicada **habilitada**. UUID fixo na criação. |
 | `/p/{releaseId}` | Aquela versão, para sempre, até ser desativada. |
-| `/documents/{id\|slug}` | Editor autenticado. |
+| `/documents/{id\|uuid}` | Editor autenticado. |
 | `/documents/{id}/preview` | Prévia do rascunho (quem tem acesso). |
 
 ## Componentes living

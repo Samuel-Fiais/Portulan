@@ -33,18 +33,18 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 
 | ID | Capacidade | Estado |
 |---|---|---|
-| F-publicar | Gerar release imutável, copiar `/d/{slug}` | existe |
+| F-publicar | Gerar release imutável, copiar `/d/{uuid}` | existe |
 | F-historico | Listar versões, copiar `/d` e `/p`, desativar versão | existe |
 | F-restaurar | Copiar uma release de volta para o rascunho | planejado (`restore-release`) |
 | F-diff-versoes | Comparar rascunho vs release ou duas releases | planejado (`version-diff`) |
-| F-slug-estavel | Slug não muda com o título após publicar; edição explícita | planejado (`stable-slug`) |
+| F-slug-estavel | Slug UUID fixo na criação; título renomeável sem alterar `/d/{uuid}` | existe |
 | F-desativar-doc | Desligar todos os links públicos sem excluir | existe |
 
 ## Leitura
 
 | ID | Capacidade | Estado |
 |---|---|---|
-| F-publico | `/d/{slug}` última versão; `/p/{id}` versão fixa | existe |
+| F-publico | `/d/{uuid}` última versão; `/p/{id}` versão fixa | existe |
 | F-tema | Alternar claro/escuro na vista pública | existe |
 | F-indice | TOC com âncoras em `##` / `###` | planejado (`toc-anchors`) |
 | F-mermaid | Renderizar fence ` ```mermaid ` com paleta do template | planejado (`mermaid`) |
