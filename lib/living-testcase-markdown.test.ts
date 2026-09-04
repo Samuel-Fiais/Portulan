@@ -13,7 +13,11 @@ function renderTestcaseBody(source: string) {
       components: {
         p: ({ children }) => React.createElement("p", { className: "fp-testcase-paragraph" }, children),
         ol: ({ children }) => React.createElement("ol", { className: "fp-doc-list" }, children),
-        li: ({ children }) => React.createElement("li", null, children),
+        li: ({ children }) => React.createElement(
+          "li",
+          null,
+          React.createElement("span", { className: "fp-doc-list-item-body" }, children),
+        ),
         code: ({ children, className, node }) => {
           const props = markdownCodeProps({ children, className, node });
           return React.createElement("code", { className: props.className }, props.children);
@@ -31,11 +35,22 @@ test("testcase body mantém inline code dentro de parágrafo em lista ordenada",
   const html = renderTestcaseBody(source);
   assert.match(html, /<p class="fp-testcase-paragraph"><strong>Passos:<\/strong><\/p>/);
   assert.match(html, /<ol class="fp-doc-list">/);
+  assert.match(html, /<span class="fp-doc-list-item-body">/);
   assert.match(html, /<code class="report-inline-code">\/items<\/code>/);
   assert.match(html, /walletDependentId/);
   assert.match(html, /schoolGradeId/);
   assert.equal((html.match(/<code class="report-inline-code">/g) ?? []).length, 3);
   assert.doesNotMatch(html, /<pre>/);
+});
+
+test("lista ordenada com texto misto e inline code fica num único corpo de item", () => {
+  const source = "1. Chamar `GET /api/v1/wallets/{walletId}/grades/requests/active` para a carteira do responsável.";
+  const html = renderTestcaseBody(source);
+
+  assert.match(
+    html,
+    /<li><span class="fp-doc-list-item-body">Chamar <code class="report-inline-code">GET \/api\/v1\/wallets\/{walletId}\/grades\/requests\/active<\/code> para a carteira do responsável\.<\/span><\/li>/,
+  );
 });
 
 test("MarkdownCode distingue inline code de bloco fenced", () => {
