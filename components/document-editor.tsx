@@ -635,7 +635,7 @@ export function DocumentEditor({
                   )}
                 </div>
               ) : null}
-              <div className="metadata-summary"><span>ID</span><code>{document.id}</code><span>Slug</span><code>{document.slug}</code><span>Versão</span><code>{document.version}</code></div>
+              <div className="metadata-summary"><span>ID</span><code>{document.id}</code><span>Link público</span><code>{document.slug}</code><span>Versão</span><code>{document.version}</code></div>
             </TabsContent>
             <TabsContent value="history" className="editor-tab-content version-history">
               <div className="version-history-heading">
@@ -649,8 +649,8 @@ export function DocumentEditor({
                 <>
                   <div className="version-history-stable">
                     <div>
-                      <strong>Link estável (sempre a última versão)</strong>
-                      <span>Atualiza automaticamente a cada nova publicação</span>
+                      <strong>Link estável (UUID — sempre a última versão)</strong>
+                      <span>Identificador fixo; renomear o título não altera este link</span>
                       <code>/d/{document.slug}</code>
                     </div>
                     <div className="flex items-center gap-2">

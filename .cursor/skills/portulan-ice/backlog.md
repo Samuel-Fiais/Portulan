@@ -9,7 +9,7 @@ Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para
 | # | ID | Melhoria | Superfície | I | C | E | Score | Estado |
 |---|---|---|---|---|---|---|---|---|
 | 1 | autosave | Autosave, Cmd/Ctrl+S e aviso ao sair | Editor | 9 | 9 | 8 | 64.8 | proposto |
-| 2 | stable-slug | Slug estável e editável | Publicação | 9 | 10 | 7 | 63.0 | proposto |
+| 2 | stable-slug | Slug UUID estável; título renomeável | Publicação | 9 | 10 | 7 | 63.0 | entregue |
 | 3 | status-filter | Filtro por status na biblioteca | Biblioteca | 6 | 10 | 10 | 60.0 | proposto |
 | 4 | export-md | Download do Markdown fonte | Editor | 6 | 10 | 10 | 60.0 | proposto |
 | 5 | restore-release | Restaurar versão publicada no rascunho | Publicação | 8 | 9 | 8 | 57.6 | proposto |
@@ -24,7 +24,7 @@ Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para
 ## Escopo (não redescobrir)
 
 - **autosave** — Debounce no rascunho, Cmd/Ctrl+S, `beforeunload`. Não muda Publicar.
-- **stable-slug** — Hoje `updateDocument` regenera slug ao mudar o título e quebra `/d/{slug}` e `:::report`. Congelar após primeira publicação; campo em Metadados.
+- **stable-slug** — Slug é UUID fixo na criação (`/d/{uuid}`); renomear título não altera o link. Slugs legados (título) redirecionam via `document_slug_aliases`.
 - **status-filter** — MCP já filtra; a home não. Select + cards de resumo clicáveis.
 - **export-md** — PDF existe; falta baixar o `.md`.
 - **restore-release** — Histórico só abre/copia/desativa. Restaurar snapshot no rascunho.

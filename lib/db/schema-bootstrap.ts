@@ -468,6 +468,37 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_document_shares_email ON ${PORTULAN_PG_SCHEMA}.document_shares (email)`,
     );
   }
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_slug_aliases (
+      slug TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE
+    )`,
+  );
+
+  if (await portulanTableExists(db, "document_slug_aliases")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_document_slug_aliases_document_id ON ${PORTULAN_PG_SCHEMA}.document_slug_aliases (document_id)`,
+    );
+  }
+
+  if (await portulanTableExists(db, "documents")) {
+    await executeSchemaStatement(
+      db,
+      `INSERT INTO ${PORTULAN_PG_SCHEMA}.document_slug_aliases (slug, document_id)
+       SELECT d.slug, d.id
+       FROM ${PORTULAN_PG_SCHEMA}.documents AS d
+       WHERE d.slug <> d.id
+       ON CONFLICT (slug) DO NOTHING`,
+    );
+
+    await executeSchemaStatement(
+      db,
+      `UPDATE ${PORTULAN_PG_SCHEMA}.documents SET slug = id WHERE slug <> id`,
+    );
+  }
 }
 
 export async function applyPortulanSchema(db: Db): Promise<void> {

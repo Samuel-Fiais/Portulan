@@ -239,8 +239,8 @@ const mcpHandler = createMcpHandler((server) => {
     "get_document",
     {
       title: "Ler documento",
-      description: "Obtém um documento completo pelo id ou slug.",
-      inputSchema: z.object({ id: z.string().min(1).describe("ID ou slug do documento") }),
+      description: "Obtém um documento completo pelo id ou pelo UUID do link público (/d/{uuid}). Slugs legados (título) ainda resolvem via alias.",
+      inputSchema: z.object({ id: z.string().min(1).describe("ID UUID ou UUID do link estável /d/{uuid}") }),
     },
     async ({ id }) => {
       const document = await getDocument(id, await requireAccessContext());
@@ -252,7 +252,7 @@ const mcpHandler = createMcpHandler((server) => {
     "create_document",
     {
       title: "Criar documento",
-      description: "Cria um documento Markdown associado ao usuário autenticado.",
+      description: "Cria um documento Markdown associado ao usuário autenticado. O link estável /d/{uuid} recebe um UUID fixo na criação; o título pode ser renomeado depois sem alterar o link.",
       inputSchema: z.object({
         title: z.string().min(3).max(180),
         summary: z.string().max(500).default(""),
@@ -287,7 +287,7 @@ const mcpHandler = createMcpHandler((server) => {
     "update_document",
     {
       title: "Editar documento",
-      description: "Atualiza parcialmente o rascunho de um documento, sem criar uma nova versão publicada.",
+      description: "Atualiza parcialmente o rascunho de um documento, sem criar uma nova versão publicada. Renomear o título não altera o UUID do link /d/{uuid}.",
       inputSchema: z.object({
         id: z.string().min(1),
         title: z.string().min(3).max(180).optional(),
@@ -360,7 +360,7 @@ const mcpHandler = createMcpHandler((server) => {
     {
       title: "Listar publicações",
       description: "Lista os links públicos já gerados para um documento, por versão.",
-      inputSchema: z.object({ id: z.string().min(1).describe("ID ou slug do documento") }),
+      inputSchema: z.object({ id: z.string().min(1).describe("ID UUID ou UUID do link estável /d/{uuid}") }),
     },
     async ({ id }) => {
       const document = await getDocument(id, await requireAccessContext());
@@ -384,7 +384,7 @@ const mcpHandler = createMcpHandler((server) => {
       title: "Ativar/desativar versão publicada",
       description: "Controla se uma versão fixa (/p/{releaseId}) permanece acessível publicamente.",
       inputSchema: z.object({
-        document_id: z.string().min(1).describe("ID ou slug do documento"),
+        document_id: z.string().min(1).describe("ID UUID ou UUID do link estável /d/{uuid}"),
         release_id: z.string().uuid().describe("ID da versão publicada"),
         disabled: z.boolean().describe("true desativa a versão; false reativa"),
       }),
@@ -476,7 +476,7 @@ const mcpHandler = createMcpHandler((server) => {
 }, {
   serverInfo: { name: "portulan", version: getMcpServerVersion() },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{slug}) aponta sempre para a última versão; publicPath (/p/{releaseId}) fixa uma versão específica. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{uuid}) é um UUID fixo na criação e não muda ao renomear o título; publicPath (/p/{releaseId}) fixa uma versão específica. Slugs legados derivados do título ainda resolvem via alias. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {

@@ -115,13 +115,13 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 ### Versão e publicação
 
 - `update_document` salva o rascunho sem criar uma nova versão.
-- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{slug}"` (sempre a última versão) e `publicPath: "/p/{releaseId}"` (versão fixa).
-- Links antigos `/p/...` **não mudam** quando o documento é editado depois; nova publicação = novo link de versão fixa. O link `/d/{slug}` passa a apontar para a versão mais recente.
-- Links públicos: `http://localhost:3000/d/{slug}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa).
+- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{uuid}"` (UUID fixo na criação; não muda ao renomear título) e `publicPath: "/p/{releaseId}"` (versão fixa).
+- Links antigos `/p/...` **não mudam** quando o documento é editado depois; nova publicação = novo link de versão fixa. O link `/d/{uuid}` passa a apontar para a versão mais recente.
+- Links públicos: `http://localhost:3000/d/{uuid}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa).
 
 ### Identificadores
 
-- `get_document`, `list_document_releases`, `publish_document`: aceitam **ID UUID ou slug**.
+- `get_document`, `list_document_releases`, `publish_document`: aceitam **ID UUID ou UUID do link `/d/{uuid}`**. Slugs legados (título) ainda resolvem via alias.
 - `delete_document`: exige **UUID** (`id` do documento).
 - Após `create_document`, guarde o `id` retornado.
 
@@ -140,7 +140,7 @@ Prefira `type` coerente com o template em `lib/documents.ts` (`templates`).
 ### Atualizar existente
 
 ```
-1. get_document(id ou slug)
+1. get_document(id ou uuid do link /d/{uuid})
 2. update_document(id, campos alterados)
 3. publish_document(id) → se precisar de link da nova versão
 ```

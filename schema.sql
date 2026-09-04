@@ -139,6 +139,13 @@ CREATE TABLE IF NOT EXISTS portulan.document_shares (
   UNIQUE (document_id, email)
 );
 
+CREATE TABLE IF NOT EXISTS portulan.document_slug_aliases (
+  slug TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL REFERENCES portulan.documents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_slug_aliases_document_id ON portulan.document_slug_aliases (document_id);
+
 CREATE INDEX IF NOT EXISTS idx_document_shares_document_id ON portulan.document_shares (document_id);
 CREATE INDEX IF NOT EXISTS idx_document_shares_user_id ON portulan.document_shares (user_id);
 CREATE INDEX IF NOT EXISTS idx_document_shares_email ON portulan.document_shares (email);

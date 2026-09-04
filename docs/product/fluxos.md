@@ -6,7 +6,7 @@ Caminhos que o produto promete. Se a jornada mudar, atualize aqui e as `RN-xx` e
 
 1. Pessoa escolhe um template (ou o Default).
 2. Informa título (obrigatório) e resumo opcional.
-3. O sistema cria um rascunho (`draft`) associado ao usuário, com slug derivado do título e conteúdo-base do template.
+3. O sistema cria um rascunho (`draft`) associado ao usuário, com slug UUID fixo (igual ao `id`) e conteúdo-base do template. O título pode ser alterado depois sem mudar o link `/d/{uuid}`.
 
 Agente: `list_documents` (evitar duplicata de assunto) → `create_document`.
 
@@ -24,7 +24,7 @@ Regras: RN-01, RN-08, RN-11.
 
 1. Só se o rascunho difere da última release (RN-02).
 2. Snapshot imutável + `version` + 1.
-3. Devolve `/d/{slug}` (sempre a última habilitada) e `/p/{releaseId}` (esta versão).
+3. Devolve `/d/{uuid}` (sempre a última habilitada) e `/p/{releaseId}` (esta versão).
 4. Edições seguintes no rascunho não alteram `/p` antigos.
 
 Regras: RN-02, RN-03, RN-04, RN-05.
@@ -39,7 +39,7 @@ Regras: RN-10 a RN-13.
 
 ## Leitura pública
 
-1. Visitante abre `/d/{slug}` ou `/p/{id}`.
+1. Visitante abre `/d/{uuid}` ou `/p/{id}`.
 2. Se o documento está desativado, ou a release está desativada (e no `/d` não há outra habilitada), ver indisponibilidade — não o rascunho.
 3. Conteúdo é o snapshot publicado, com paleta daquela versão.
 

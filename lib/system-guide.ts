@@ -121,7 +121,7 @@ export function buildSystemGuide() {
       product: "Portulan — biblioteca técnica de documentos Markdown com templates, publicação e MCP.",
       documents: "Rascunhos editáveis; publicação cria snapshot imutável (release).",
       links: {
-        stable: "/d/{slug} — sempre aponta para a release habilitada mais recente",
+        stable: "/d/{uuid} — identificador fixo (UUID); sempre aponta para a release habilitada mais recente",
         fixed: "/p/{releaseId} — versão fixa; conteúdo não muda após publicada",
       },
       templates: "Paleta, logo e conteúdo-base via list_templates / get_template.",
