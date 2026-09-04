@@ -11,7 +11,7 @@ Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable
 
 1. App rodando: `npm run dev` (Node 20+) no repo Portulan
 2. Endpoint: `http://localhost:3000/api/mcp`
-3. Servidor MCP: `portulan` v0.7.0
+3. Servidor MCP: `portulan` v0.8.0
 
 Sem o dev server, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
 
@@ -68,11 +68,13 @@ Authorization: Bearer <MCP_API_KEY>
 
 No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
 
-## Ferramentas (17)
+## Ferramentas (19)
 
 | Ferramenta | Quando usar |
 |---|---|
 | `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo (inclui seção **Como evitar erros**) |
+| `upload_image` | Enviar imagem (base64) para um documento; usar a `url` retornada em `:::figure{src=...}` |
+| `upload_file` | Enviar anexo (base64) para um documento; usar `url` e `name` em `:::file{url=... name=...}` |
 | `list_documents` | Descobrir o que existe; buscar por título, tag, tipo ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |
@@ -144,6 +146,17 @@ Prefira `type` coerente com o template em `lib/documents.ts` (`templates`).
 2. update_document(id, campos alterados)
 3. publish_document(id) → se precisar de link da nova versão
 ```
+
+### Inserir imagem ou anexo
+
+```
+1. get_document(id) → confirmar permissão de edição
+2. upload_image ou upload_file(document_id, content_base64, filename, content_type)
+3. update_document(id, content: "... :::figure{src=\"<url>\"} ..." ou :::file{url=\"<url>\" name=\"<filename>\"})
+4. publish_document(id) → se o link público precisar do arquivo
+```
+
+**Regra:** faça upload **antes** de inserir a URL no Markdown. Limites iguais à UI (RN-45): imagens PNG/JPG/WEBP/SVG/GIF; anexos qualquer tipo; até 5 MB.
 
 **Regra:** prefira `update_document` em documento existente; não duplique com `create_document`.
 
@@ -316,7 +329,7 @@ curl -sS -X POST http://localhost:3000/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 17 ferramentas.
+Deve listar 19 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

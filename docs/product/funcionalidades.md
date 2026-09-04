@@ -84,3 +84,4 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | F-mcp-share | listar, convidar, revogar compartilhamentos | existe |
 | F-mcp-catalogo | listar e explicar componentes Markdown | existe |
 | F-mcp-guia | get_system_guide — guia completo gerado do catálogo e do produto, incluindo seção **Como evitar erros** (armadilhas de sintaxe) e avoidErrors por componente via explain_markdown_component | existe |
+| F-mcp-upload | upload_image e upload_file — enviar imagens e anexos ao Blob (base64) e obter URL pública para `:::figure` / `:::file` | existe |

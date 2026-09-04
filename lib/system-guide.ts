@@ -9,9 +9,43 @@ import {
 import { buildGlobalAvoidErrorsSection, getComponentAvoidErrors } from "./markdown-pitfalls.ts";
 import { TESTCASE_STATUS_LABELS, TESTCASE_STATUSES } from "./living-document-mutations.ts";
 
-const MCP_SERVER_VERSION = "0.7.0";
+const MCP_SERVER_VERSION = "0.8.0";
 
 const LIVING_COMPONENT_IDS = new Set(["checklist", "testcase"]);
+
+function blobUploadSection() {
+  return {
+    title: "Upload de imagens e anexos (MCP)",
+    summary:
+      "Agentes enviam arquivos para o mesmo Blob storage da UI antes de referenciá-los no Markdown. Requer permissão de edição no documento de destino.",
+    tools: [
+      {
+        name: "upload_image",
+        purpose: "report-image",
+        limits: "PNG, JPG, WEBP, SVG ou GIF; até 5 MB",
+        markdown: ':::figure{src="<url retornada>" alt="..."}',
+      },
+      {
+        name: "upload_file",
+        purpose: "report-file",
+        limits: "Qualquer tipo; até 5 MB",
+        markdown: ':::file{url="<url retornada>" name="<filename>" title="opcional"}',
+      },
+    ],
+    input: {
+      document_id: "UUID do documento (ou UUID do link /d/{uuid})",
+      content_base64: "Bytes do arquivo em base64 (prefixo data URL opcional)",
+      filename: "Nome original com extensão",
+      content_type: "MIME type (ex.: image/png, application/pdf)",
+    },
+    workflow: [
+      "get_document ou create_document → obter document_id",
+      "upload_image ou upload_file com base64",
+      "update_document com :::figure ou :::file usando url (e name para anexos)",
+    ],
+    rules: ["RN-45", "RN-46", "RN-51"],
+  };
+}
 
 function livingBehaviorSection() {
   return {
@@ -132,6 +166,7 @@ export function buildSystemGuide() {
         "explain_markdown_component — detalhe de um componente",
         "get_document / update_document — ler e persistir conteúdo",
         "publish_document — gerar links públicos",
+        "upload_image / upload_file — enviar mídia e anexos antes de inserir no Markdown",
       ],
     },
     markdownCatalog: {
@@ -140,6 +175,7 @@ export function buildSystemGuide() {
       byCategory: componentsByCategory,
     },
     livingBehavior: livingBehaviorSection(),
+    blobUpload: blobUploadSection(),
     qaGuidelines: qaGuidelinesSection(),
     avoidErrors: buildGlobalAvoidErrorsSection(),
   };

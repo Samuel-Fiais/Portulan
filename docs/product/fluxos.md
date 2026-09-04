@@ -60,8 +60,9 @@ Regras: RN-10, RN-20, RN-21.
 1. Usuário gera token no dashboard (Integrações).
 2. Cliente envia o Bearer em toda chamada.
 3. O agente lista/lê/edita/publica como aquele usuário, no mesmo recorte de permissão da UI.
+4. Para imagens ou anexos: `upload_image` / `upload_file` (base64 + filename + content_type + document_id) → URL pública → `update_document` com `:::figure` ou `:::file`.
 
-Regras: RN-50, RN-51, RN-52.
+Regras: RN-45, RN-46, RN-50, RN-51, RN-52, RN-53.
 
 ## Excluir
 

@@ -11,7 +11,7 @@ Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable
 
 1. App Portulan acessível (ex.: `https://seu-dominio.com` ou `http://localhost:3000` em desenvolvimento)
 2. Endpoint MCP: `{origin}/api/mcp`
-3. Servidor MCP: `portulan` v0.7.0
+3. Servidor MCP: `portulan` v0.8.0
 4. Conta Portulan com login GitHub e **token MCP pessoal**
 
 Sem o app rodando ou sem token válido, conexões falham (timeout ou 401).
@@ -60,11 +60,13 @@ Se o cliente só suporta stdio, use um proxy HTTP como `mcp-remote`:
 
 Revogue tokens comprometidos no dashboard a qualquer momento.
 
-## Ferramentas (17)
+## Ferramentas (19)
 
 | Ferramenta | Quando usar |
 |---|---|
 | `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo (inclui **Como evitar erros**) |
+| `upload_image` | Enviar imagem (base64) para um documento; usar a `url` em `:::figure{src=...}` |
+| `upload_file` | Enviar anexo (base64) para um documento; usar `url` e `name` em `:::file{url=... name=...}` |
 | `list_templates` | Descobrir templates disponíveis (cores editoriais) |
 | `get_template` | Ler template completo (cores + conteúdo-base) |
 | `duplicate_template` | Clonar template acessível como template particular |
