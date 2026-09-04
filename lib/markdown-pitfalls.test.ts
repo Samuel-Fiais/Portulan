@@ -31,6 +31,9 @@ test("getComponentAvoidErrors inclui armadilhas por componente", () => {
 
   const stats = getComponentAvoidErrors(findMarkdownComponent("stats")!);
   assert.ok(stats.some((item) => item.includes("GFM")));
+
+  const properties = getComponentAvoidErrors(findMarkdownComponent("properties")!);
+  assert.ok(properties.some((item) => item.includes("Markdown inline")));
 });
 
 test("buildSystemGuide expõe avoidErrors global e por componente", () => {

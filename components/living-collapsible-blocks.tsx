@@ -2,7 +2,17 @@
 
 import { useRef, useState } from "react";
 import { InlineMarkdown } from "@/components/inline-markdown";
+import { resolvePropertyValue } from "@/lib/property-value";
 import { hrefFromValue } from "@/lib/report-links";
+
+function PropertyValueCell({ value, type }: { value: string; type: string }) {
+  const resolved = resolvePropertyValue(value, type);
+  if (!resolved) return null;
+  if (resolved.kind === "plain-href") {
+    return <a href={resolved.href}>{resolved.label}</a>;
+  }
+  return <InlineMarkdown>{resolved.source}</InlineMarkdown>;
+}
 
 export function LivingFaq({
   items,
@@ -95,17 +105,14 @@ export function LivingProperties({
 }) {
   return (
     <dl className="fp-properties">
-      {rows.map(([name, value, type = ""], index) => {
-        const href = type === "url" ? (hrefFromValue(value) ?? value) : hrefFromValue(value);
-        return (
-          <div key={`${name}-${index}`}>
-            <dt>{name}</dt>
-            <dd className={type}>
-              {href ? <a href={href}>{value}</a> : value}
-            </dd>
-          </div>
-        );
-      })}
+      {rows.map(([name, value, type = ""], index) => (
+        <div key={`${name}-${index}`}>
+          <dt>{name}</dt>
+          <dd className={type}>
+            <PropertyValueCell value={value} type={type} />
+          </dd>
+        </div>
+      ))}
     </dl>
   );
 }
