@@ -64,7 +64,7 @@ Revogue tokens comprometidos no dashboard a qualquer momento.
 
 | Ferramenta | Quando usar |
 |---|---|
-| `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo |
+| `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo (inclui **Como evitar erros**) |
 | `list_templates` | Descobrir templates disponíveis (cores editoriais) |
 | `get_template` | Ler template completo (cores + conteúdo-base) |
 | `duplicate_template` | Clonar template acessível como template particular |

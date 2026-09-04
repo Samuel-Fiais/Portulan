@@ -32,11 +32,12 @@ test("findMarkdownComponent resolve id, título e diretiva", () => {
   assert.equal(findMarkdownComponent("chart")?.id, "chart-configurable");
 });
 
-test("explainMarkdownComponent retorna passos e exemplos", () => {
+test("explainMarkdownComponent retorna passos, exemplos e avoidErrors", () => {
   const explanation = explainMarkdownComponent("checklist");
   assert.ok(explanation);
   assert.equal(explanation?.name, "checklist");
   assert.ok(explanation?.steps.length >= 2);
   assert.equal(explanation?.examples.length, 2);
+  assert.ok(explanation?.avoidErrors?.length);
   assert.equal(explainMarkdownComponent("inexistente"), null);
 });

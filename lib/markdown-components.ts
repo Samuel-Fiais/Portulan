@@ -1,3 +1,5 @@
+import { getComponentAvoidErrors } from "./markdown-pitfalls.ts";
+
 export type ComponentProperty = {
   name: string;
   values: string;
@@ -171,7 +173,7 @@ function summarizeAttributes(component: MarkdownComponent) {
   return component.properties.map((property) => `${property.name}: ${property.values}`).join("; ");
 }
 
-function inferBodyFormat(component: MarkdownComponent): "pipe-rows" | "free-markdown" | "mixed" {
+export function inferBodyFormatForComponent(component: MarkdownComponent): "pipe-rows" | "free-markdown" | "mixed" {
   if (component.category === "Markdown") return "free-markdown";
   if (component.id === "columns") return "mixed";
   const directive = getDirectiveName(component);
@@ -185,7 +187,7 @@ function inferBodyFormat(component: MarkdownComponent): "pipe-rows" | "free-mark
 
 function buildSyntaxSteps(component: MarkdownComponent) {
   const directive = getDirectiveName(component);
-  const bodyFormat = inferBodyFormat(component);
+  const bodyFormat = inferBodyFormatForComponent(component);
   if (!directive) {
     return [
       "Use Markdown padrão conforme o snippet do componente.",
@@ -196,14 +198,15 @@ function buildSyntaxSteps(component: MarkdownComponent) {
     ? `Atributos opcionais entre chaves: {${component.properties.map((property) => `${property.name}="..."`).join(" ")}}.`
     : "Sem atributos obrigatórios.";
   const steps = [
-    `Abra o bloco com \`:::${directive}\` seguido de atributos, se houver.`,
+    `Abra o bloco com \`:::${directive}\` seguido imediatamente de \`{attr="valor"}\` quando houver atributos — sem espaço antes de \`{\`.`,
     attributeHint,
     bodyFormat === "pipe-rows"
-      ? "No corpo, use linhas iniciadas com `-`, separando colunas com `|` conforme as regras."
+      ? "No corpo, use linhas iniciadas com `-`, separando colunas com `|` conforme as regras — não use tabelas GFM."
       : bodyFormat === "mixed"
         ? "No corpo, separe colunas com uma linha contendo apenas `---`; cada coluna aceita Markdown e outros componentes."
         : "No corpo, escreva Markdown livre (texto, listas, parágrafos ou código).",
     "Feche o bloco com uma linha contendo apenas `:::`.",
+    "Deixe linha em branco antes e depois do bloco; consulte `avoidErrors` deste componente para armadilhas comuns.",
   ];
   return steps;
 }
@@ -226,7 +229,7 @@ export function explainMarkdownComponent(query: string) {
   if (!component) return null;
 
   const directive = getDirectiveName(component);
-  const bodyFormat = inferBodyFormat(component);
+  const bodyFormat = inferBodyFormatForComponent(component);
   const openerLine = component.snippet.split("\n")[0];
 
   return {
@@ -247,6 +250,7 @@ export function explainMarkdownComponent(query: string) {
       description: property.values,
     })),
     rules: component.rules ?? [],
+    avoidErrors: getComponentAvoidErrors(component),
     steps: buildSyntaxSteps(component),
     examples: [
       { label: "Exemplo completo", markdown: component.preview },
