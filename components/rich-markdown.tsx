@@ -4,6 +4,7 @@ import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { InlineMarkdown } from "@/components/inline-markdown";
 import { MarkdownCode } from "@/components/markdown-code";
+import { MarkdownDocListItem, MarkdownDocListOl, MarkdownDocListUl } from "@/components/markdown-doc-list";
 import { isPlaceholderToken } from "@/lib/inline-markdown";
 import { LivingChart } from "@/components/living-chart";
 import { LivingChecklist } from "@/components/living-checklist";
@@ -79,9 +80,9 @@ function Markdown({ children, interactive = false }: { children: string; interac
         h2: ({ children }) => <h2 className="report-section-title">{children}</h2>,
         h3: ({ children }) => <h3 className="report-subtitle">{children}</h3>,
         blockquote: ({ children }) => <blockquote className="fp-callout">{children}</blockquote>,
-        ul: ({ children }) => <ul className="fp-doc-list">{children}</ul>,
-        ol: ({ children }) => <ol className="fp-doc-list">{children}</ol>,
-        li: ({ children }) => <li>{children}</li>,
+        ul: ({ children }) => <MarkdownDocListUl>{children}</MarkdownDocListUl>,
+        ol: ({ children }) => <MarkdownDocListOl>{children}</MarkdownDocListOl>,
+        li: ({ children }) => <MarkdownDocListItem>{children}</MarkdownDocListItem>,
         table: ({ children }) => <LivingTable interactive={interactive}>{children}</LivingTable>,
         pre: ({ children }) => <LivingCodeBlock interactive={interactive}>{children}</LivingCodeBlock>,
         code: ({ children, className, node }) => <MarkdownCode className={className} node={node}>{children}</MarkdownCode>,

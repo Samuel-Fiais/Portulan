@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { MarkdownCode } from "@/components/markdown-code";
+import { MarkdownDocListItem, MarkdownDocListOl, MarkdownDocListUl } from "@/components/markdown-doc-list";
 import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
 import { useLivingDocument } from "@/components/living-document-context";
 import {
@@ -25,9 +26,9 @@ function TestcaseBody({ source }: { source: string }) {
       remarkPlugins={portulanRemarkPlugins}
       components={{
         p: ({ children }) => <p className="fp-testcase-paragraph">{children}</p>,
-        ul: ({ children }) => <ul className="fp-doc-list">{children}</ul>,
-        ol: ({ children }) => <ol className="fp-doc-list">{children}</ol>,
-        li: ({ children }) => <li>{children}</li>,
+        ul: ({ children }) => <MarkdownDocListUl>{children}</MarkdownDocListUl>,
+        ol: ({ children }) => <MarkdownDocListOl>{children}</MarkdownDocListOl>,
+        li: ({ children }) => <MarkdownDocListItem>{children}</MarkdownDocListItem>,
         strong: ({ children }) => <strong>{children}</strong>,
         pre: ({ children }) => <pre className="fp-testcase-pre">{children}</pre>,
         code: ({ children, className, node }) => (
