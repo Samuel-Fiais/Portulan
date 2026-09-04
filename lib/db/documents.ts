@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/document-shares";
 import { documentReleases, documentSlugAliases, documents, templates, users } from "@/lib/db/schema";
 import { getDefaultTemplate, resolveTemplateForUser } from "@/lib/db/templates";
+import { mergeLivingDocumentState } from "@/lib/living-document-mutations.ts";
 import {
   hasUnpublishedChanges,
   type DocumentAccessLevel,
@@ -278,6 +279,10 @@ export async function updateDocument(
   const next = { ...current, ...input, templateId };
   const now = new Date().toISOString();
   const publishedAt = next.status === "published" ? current.publishedAt ?? now : null;
+  const content =
+    input.content !== undefined
+      ? mergeLivingDocumentState(current.content, input.content)
+      : next.content;
   const db = await getDb();
 
   await db
@@ -290,7 +295,7 @@ export async function updateDocument(
       author: next.author,
       team: next.team,
       tags: JSON.stringify(next.tags),
-      content: next.content,
+      content,
       // O rascunho pode ser salvo quantas vezes for necessário. A versão só
       // avança ao criar um snapshot publicado em publishDocument.
       version: current.version,
@@ -592,7 +597,10 @@ export async function publishDocument(
     author: input.author ?? current.author,
     team: input.team ?? current.team,
     tags: input.tags ?? current.tags,
-    content: input.content ?? current.content,
+    content:
+      input.content !== undefined
+        ? mergeLivingDocumentState(current.content, input.content)
+        : current.content,
   };
 
   const [latestReleaseRow] = await db

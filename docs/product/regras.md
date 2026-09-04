@@ -53,6 +53,7 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 - **RN-51** O agente opera com a identidade e as permissões daquele usuário — não há bypass de dono.
 - **RN-52** Preferir `update_document` em documento existente; não duplicar o assunto com `create_document`.
 - **RN-53** Upload via MCP (`upload_image`, `upload_file`) usa o mesmo Blob, limites (RN-45) e prefixo por usuário/documento da UI; exige token MCP válido e permissão de edição no documento de destino.
+- **RN-54** Ao substituir o Markdown do rascunho (MCP `update_document`, `publish_document` com `content`, ou qualquer API que envie `content` completo), o servidor **preserva o estado living já salvo** no rascunho atual: para cada `:::testcase` com o mesmo `id`, mantém o `status` do rascunho (ignora o `status` do payload); para cada item de `:::checklist` com o mesmo título (primeira coluna, comparação normalizada), mantém `[x]`/`[ ]` do rascunho. Itens novos no payload usam o estado do agente; itens removidos do payload somem. O rascunho prevalece sobre o incoming — agentes não resetam marcações do usuário via replace de conteúdo.
 
 ## Chrome do workspace
 
