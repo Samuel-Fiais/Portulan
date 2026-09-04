@@ -51,6 +51,7 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 - **RN-50** Toda chamada MCP exige `Authorization: Bearer` com token pessoal válido.
 - **RN-51** O agente opera com a identidade e as permissões daquele usuário — não há bypass de dono.
 - **RN-52** Preferir `update_document` em documento existente; não duplicar o assunto com `create_document`.
+- **RN-53** Upload via MCP (`upload_image`, `upload_file`) usa o mesmo Blob, limites (RN-45) e prefixo por usuário/documento da UI; exige token MCP válido e permissão de edição no documento de destino.
 
 ## Chrome do workspace
 

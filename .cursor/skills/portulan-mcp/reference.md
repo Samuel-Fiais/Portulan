@@ -53,6 +53,42 @@ Sem parâmetros. Retorna `guide` gerado em tempo real a partir de `lib/system-gu
 
 `explain_markdown_component` recebe `{ "name": "alert" }` (id, título pt-BR ou diretiva) e devolve passos, atributos, regras, campo `avoidErrors` (armadilhas) e exemplos. Retorna erro se o componente for desconhecido.
 
+### `upload_image`, `upload_file`
+
+Enviam arquivos para o mesmo Blob storage da UI (requer `BLOB_READ_WRITE_TOKEN` no servidor). Input com base64 — prefixo `data:...;base64,` opcional.
+
+**`upload_image`**
+
+```json
+{
+  "document_id": "uuid-do-documento",
+  "content_base64": "<bytes em base64>",
+  "filename": "diagrama.png",
+  "content_type": "image/png"
+}
+```
+
+**Output:** `{ "url", "pathname", "purpose": "report-image", "name" }` — use `url` em `:::figure{src="..."}`.
+
+Limites: PNG, JPG, WEBP, SVG ou GIF; até 5 MB (RN-45).
+
+**`upload_file`**
+
+```json
+{
+  "document_id": "uuid-do-documento",
+  "content_base64": "<bytes em base64>",
+  "filename": "especificacao.pdf",
+  "content_type": "application/pdf"
+}
+```
+
+**Output:** `{ "url", "name", "pathname", "purpose": "report-file" }` — use em `:::file{url="..." name="..."}`.
+
+Limites: qualquer tipo; até 5 MB (RN-45).
+
+Fluxo recomendado: upload → `update_document` com a URL → `publish_document` se necessário.
+
 ---
 
 ### `list_documents`

@@ -29,6 +29,11 @@ import { documentShareInputSchema } from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
 import { buildSystemGuide, getMcpServerVersion } from "@/lib/system-guide";
+import {
+  mcpUploadFileDescription,
+  mcpUploadImageDescription,
+  runMcpBlobUpload,
+} from "@/lib/mcp-blob-upload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -212,6 +217,72 @@ const mcpHandler = createMcpHandler((server) => {
       return explanation
         ? textResult({ component: explanation })
         : { ...textResult({ error: "Componente Markdown não encontrado." }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "upload_image",
+    {
+      title: "Enviar imagem",
+      description: mcpUploadImageDescription(),
+      inputSchema: z.object({
+        document_id: z.string().min(1).describe("ID UUID do documento (ou UUID do link /d/{uuid})"),
+        content_base64: z.string().min(1).describe("Conteúdo da imagem em base64 (prefixo data URL opcional)"),
+        filename: z.string().trim().min(1).max(255).describe("Nome original com extensão (ex.: diagrama.png)"),
+        content_type: z.string().trim().min(1).max(120).describe("MIME type (ex.: image/png)"),
+      }),
+    },
+    async ({ document_id, content_base64, filename, content_type }) => {
+      const upload = await runMcpBlobUpload({
+        userId: requireUserId(),
+        purpose: "report-image",
+        documentId: document_id,
+        contentBase64: content_base64,
+        filename,
+        contentType: content_type,
+      });
+      if ("error" in upload) {
+        return { ...textResult({ error: upload.error }), isError: true };
+      }
+      return textResult({
+        url: upload.result.url,
+        pathname: upload.result.pathname,
+        purpose: upload.result.purpose,
+        name: upload.result.name,
+      });
+    },
+  );
+
+  server.registerTool(
+    "upload_file",
+    {
+      title: "Enviar anexo",
+      description: mcpUploadFileDescription(),
+      inputSchema: z.object({
+        document_id: z.string().min(1).describe("ID UUID do documento (ou UUID do link /d/{uuid})"),
+        content_base64: z.string().min(1).describe("Conteúdo do arquivo em base64 (prefixo data URL opcional)"),
+        filename: z.string().trim().min(1).max(255).describe("Nome original com extensão (ex.: spec.pdf)"),
+        content_type: z.string().trim().min(1).max(120).describe("MIME type (ex.: application/pdf)"),
+      }),
+    },
+    async ({ document_id, content_base64, filename, content_type }) => {
+      const upload = await runMcpBlobUpload({
+        userId: requireUserId(),
+        purpose: "report-file",
+        documentId: document_id,
+        contentBase64: content_base64,
+        filename,
+        contentType: content_type,
+      });
+      if ("error" in upload) {
+        return { ...textResult({ error: upload.error }), isError: true };
+      }
+      return textResult({
+        url: upload.result.url,
+        name: upload.result.name,
+        pathname: upload.result.pathname,
+        purpose: upload.result.purpose,
+      });
     },
   );
 
@@ -476,7 +547,7 @@ const mcpHandler = createMcpHandler((server) => {
 }, {
   serverInfo: { name: "portulan", version: getMcpServerVersion() },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{uuid}) é um UUID fixo na criação e não muda ao renomear o título; publicPath (/p/{releaseId}) fixa uma versão específica. Slugs legados derivados do título ainda resolvem via alias. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{uuid}) é um UUID fixo na criação e não muda ao renomear o título; publicPath (/p/{releaseId}) fixa uma versão específica. Slugs legados derivados do título ainda resolvem via alias. Para imagens e anexos em relatórios, chame upload_image ou upload_file (base64 + filename + content_type + document_id) antes de inserir a URL retornada em :::figure{src=...} ou :::file{url=... name=...}. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {
