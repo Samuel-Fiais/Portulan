@@ -1,8 +1,9 @@
-import { type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties } from "react";
 import ReactMarkdown from "react-markdown";
 import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { InlineMarkdown } from "@/components/inline-markdown";
+import { MarkdownCode } from "@/components/markdown-code";
 import { isPlaceholderToken } from "@/lib/inline-markdown";
 import { LivingChart } from "@/components/living-chart";
 import { LivingChecklist } from "@/components/living-checklist";
@@ -68,23 +69,6 @@ function SectionLabel({ title }: { title: string }) {
       <span className="tmpl-label-text">{match[2]}</span>
     </div>
   );
-}
-
-type HastText = { type: "text"; value: string };
-type HastElement = { type: "element"; tagName: string; children?: HastText[] };
-
-function isFencedCode(node: unknown): boolean {
-  if (!node || typeof node !== "object") return false;
-  const element = node as HastElement;
-  if (element.type !== "element" || element.tagName !== "code") return false;
-  const text = element.children?.[0];
-  return text?.type === "text" && text.value.endsWith("\n");
-}
-
-function MarkdownCode({ children, className, node }: { children?: ReactNode; className?: string; node?: unknown }) {
-  if (className) return <code className={className}>{children}</code>;
-  if (isFencedCode(node)) return <code>{children}</code>;
-  return <code className="report-inline-code">{children}</code>;
 }
 
 function Markdown({ children, interactive = false }: { children: string; interactive?: boolean }) {

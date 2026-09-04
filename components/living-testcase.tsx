@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { MarkdownCode } from "@/components/markdown-code";
 import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
 import { useLivingDocument } from "@/components/living-document-context";
 import {
@@ -28,7 +29,10 @@ function TestcaseBody({ source }: { source: string }) {
         ol: ({ children }) => <ol className="fp-doc-list">{children}</ol>,
         li: ({ children }) => <li>{children}</li>,
         strong: ({ children }) => <strong>{children}</strong>,
-        code: ({ children }) => <code className="report-inline-code">{children}</code>,
+        pre: ({ children }) => <pre className="fp-testcase-pre">{children}</pre>,
+        code: ({ children, className, node }) => (
+          <MarkdownCode className={className} node={node}>{children}</MarkdownCode>
+        ),
       }}
     >
       {source}

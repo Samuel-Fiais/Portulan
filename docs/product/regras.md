@@ -40,7 +40,7 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 
 - **RN-40** `:::checklist` é só para tarefas rastreáveis (`- [ ]` / `- [x]`). Critérios, sintomas e listas informativas usam bullets Markdown.
 - **RN-41** Novo bloco de relatório entra no catálogo único. Não há segunda lista de categorias no editor.
-- **RN-42** Card `:::report` aponta para o link estável `/d/{slug}` de um documento **publicado**.
+- **RN-42** Card `:::report` aponta para o link estável `/d/{slug}` de um documento **publicado**. `:::report` e `:::image` são diretivas void (uma linha, só atributos): corpo acidental ou `:::` de fechamento é descartado na renderização e não deve ser escrito pelo autor.
 - **RN-43** Checklist e testcase com estado durável: quando o leitor autenticado pode editar o documento, toggles reescrevem o Markdown fonte (`- [ ]`/`[x]` ou `status` do testcase) via salvamento debounced no rascunho **e**, em leitura pública editável (`/d/` ou `/p/` com permissão), também na release exibida — para o estado sobreviver ao refresh da mesma URL. Sem permissão de edição, checklist pode usar cache local do navegador; testcase permanece somente leitura.
 - **RN-44** `:::testcase` exige `id` único no documento. Status permitidos: `pending`, `ok`, `partial`, `error`. Preferir testcase a tabelas largas para cenários de QA.
 
