@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import { reportPaletteStyle } from "@/lib/color-utils";
 import { cn } from "@/lib/utils";
 
@@ -33,16 +33,21 @@ export function ReportLinkCard({
   onSelect,
 }: ReportLinkCardProps) {
   const paletteStyle = reportPaletteStyle(primaryColor ?? "#1a2847", secondaryColor ?? "#c45c26") as CSSProperties;
+  const destinationHint = `/d/${slug}`;
 
   const content = (
     <>
-      <span className="fp-report-card-icon" aria-hidden><FileText /></span>
+      <span className="fp-report-card-icon" aria-hidden>
+        <FileText />
+      </span>
       <div className="fp-report-card-body">
         {templateName ? <span className="fp-report-card-template">{templateName}</span> : null}
-        <strong className="fp-report-card-title">{title}</strong>
+        <span className="fp-report-card-title">{title}</span>
         {summary ? <p className="fp-report-card-summary">{summary}</p> : null}
-        <small className="fp-report-card-path">/d/{slug}</small>
       </div>
+      {!interactive ? (
+        <ChevronRight className="fp-report-card-chevron" aria-hidden />
+      ) : null}
     </>
   );
 
@@ -52,6 +57,9 @@ export function ReportLinkCard({
         type="button"
         className={cn("fp-report-card", selected && "fp-report-card--selected", className)}
         style={paletteStyle}
+        title={destinationHint}
+        aria-label={`Selecionar relatório: ${title}`}
+        aria-pressed={selected}
         onClick={onSelect}
       >
         {content}
@@ -60,7 +68,13 @@ export function ReportLinkCard({
   }
 
   return (
-    <Link href={`/d/${slug}`} className={cn("fp-report-card", className)} style={paletteStyle}>
+    <Link
+      href={destinationHint}
+      className={cn("fp-report-card", className)}
+      style={paletteStyle}
+      title={destinationHint}
+      aria-label={`Abrir relatório: ${title}`}
+    >
       {content}
     </Link>
   );
