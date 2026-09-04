@@ -180,7 +180,7 @@ Aceita UUID ou slug.
 
 Salva o rascunho sem criar uma nova versão publicada.
 
----
+Quando `content` é enviado, o servidor faz merge do estado living (RN-54): `status` de `:::testcase` e checkboxes de `:::checklist` já salvos no rascunho prevalecem sobre os valores do payload para o mesmo `id` ou título de item. Itens novos no payload mantêm o estado enviado pelo agente.
 
 ### `publish_document`
 
@@ -194,6 +194,8 @@ Salva o rascunho sem criar uma nova versão publicada.
 ```
 
 Cria uma nova versão publicada e um snapshot imutável, usando o rascunho atual junto de qualquer campo enviado.
+
+Se `content` for enviado, aplica RN-54 (mesmo merge de estado living do rascunho que `update_document`) antes de publicar.
 
 **Output:**
 
@@ -488,3 +490,4 @@ Formato: `rótulo | atual | meta`.
 3. **Editar link antigo** — releases são imutáveis; publique nova versão para novo link.
 4. **Slug no delete** — `delete_document` rejeita slug; use UUID.
 5. **Conteúdo sem `##`** — diretivas funcionam, mas seções editoriais ficam melhor com `## 01 — Título`.
+6. **Resetar QA via replace** — enviar `content` com `status="pending"` ou `- [ ]` não apaga marcações já salvas no rascunho (RN-54); use `get_document` para ver o estado real.

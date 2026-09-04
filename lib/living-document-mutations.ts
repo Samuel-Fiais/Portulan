@@ -300,3 +300,129 @@ export function testcaseIdExists(content: string, testcaseId: string) {
   }
   return false;
 }
+
+function normalizeChecklistTitle(title: string) {
+  return title.trim().toLowerCase();
+}
+
+function isChecklistItemLine(line: string) {
+  return /^[-*]\s+\[[ xX]\]/.test(line.trim());
+}
+
+function checklistTitleFromLine(line: string) {
+  const trimmed = line.trim().replace(/^[-*]\s+\[[ xX]\]\s*/, "");
+  const rawTitle = trimmed.split("|")[0]?.trim() ?? "";
+  return checklistTitleFromRaw(rawTitle);
+}
+
+function isChecklistChecked(line: string) {
+  return /^\s*[-*]\s+\[x\]/i.test(line);
+}
+
+function setChecklistLineChecked(line: string, checked: boolean) {
+  const marker = checked ? "[x]" : "[ ]";
+  return line.replace(/^(\s*[-*]\s+)\[[ xX]\]/, `$1${marker}`);
+}
+
+function extractTestcaseStatuses(content: string) {
+  const statuses = new Map<string, TestcaseStatus>();
+  for (const line of content.split("\n")) {
+    const opener = parseDirectiveOpener(line);
+    if (!opener || opener.name.toLowerCase() !== "testcase") continue;
+    const attributes = Object.fromEntries(
+      Array.from(opener.attributeSource.matchAll(/([\w-]+)="([^"]*)"/g), (match) => [match[1], match[2]]),
+    );
+    if (!attributes.id) continue;
+    statuses.set(attributes.id, parseTestcaseStatus(attributes.status));
+  }
+  return statuses;
+}
+
+function extractChecklistCheckedByTitle(content: string) {
+  const checkedByTitle = new Map<string, boolean>();
+  const lines = content.split("\n");
+  const checklists = directiveSlicesInRange(lines, 0, lines.length - 1).filter((item) => item.name === "checklist");
+
+  for (const checklist of checklists) {
+    const bodyLines = lines.slice(checklist.bodyStartLine, checklist.bodyEndLine + 1);
+    for (const line of bodyLines) {
+      if (!isChecklistItemLine(line)) continue;
+      const title = checklistTitleFromLine(line);
+      if (!title) continue;
+      checkedByTitle.set(normalizeChecklistTitle(title), isChecklistChecked(line));
+    }
+  }
+
+  return checkedByTitle;
+}
+
+function applyTestcaseStatusesFromCurrent(content: string, currentStatuses: Map<string, TestcaseStatus>) {
+  if (currentStatuses.size === 0) return content;
+
+  const lines = content.split("\n");
+  let changed = false;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const opener = parseDirectiveOpener(lines[lineIndex]);
+    if (!opener || opener.name.toLowerCase() !== "testcase") continue;
+    const attributes = Object.fromEntries(
+      Array.from(opener.attributeSource.matchAll(/([\w-]+)="([^"]*)"/g), (match) => [match[1], match[2]]),
+    );
+    const testcaseId = attributes.id;
+    if (!testcaseId || !currentStatuses.has(testcaseId)) continue;
+
+    const preservedStatus = currentStatuses.get(testcaseId)!;
+    const updated = replaceDirectiveAttribute(lines[lineIndex], "status", preservedStatus);
+    if (updated !== lines[lineIndex]) {
+      lines[lineIndex] = updated;
+      changed = true;
+    }
+  }
+
+  return changed ? lines.join("\n") : content;
+}
+
+function applyChecklistCheckedFromCurrent(content: string, currentCheckedByTitle: Map<string, boolean>) {
+  if (currentCheckedByTitle.size === 0) return content;
+
+  const lines = content.split("\n");
+  const checklists = directiveSlicesInRange(lines, 0, lines.length - 1).filter((item) => item.name === "checklist");
+  let changed = false;
+
+  for (const checklist of checklists) {
+    for (let lineIndex = checklist.bodyStartLine; lineIndex <= checklist.bodyEndLine; lineIndex += 1) {
+      const line = lines[lineIndex];
+      if (!isChecklistItemLine(line)) continue;
+
+      const title = checklistTitleFromLine(line);
+      if (!title) continue;
+
+      const preservedChecked = currentCheckedByTitle.get(normalizeChecklistTitle(title));
+      if (preservedChecked === undefined) continue;
+
+      const updated = setChecklistLineChecked(line, preservedChecked);
+      if (updated !== line) {
+        lines[lineIndex] = updated;
+        changed = true;
+      }
+    }
+  }
+
+  return changed ? lines.join("\n") : content;
+}
+
+/**
+ * Preserves living interactive state from the current draft when incoming content replaces markdown.
+ * Testcases match by stable `id`; checklist items match by normalized title (first column).
+ * Existing draft state wins over incoming values for matched items (RN-54).
+ */
+export function mergeLivingDocumentState(currentContent: string, incomingContent: string) {
+  if (!currentContent.trim()) return incomingContent;
+
+  const testcaseStatuses = extractTestcaseStatuses(currentContent);
+  const checklistCheckedByTitle = extractChecklistCheckedByTitle(currentContent);
+
+  let merged = applyTestcaseStatusesFromCurrent(incomingContent, testcaseStatuses);
+  merged = applyChecklistCheckedFromCurrent(merged, checklistCheckedByTitle);
+  return merged;
+}

@@ -117,6 +117,8 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 ### Versão e publicação
 
 - `update_document` salva o rascunho sem criar uma nova versão.
+- **Estado living (RN-54):** se o payload incluir `content`, o servidor preserva `status` de `:::testcase` (por `id`) e checkboxes de `:::checklist` (por título) já salvos no rascunho — o valor do agente no payload é ignorado para itens que já existiam. Use `get_document` antes de editar; não dependa de resetar QA com `status="pending"` ou `- [ ]` no replace completo.
+- `publish_document` com `content` aplica a mesma preservação antes de criar o snapshot.
 - `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{uuid}"` (UUID fixo na criação; não muda ao renomear título) e `publicPath: "/p/{releaseId}"` (versão fixa).
 - Links antigos `/p/...` **não mudam** quando o documento é editado depois; nova publicação = novo link de versão fixa. O link `/d/{uuid}` passa a apontar para a versão mais recente.
 - Links públicos: `http://localhost:3000/d/{uuid}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa).
@@ -230,6 +232,8 @@ Diretivas suportadas:
 | `:::testcase{id="PRD-01" status="pending" priority="high" title="…"}` | Cenário de QA; corpo Markdown livre; status: pending · ok · partial · error |
 
 **Living:** checklist e testcase persistem no Markdown quando o usuário pode editar o documento (prévia do editor, rascunho e links públicos com sessão editor). PDF/impressão exibe badge estático.
+
+**RN-54 — merge ao substituir conteúdo:** `update_document` e `publish_document` (com `content`) preservam status/checkboxes já salvos no rascunho para ids/títulos coincidentes. Agentes não resetam execução de QA enviando Markdown com `pending`/`[ ]`.
 
 **Quando NÃO usar `:::checklist`:** critérios, sintomas, condições ou listas informativas (“quando escalar”, “sinais de alerta”) → use bullets Markdown normais (`- item`) no corpo da seção, **não** dentro de `:::checklist`. O `-` vira lista com marcador; checkbox só com `[ ]` / `[x]`.
 

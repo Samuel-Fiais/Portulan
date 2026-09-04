@@ -90,6 +90,7 @@ function qaGuidelinesSection() {
       "Não coloque critérios informativos ou sintomas em `:::checklist` (use bullets normais).",
       "Não duplique o mesmo `id` de testcase no mesmo documento.",
       "Não espere que toggles em `/p/{releaseId}` alterem o snapshot publicado — mutações vão ao rascunho via `update_document`.",
+      "Ao enviar `content` em `update_document` ou `publish_document`, status de testcase e checkboxes já marcados pelo usuário no rascunho são preservados pelo servidor (RN-54) — não tente resetar execução de QA substituindo o Markdown inteiro.",
     ],
     example: `:::testcase{id="PRD-01" status="pending" priority="high" title="Limite semanal ainda disponível"}
 **Pré-condição:** usuário autenticado com cota semanal
