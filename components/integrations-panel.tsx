@@ -63,8 +63,8 @@ export function IntegrationsPanel({
   return (
     <main className="page-wrap dashboard-main">
       <section className="doc-section">
-        <div className="page-heading">
-          <div>
+        <div className="page-heading split-row">
+          <div className="split-row__main">
             <h1 className="fp-h1">Agentes e integrações</h1>
             <p className="fp-lead">
               Conecte um cliente MCP com a identidade do seu usuário Portulan.
@@ -166,8 +166,8 @@ function McpTokenPanel({
 
   return (
     <div className="integration-skill mcp-token-panel">
-      <div className="mcp-token-panel-header">
-        <div className="integration-skill-meta">
+      <div className="mcp-token-panel-header split-row">
+        <div className="integration-skill-meta split-row__main">
           <span className="eyebrow">Autenticação MCP</span>
           <h3>Tokens pessoais</h3>
           <p>
@@ -176,13 +176,12 @@ function McpTokenPanel({
             comprometidos a qualquer momento.
           </p>
         </div>
-        <div className="integration-skill-actions">
+        <div className="integration-skill-actions split-row__actions">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 disabled={pending}
               >
                 <KeyRound />
@@ -274,7 +273,6 @@ function McpTokenPanel({
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={copyToken}
           >
             <Copy />
@@ -317,7 +315,7 @@ function McpTokenPanel({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="xs"
+                      size="sm"
                       onClick={() => revoke(token.id)}
                       disabled={pending}
                     >
@@ -362,8 +360,8 @@ function IntegrationSkillCopy({ skillMarkdown }: { skillMarkdown: string }) {
   }
 
   return (
-    <div className="integration-skill">
-      <div className="integration-skill-meta">
+    <div className="integration-skill split-row">
+      <div className="integration-skill-meta split-row__main">
         <span className="eyebrow">Skill para agentes</span>
         <h3>portulan-mcp</h3>
         <p>
@@ -372,11 +370,10 @@ function IntegrationSkillCopy({ skillMarkdown }: { skillMarkdown: string }) {
           skills do seu agente ou anexe ao prompt do sistema.
         </p>
       </div>
-      <div className="integration-skill-actions">
+      <div className="integration-skill-actions split-row__actions">
         <Button
           type="button"
           variant="outline"
-          size="sm"
           onClick={copySkill}
           disabled={!skillMarkdown.trim()}
         >

@@ -1,9 +1,26 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
+import { IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import { auth } from "@/auth";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { PortulanToaster } from "@/components/portulan-toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-ibm-plex-sans",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "Portulan", template: "%s · Portulan" },
@@ -18,7 +35,15 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const session = await auth();
 
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      className={`${ibmPlexSans.variable} ${jetbrainsMono.variable}`}
+      style={{
+        "--font-ibm-plex-sans": ibmPlexSans.style.fontFamily,
+        "--font-jetbrains-mono": jetbrainsMono.style.fontFamily,
+      } as CSSProperties}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{

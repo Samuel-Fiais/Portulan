@@ -5,6 +5,7 @@ export type LivingTooltipProps = {
   "data-living-tip"?: string;
   "data-living-detail"?: string;
   tabIndex?: number;
+  "aria-label"?: string;
 };
 
 /** Tooltip no hover — usar só quando o dado não está visível (ex.: segmentos de gráfico). */
@@ -20,6 +21,7 @@ export function livingTooltipProps(
     "data-living-tip": label,
     ...(detail ? { "data-living-detail": detail } : {}),
     tabIndex: 0,
+    "aria-label": detail ? `${label}. ${detail}` : label,
   };
 }
 

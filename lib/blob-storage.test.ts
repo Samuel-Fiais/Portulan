@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildBlobPath, fileExtensionLabel, isPortulanBlobUrl, validateBlobFile, validateBlobImage } from "./blob-storage.ts";
+import { buildBlobPath, buildLocalBlobAssetUrl, fileExtensionLabel, isPortulanBlobUrl, isResolvableBlobAssetReference, parseBlobAssetPathname, parsePortulanBlobPathname, portulanBlobAssetUrl, validateBlobFile, validateBlobImage } from "./blob-storage.ts";
 
 test("buildBlobPath organiza logos de template por usuário", () => {
   const path = buildBlobPath({
@@ -56,4 +56,26 @@ test("isPortulanBlobUrl reconhece URLs do store", () => {
     true,
   );
   assert.equal(isPortulanBlobUrl("https://example.com/logo.png"), false);
+});
+
+test("parsePortulanBlobPathname extrai pathname do blob", () => {
+  assert.equal(
+    parsePortulanBlobPathname("https://abc.public.blob.vercel-storage.com/portulan/users/u1/logo.png"),
+    "portulan/users/u1/logo.png",
+  );
+});
+
+test("portulanBlobAssetUrl aponta para proxy autenticado", () => {
+  const url = "https://abc.public.blob.vercel-storage.com/portulan/users/u1/logo.png";
+  assert.equal(
+    portulanBlobAssetUrl(url),
+    `/api/blob/asset?url=${encodeURIComponent(url)}`,
+  );
+});
+
+test("buildLocalBlobAssetUrl e parseBlobAssetPathname funcionam em par", () => {
+  const pathname = "portulan/users/u1/templates/tpl/logo/logo.png";
+  const localUrl = buildLocalBlobAssetUrl(pathname);
+  assert.equal(parseBlobAssetPathname(localUrl), pathname);
+  assert.equal(isResolvableBlobAssetReference(localUrl), true);
 });

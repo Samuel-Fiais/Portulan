@@ -10,10 +10,10 @@ export function PublicDocumentShell({
   return (
     <div className="public-document-shell">
       {notice ? <div className="draft-preview-notice no-print">{notice}</div> : null}
-      <main className="public-document-main">{children}</main>
-      <div className="public-document-theme-toggle no-print">
+      <div className="public-document-toolbar no-print">
         <ThemeToggle />
       </div>
+      <main className="public-document-main">{children}</main>
     </div>
   );
 }

@@ -164,6 +164,9 @@ export function LivingChecklist({
 
   return (
     <div className="fp-checklist">
+      {canInteract && !persistable ? (
+        <p className="fp-checklist-local">Marcações só neste navegador</p>
+      ) : null}
       {parsedItems.map((item) => (
         <ChecklistRow
           key={item.fingerprint}

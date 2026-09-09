@@ -68,16 +68,17 @@ Authorization: Bearer <MCP_API_KEY>
 
 No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
 
-## Ferramentas (19)
+## Ferramentas (24)
 
 | Ferramenta | Quando usar |
 |---|---|
 | `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo (inclui seção **Como evitar erros**) |
 | `upload_image` | Enviar imagem (base64) para um documento; usar a `url` retornada em `:::figure{src=...}` |
 | `upload_file` | Enviar anexo (base64) para um documento; usar `url` e `name` em `:::file{url=... name=...}` |
-| `list_documents` | Descobrir o que existe; buscar por título, tag, tipo ou status |
+| `list_documents` | Descobrir o que existe; buscar por título, tag, conteúdo, template ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |
+| `duplicate_document` | Clonar documento como rascunho novo (apenas responsável; releases não copiadas) |
 | `update_document` | Editar rascunho/revisão; não cria versão publicada |
 | `publish_document` | Gerar link público imutável da versão atual |
 | `list_document_releases` | Recuperar links `/d/{slug}` (estável) e `/p/{id}` (versão fixa) já publicados |
@@ -160,7 +161,7 @@ Prefira `type` coerente com o template em `lib/documents.ts` (`templates`).
 
 **Regra:** faça upload **antes** de inserir a URL no Markdown. Limites iguais à UI (RN-45): imagens PNG/JPG/WEBP/SVG/GIF; anexos qualquer tipo; até 5 MB.
 
-**Regra:** prefira `update_document` em documento existente; não duplique com `create_document`.
+**Regra:** prefira `update_document` em documento existente; não duplique o assunto com `create_document`. Para clonar um documento inteiro, use `duplicate_document`.
 
 ### Publicar para compartilhar
 
@@ -333,7 +334,7 @@ curl -sS -X POST http://localhost:3000/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 19 ferramentas.
+Deve listar 24 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

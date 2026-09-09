@@ -62,6 +62,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "published_by_user_id",
   ],
   document_shares: ["id", "document_id", "email", "role", "invited_by", "user_id", "created_at"],
+  document_comments: ["id", "document_id", "user_id", "body", "section_anchor", "created_at"],
 } as const;
 
 type PortulanTable = keyof typeof PORTULAN_TABLE_COLUMNS;
@@ -111,7 +112,7 @@ async function loadTableColumns(db: Db): Promise<Map<string, Set<string>>> {
     SELECT table_name, column_name
     FROM information_schema.columns
     WHERE table_schema = ${PORTULAN_PG_SCHEMA}
-      AND table_name IN ('users', 'templates', 'mcp_tokens', 'documents', 'document_releases', 'document_shares')
+      AND table_name IN ('users', 'templates', 'mcp_tokens', 'documents', 'document_releases', 'document_shares', 'document_comments')
   `);
 
   const byTable = new Map<string, Set<string>>();
@@ -466,6 +467,33 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     await executeSchemaStatement(
       db,
       `CREATE INDEX IF NOT EXISTS idx_document_shares_email ON ${PORTULAN_PG_SCHEMA}.document_shares (email)`,
+    );
+  }
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_comments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+      body TEXT NOT NULL,
+      section_anchor TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+  );
+
+  if (await portulanTableExists(db, "document_comments")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_document_comments_document_id ON ${PORTULAN_PG_SCHEMA}.document_comments (document_id)`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_document_comments_user_id ON ${PORTULAN_PG_SCHEMA}.document_comments (user_id)`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_document_comments_created_at ON ${PORTULAN_PG_SCHEMA}.document_comments (created_at)`,
     );
   }
 

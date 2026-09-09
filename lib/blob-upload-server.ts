@@ -1,7 +1,9 @@
 import { put } from "@vercel/blob";
-import { getBlobReadWriteToken, getBlobStorageHint } from "@/lib/blob-env";
+import { writeBlobCache } from "@/lib/blob-cache";
+import { formatBlobStorageError, getBlobReadWriteToken, getBlobStorageHint, isBlobStoreUnavailableError } from "@/lib/blob-env";
 import {
   buildBlobPath,
+  buildLocalBlobAssetUrl,
   type BlobUploadPurpose,
   validateBlobFile,
   validateBlobImage,
@@ -30,6 +32,27 @@ export type BlobUploadResult = {
 
 function validatePurpose(purpose: string): purpose is BlobUploadPurpose {
   return (BLOB_UPLOAD_PURPOSES as readonly string[]).includes(purpose);
+}
+
+function canUseLocalBlobFallback() {
+  return process.env.NODE_ENV !== "production" || process.env.BLOB_LOCAL_FALLBACK === "1";
+}
+
+async function storeLocalBlobAsset(
+  pathname: string,
+  content: Buffer,
+  input: Pick<BlobUploadInput, "fileName" | "purpose">,
+): Promise<{ ok: true; result: BlobUploadResult }> {
+  await writeBlobCache(pathname, content);
+  return {
+    ok: true,
+    result: {
+      url: buildLocalBlobAssetUrl(pathname),
+      pathname,
+      purpose: input.purpose,
+      name: input.fileName,
+    },
+  };
 }
 
 export async function uploadBlobAsset(input: BlobUploadInput): Promise<
@@ -83,6 +106,9 @@ export async function uploadBlobAsset(input: BlobUploadInput): Promise<
 
   const blobToken = getBlobReadWriteToken();
   if (!blobToken) {
+    if (canUseLocalBlobFallback()) {
+      return storeLocalBlobAsset(pathname, input.content, input);
+    }
     return { ok: false, status: 503, error: getBlobStorageHint() ?? "Blob storage indisponível." };
   }
 
@@ -92,6 +118,10 @@ export async function uploadBlobAsset(input: BlobUploadInput): Promise<
       token: blobToken,
       contentType: input.contentType,
       addRandomSuffix: false,
+    });
+
+    await writeBlobCache(pathname, input.content).catch((error) => {
+      console.warn("Não foi possível gravar cache local do blob", { pathname, error });
     });
 
     return {
@@ -104,7 +134,10 @@ export async function uploadBlobAsset(input: BlobUploadInput): Promise<
       },
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Não foi possível enviar o arquivo.";
-    return { ok: false, status: 502, error: message };
+    if (canUseLocalBlobFallback() && isBlobStoreUnavailableError(error)) {
+      console.warn("Vercel Blob indisponível; usando cache local.", { pathname, error });
+      return storeLocalBlobAsset(pathname, input.content, input);
+    }
+    return { ok: false, status: 502, error: formatBlobStorageError(error) };
   }
 }

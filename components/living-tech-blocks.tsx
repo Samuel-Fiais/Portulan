@@ -48,7 +48,7 @@ export function LivingTerminal({
     <section className="fp-terminal">
       <header>
         <span>{title}</span>
-        {interactive && body.trim() ? <LivingCopyButton compact text={body} tone="dark" label="Copiar" /> : null}
+        {interactive && body.trim() ? <LivingCopyButton compact text={body} label="Copiar" /> : null}
       </header>
       <pre>{body}</pre>
     </section>
@@ -150,7 +150,7 @@ export function LivingLogs({
   return (
     <div className="fp-logs">
       {interactive ? (
-        <div className="fp-living-toolbar fp-living-toolbar-on-dark">
+        <div className="fp-living-toolbar">
           {levels.length > 1 ? (
             <div className="fp-living-filters" role="group" aria-label="Filtrar logs">
               <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>Todos</button>
@@ -161,7 +161,7 @@ export function LivingLogs({
               ))}
             </div>
           ) : null}
-          <LivingCopyButton compact text={copyText} tone="dark" label="Copiar logs" />
+          <LivingCopyButton compact text={copyText} label="Copiar logs" />
         </div>
       ) : null}
       {visible.map((row, index) => (

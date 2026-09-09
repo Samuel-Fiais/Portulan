@@ -2,6 +2,7 @@
 
 import { Children, isValidElement, type ReactNode } from "react";
 import { LivingCopyButton, flattenNodeText } from "@/components/living-copy-button";
+import { LivingMermaid } from "@/components/living-mermaid";
 
 export function LivingCodeBlock({
   children,
@@ -19,11 +20,15 @@ export function LivingCodeBlock({
   const resolvedLanguage = language || className?.replace("language-", "") || "código";
   const resolvedText = text ?? flattenNodeText(children);
 
+  if (resolvedLanguage === "mermaid" && resolvedText.trim()) {
+    return <LivingMermaid source={resolvedText} />;
+  }
+
   return (
     <div className="fp-code-block">
       <div className="fp-code-header">
         <span>{resolvedLanguage}</span>
-        {interactive && resolvedText ? <LivingCopyButton compact text={resolvedText} tone="dark" label="Copiar" /> : null}
+        {interactive && resolvedText ? <LivingCopyButton compact text={resolvedText} label="Copiar" /> : null}
       </div>
       <pre className="report-code">{children}</pre>
     </div>

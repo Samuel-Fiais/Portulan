@@ -149,3 +149,16 @@ CREATE INDEX IF NOT EXISTS idx_document_slug_aliases_document_id ON portulan.doc
 CREATE INDEX IF NOT EXISTS idx_document_shares_document_id ON portulan.document_shares (document_id);
 CREATE INDEX IF NOT EXISTS idx_document_shares_user_id ON portulan.document_shares (user_id);
 CREATE INDEX IF NOT EXISTS idx_document_shares_email ON portulan.document_shares (email);
+
+CREATE TABLE IF NOT EXISTS portulan.document_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id TEXT NOT NULL REFERENCES portulan.documents(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES portulan.users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  section_anchor TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_comments_document_id ON portulan.document_comments (document_id);
+CREATE INDEX IF NOT EXISTS idx_document_comments_user_id ON portulan.document_comments (user_id);
+CREATE INDEX IF NOT EXISTS idx_document_comments_created_at ON portulan.document_comments (created_at);

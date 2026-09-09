@@ -19,7 +19,12 @@ export const templateInputSchema = z.object({
   primaryColor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
   secondaryColor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
   logoUrl: z
-    .union([z.string().trim().url().max(2048), z.literal(""), z.null()])
+    .union([
+      z.string().trim().url().max(2048),
+      z.string().trim().regex(/^\/api\/blob\/asset\?pathname=/).max(2048),
+      z.literal(""),
+      z.null(),
+    ])
     .optional()
     .transform((value) => {
       if (value === undefined) return undefined;
@@ -63,4 +68,16 @@ export const documentShareInputSchema = z.object({
 
 export const documentShareUpdateSchema = z.object({
   role: documentShareRoleSchema,
+});
+
+export const documentCommentInputSchema = z.object({
+  body: z.string().trim().min(1).max(2_000),
+  sectionAnchor: z
+    .string()
+    .trim()
+    .min(1)
+    .max(120)
+    .optional()
+    .nullable()
+    .transform((value) => value ?? null),
 });

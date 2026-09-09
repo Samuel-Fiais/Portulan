@@ -8,6 +8,7 @@ import type {
   DocumentSummary,
   TemplateRecord,
 } from "@/lib/documents";
+import { bibliotecaUrl } from "@/lib/library-filters";
 
 const RECENT_LIMIT = 8;
 
@@ -25,8 +26,8 @@ export function HomeDashboard({
   return (
     <main className="page-wrap dashboard-main">
       <section className="doc-section hero-section">
-        <div className="page-heading">
-          <div>
+        <div className="page-heading split-row">
+          <div className="split-row__main">
             <h1 className="fp-h1">
               O que está em <span>andamento.</span>
             </h1>
@@ -42,39 +43,46 @@ export function HomeDashboard({
           className="fp-stat-grid dashboard-stats"
           aria-label="Resumo da biblioteca"
         >
-          <Link href="/biblioteca" className="stat-link">
+          <Link href={bibliotecaUrl()} className="stat-link">
             <StatCard
               label="Documentos"
               value={stats.total}
               note="na biblioteca"
             />
           </Link>
-          <Link href="/biblioteca" className="stat-link">
+          <Link href={bibliotecaUrl("published")} className="stat-link">
             <StatCard
               label="Publicados"
               value={stats.published}
               note="prontos para consulta"
             />
           </Link>
-          <Link href="/biblioteca" className="stat-link">
+          <Link href={bibliotecaUrl("review")} className="stat-link">
             <StatCard
               label="Em revisão"
               value={stats.review}
               note="aguardando validação"
             />
           </Link>
-          <Link href="/biblioteca" className="stat-link">
+          <Link href={bibliotecaUrl("draft")} className="stat-link">
             <StatCard
               label="Rascunhos"
               value={stats.draft}
               note="em construção"
             />
           </Link>
+          <Link href={bibliotecaUrl("archived")} className="stat-link">
+            <StatCard
+              label="Arquivados"
+              value={stats.archived}
+              note="fora do fluxo ativo"
+            />
+          </Link>
         </div>
       </section>
 
       <section className="doc-section">
-        <div className="section-header">
+        <div className="section-header split-row">
           <h2 className="section-title">Recentes</h2>
           <Link href="/biblioteca" className="section-desc section-link">
             Ver biblioteca
@@ -89,7 +97,7 @@ export function HomeDashboard({
       </section>
 
       <section className="doc-section">
-        <div className="section-header">
+        <div className="section-header split-row">
           <h2 className="section-title">Atalhos</h2>
         </div>
         <div className="dashboard-shortcuts">

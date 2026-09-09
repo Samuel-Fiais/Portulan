@@ -5,6 +5,7 @@ import {
   addDocumentShare,
   createDocument,
   createTemplate,
+  duplicateDocument,
   deleteDocument,
   deleteTemplate,
   duplicateTemplate,
@@ -292,7 +293,7 @@ const mcpHandler = createMcpHandler((server) => {
       title: "Listar documentos",
       description: "Lista e pesquisa documentos técnicos do usuário autenticado.",
       inputSchema: z.object({
-        query: z.string().optional().describe("Busca por título, resumo ou tag"),
+        query: z.string().optional().describe("Busca por título, resumo, tag ou conteúdo"),
         template_id: z.string().optional(),
         status: z.enum(documentStatuses).optional(),
       }),
@@ -392,6 +393,24 @@ const mcpHandler = createMcpHandler((server) => {
     async ({ id }) => {
       const deleted = await deleteDocument(id, await requireAccessContext());
       return deleted ? textResult({ deleted: true, id }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "duplicate_document",
+    {
+      title: "Duplicar documento",
+      description: "Clona um documento como rascunho novo (apenas o responsável). Versões publicadas não são copiadas.",
+      inputSchema: z.object({
+        id: z.string().min(1).describe("ID UUID ou UUID do link estável /d/{uuid}"),
+        title: z.string().min(3).max(180).optional().describe("Título do clone; padrão: «{título original} — cópia»"),
+      }),
+    },
+    async ({ id, title }) => {
+      const document = await duplicateDocument(id, await requireAccessContext(), title ? { title } : undefined);
+      return document
+        ? textResult({ document })
+        : { ...textResult({ error: "Documento não encontrado ou sem permissão (apenas o responsável pode duplicar)." }), isError: true };
     },
   );
 

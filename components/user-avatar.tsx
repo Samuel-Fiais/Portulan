@@ -1,5 +1,12 @@
 import { cn } from "@/lib/utils";
 
+type AvatarSize = "sm" | "md";
+
+const avatarSizeClasses: Record<AvatarSize, string> = {
+  sm: "size-7 text-[10px]",
+  md: "size-7 text-[10px]",
+};
+
 type UserAvatarProps = {
   name?: string | null;
   login?: string | null;
@@ -7,6 +14,7 @@ type UserAvatarProps = {
   imageUrl?: string | null;
   className?: string;
   title?: string;
+  size?: AvatarSize;
 };
 
 function initials(name?: string | null, login?: string | null, email?: string | null) {
@@ -16,8 +24,17 @@ function initials(name?: string | null, login?: string | null, email?: string | 
   return source.slice(0, 2).toUpperCase();
 }
 
-export function UserAvatar({ name, login, email, imageUrl, className, title }: UserAvatarProps) {
+export function UserAvatar({
+  name,
+  login,
+  email,
+  imageUrl,
+  className,
+  title,
+  size = "md",
+}: UserAvatarProps) {
   const label = title ?? name ?? login ?? email ?? "Colaborador";
+  const sizeClass = avatarSizeClasses[size];
 
   if (imageUrl) {
     return (
@@ -26,7 +43,7 @@ export function UserAvatar({ name, login, email, imageUrl, className, title }: U
         src={imageUrl}
         alt={label}
         title={label}
-        className={cn("size-7 rounded-none object-cover", className)}
+        className={cn("rounded-none object-cover", sizeClass, className)}
       />
     );
   }
@@ -35,7 +52,8 @@ export function UserAvatar({ name, login, email, imageUrl, className, title }: U
     <span
       title={label}
       className={cn(
-        "inline-flex size-7 items-center justify-center rounded-none bg-muted font-mono text-[10px] font-semibold uppercase text-muted-foreground",
+        "inline-flex items-center justify-center rounded-none bg-muted font-mono font-semibold uppercase text-muted-foreground",
+        sizeClass,
         className,
       )}
     >

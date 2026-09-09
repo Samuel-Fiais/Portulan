@@ -188,7 +188,7 @@ export async function listDocuments(
   if (filters?.query) {
     const query = `%${filters.query}%`;
     clauses.push(
-      sql`(${documents.title} ILIKE ${query} OR ${documents.summary} ILIKE ${query} OR ${documents.tags} ILIKE ${query})`,
+      sql`(${documents.title} ILIKE ${query} OR ${documents.summary} ILIKE ${query} OR ${documents.tags} ILIKE ${query} OR ${documents.content} ILIKE ${query})`,
     );
   }
   if (filters?.templateId) clauses.push(eq(documents.templateId, filters.templateId));
@@ -260,6 +260,31 @@ export async function createDocument(
   });
 
   return (await getDocument(id, { userId, bypassOwnership: true }))!;
+}
+
+export async function duplicateDocument(
+  idOrSlug: string,
+  ctx: DocumentAccessContext = {},
+  input?: { title?: string },
+) {
+  const source = await getDocument(idOrSlug, ctx);
+  if (!source || !isDocumentOwner(source, ctx)) return null;
+
+  const title = (input?.title?.trim() || `${source.title} — cópia`).slice(0, 180);
+
+  return createDocument(
+    {
+      title,
+      summary: source.summary,
+      templateId: source.templateId,
+      status: "draft",
+      author: source.author,
+      team: source.team,
+      tags: source.tags,
+      content: source.content,
+    },
+    { userId: ctx.userId ?? null },
+  );
 }
 
 export async function updateDocument(
@@ -660,6 +685,46 @@ export async function publishDocument(
   return { document, release: (await getDocumentRelease(releaseId))! };
 }
 
+export async function restoreDocumentRelease(
+  documentId: string,
+  releaseId: string,
+  ctx: DocumentAccessContext = {},
+) {
+  const current = await getDocument(documentId, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
+  if (!current || !(await canEditDocument(current, ctx))) return null;
+
+  const release = await getDocumentRelease(releaseId);
+  if (!release || release.documentId !== documentId) return null;
+
+  let templateId = release.templateId;
+  if (ctx.userId) {
+    const template = await resolveTemplateForUser(release.templateId, ctx.userId);
+    if (template) templateId = template.id;
+    else if (current.templateId) templateId = current.templateId;
+  }
+
+  const content = mergeLivingDocumentState(current.content, release.content);
+  const now = new Date().toISOString();
+  const db = await getDb();
+
+  await db
+    .update(documents)
+    .set({
+      title: release.title,
+      summary: release.summary,
+      templateId,
+      author: release.author,
+      team: release.team,
+      tags: JSON.stringify(release.tags),
+      content,
+      version: current.version,
+      updatedAt: now,
+    })
+    .where(eq(documents.id, documentId));
+
+  return getDocument(documentId, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership });
+}
+
 export async function setDocumentDisabled(id: string, disabled: boolean, ctx: DocumentAccessContext = {}) {
   const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
   if (!current || !canMutateDocument(current, ctx)) return null;
@@ -703,6 +768,7 @@ export async function getDocumentStats(ctx: DocumentAccessContext = {}) {
       published: sql<number>`SUM(CASE WHEN ${documents.status} = 'published' THEN 1 ELSE 0 END)`,
       review: sql<number>`SUM(CASE WHEN ${documents.status} = 'review' THEN 1 ELSE 0 END)`,
       draft: sql<number>`SUM(CASE WHEN ${documents.status} = 'draft' THEN 1 ELSE 0 END)`,
+      archived: sql<number>`SUM(CASE WHEN ${documents.status} = 'archived' THEN 1 ELSE 0 END)`,
     })
     .from(documents);
 
@@ -713,5 +779,6 @@ export async function getDocumentStats(ctx: DocumentAccessContext = {}) {
     published: Number(result?.published ?? 0),
     review: Number(result?.review ?? 0),
     draft: Number(result?.draft ?? 0),
+    archived: Number(result?.archived ?? 0),
   };
 }

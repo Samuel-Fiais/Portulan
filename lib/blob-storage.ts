@@ -85,3 +85,48 @@ export function isPortulanBlobUrl(url: string) {
     return false;
   }
 }
+
+export function parsePortulanBlobPathname(url: string) {
+  if (!isPortulanBlobUrl(url)) return null;
+  return new URL(url).pathname.replace(/^\//, "");
+}
+
+export function parseBlobAssetPathname(reference: string) {
+  const fromVercel = parsePortulanBlobPathname(reference);
+  if (fromVercel) return fromVercel;
+
+  const parseAssetParams = (value: string) => {
+    try {
+      const parsed = value.startsWith("/")
+        ? new URL(value, "http://portulan.local")
+        : new URL(value);
+      if (parsed.pathname !== "/api/blob/asset") return null;
+      const pathname = parsed.searchParams.get("pathname");
+      if (!pathname?.startsWith(`${BLOB_ROOT}/`)) return null;
+      return pathname;
+    } catch {
+      return null;
+    }
+  };
+
+  return parseAssetParams(reference);
+}
+
+export function buildLocalBlobAssetUrl(pathname: string) {
+  return `/api/blob/asset?pathname=${encodeURIComponent(pathname)}`;
+}
+
+export function isResolvableBlobAssetReference(reference: string) {
+  return parseBlobAssetPathname(reference) !== null;
+}
+
+export function portulanBlobAssetUrl(url: string) {
+  if (url.startsWith("/api/blob/asset")) return url;
+  return `/api/blob/asset?url=${encodeURIComponent(url)}`;
+}
+
+export function shouldProxyPortulanBlobUrl(url: string | null | undefined) {
+  if (!url) return false;
+  if (url.startsWith("/api/blob/asset")) return false;
+  return isPortulanBlobUrl(url);
+}

@@ -56,6 +56,7 @@ export default async function DocumentPage({ params }: Props) {
       canEdit={canEdit}
       isOwner={isOwner}
       collaborators={collaborators}
+      currentUserId={session?.user?.id ?? null}
     />
   );
 }

@@ -56,11 +56,15 @@ export type DocumentRecord = {
 
 export type DocumentSummary = Omit<DocumentRecord, "content">;
 
+/** Biblioteca: metadados para listagem + conteúdo só para busca local. */
+export type DocumentLibraryItem = DocumentSummary & { content: string };
+
 export type DocumentStats = {
   total: number;
   published: number;
   review: number;
   draft: number;
+  archived: number;
 };
 
 export type DocumentRelease = {
@@ -108,6 +112,18 @@ export type DocumentCollaborator = {
   avatarUrl: string | null;
   role: DocumentShareRole | "owner";
   email?: string;
+};
+
+export type DocumentCommentRecord = {
+  id: string;
+  documentId: string;
+  userId: string;
+  body: string;
+  sectionAnchor: string | null;
+  createdAt: string;
+  userLogin: string | null;
+  userName: string | null;
+  userAvatarUrl: string | null;
 };
 
 export type DocumentAccessLevel = "owner" | "editor" | "viewer" | "legacy" | null;

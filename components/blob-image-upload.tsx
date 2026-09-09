@@ -45,7 +45,11 @@ export function BlobImageUpload({
     try {
       const url = await uploadBlobImage({ file, purpose, documentId, templateId });
       onUploaded(url);
-      toast.success("Imagem enviada");
+      toast.success(
+        url.startsWith("/api/blob/asset")
+          ? "Imagem salva localmente (Vercel Blob indisponível)"
+          : "Imagem enviada",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
     } finally {

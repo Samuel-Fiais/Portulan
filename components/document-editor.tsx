@@ -1,17 +1,21 @@
 "use client";
 
+import "./editor-screen.css";
+
 import Link from "next/link";
-import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Ban, Blocks, Copy, Download, ExternalLink, Eye, FileText, Globe, History, Link2, LoaderCircle, MoreHorizontal, Plus, RotateCcw, Save, Share2, Trash2 } from "lucide-react";
+import { ArrowLeft, Ban, Blocks, Copy, Download, ExternalLink, Eye, FileText, GitCompareArrows, Globe, History, Link2, LoaderCircle, MessageSquare, MoreHorizontal, Plus, RotateCcw, Save, Share2, Tags, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, setDocumentDisabledAction, setDocumentReleaseDisabledAction, updateDocumentAction } from "@/app/actions";
+import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, restoreDocumentReleaseAction, setDocumentDisabledAction, setDocumentReleaseDisabledAction, updateDocumentAction } from "@/app/actions";
 import { BlobImageUpload } from "@/components/blob-image-upload";
 import { BlobFileUpload } from "@/components/blob-file-upload";
 import { DocumentCollaboratorAvatars } from "@/components/document-collaborator-avatars";
+import { DocumentReviewPanel } from "@/components/document-review-panel";
 import { DocumentShareDialog } from "@/components/document-share-dialog";
 import { ReportLinkCard } from "@/components/report-link-card";
 import { ReportPreview } from "@/components/report-preview";
+import { VersionDiffDialog } from "@/components/version-diff-dialog";
 import { RichMarkdown } from "@/components/rich-markdown";
 import { StatusBadge, TemplateBadge, DisabledBadge } from "@/components/document-badges";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -33,7 +37,9 @@ import {
   type MarkdownComponent,
 } from "@/lib/markdown-components";
 import { reportPaletteStyle } from "@/lib/color-utils";
+import { applyMarkdownFormat, isMarkdownShortcut } from "@/lib/markdown-shortcuts";
 import { cn, formatRelativeDate } from "@/lib/utils";
+import { releaseSideId, type VersionDiffSideId } from "@/lib/version-diff";
 
 type LinkableDocument = {
   id: string;
@@ -48,6 +54,7 @@ type LinkableDocument = {
 const SPLIT_HANDLE_WIDTH = 5;
 const EDITOR_MIN_PX = 320;
 const PREVIEW_MIN_PX = 360;
+const AUTOSAVE_DEBOUNCE_MS = 1500;
 
 function clampEditorPaneWidth(width: number, workspaceWidth: number) {
   const maxEditorWidth = workspaceWidth - PREVIEW_MIN_PX - SPLIT_HANDLE_WIDTH;
@@ -61,6 +68,7 @@ export function DocumentEditor({
   canEdit = true,
   isOwner = true,
   collaborators = [],
+  currentUserId,
 }: {
   initialDocument: DocumentRecord;
   initialReleases?: DocumentRelease[];
@@ -68,6 +76,7 @@ export function DocumentEditor({
   canEdit?: boolean;
   isOwner?: boolean;
   collaborators?: DocumentCollaborator[];
+  currentUserId?: string | null;
 }) {
   const router = useRouter();
   const [document, setDocument] = useState(initialDocument);
@@ -84,13 +93,23 @@ export function DocumentEditor({
   const [componentSearch, setComponentSearch] = useState("");
   const [selectedMarkdownComponentId, setSelectedMarkdownComponentId] = useState(markdownComponents[0].id);
   const [componentPropertyValues, setComponentPropertyValues] = useState<Record<string, string>>({});
+  const [versionDiffOpen, setVersionDiffOpen] = useState(false);
+  const [versionDiffLeft, setVersionDiffLeft] = useState<VersionDiffSideId>("draft");
+  const [versionDiffRight, setVersionDiffRight] = useState<VersionDiffSideId>("draft");
   const [pending, startTransition] = useTransition();
   const markdownEditorRef = useRef<HTMLTextAreaElement>(null);
   const markdownSelectionRef = useRef({ start: 0, end: 0 });
   const workspaceRef = useRef<HTMLElement>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useMemo(() => JSON.stringify(document) !== JSON.stringify(savedDocument), [document, savedDocument]);
   const latestRelease = releases[0];
   const canPublish = useMemo(() => hasUnpublishedChanges(document, latestRelease), [document, latestRelease]);
+
+  function openVersionDiff(left: VersionDiffSideId, right: VersionDiffSideId) {
+    setVersionDiffLeft(left);
+    setVersionDiffRight(right);
+    setVersionDiffOpen(true);
+  }
 
   useEffect(() => {
     setDocumentCollaborators(collaborators);
@@ -184,6 +203,33 @@ export function DocumentEditor({
     setDocument((current) => ({ ...current, [key]: value }));
   }
 
+  function applyMarkdownShortcut(format: "bold" | "italic" | "link") {
+    const editor = markdownEditorRef.current;
+    if (!editor) return;
+
+    const { selectionStart, selectionEnd } = editor;
+    const result = applyMarkdownFormat(document.content, selectionStart, selectionEnd, format);
+    patch("content", result.content);
+    requestAnimationFrame(() => {
+      editor.focus();
+      editor.setSelectionRange(result.selectionStart, result.selectionEnd);
+    });
+  }
+
+  function handleMarkdownKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!canEdit) return;
+
+    const shortcut = isMarkdownShortcut(event.nativeEvent);
+    if (!shortcut) return;
+
+    event.preventDefault();
+    if (shortcut === "component-picker") {
+      openComponentPicker();
+      return;
+    }
+    applyMarkdownShortcut(shortcut);
+  }
+
   function openComponentPicker() {
     const editor = markdownEditorRef.current;
     markdownSelectionRef.current = {
@@ -242,8 +288,8 @@ export function DocumentEditor({
     }));
   }
 
-  function savePayload() {
-    return {
+  const savePayload = useCallback(
+    () => ({
       title: document.title,
       summary: document.summary,
       templateId: document.templateId,
@@ -252,36 +298,98 @@ export function DocumentEditor({
       team: document.team,
       tags: document.tags,
       content: document.content,
-    };
-  }
+    }),
+    [document],
+  );
 
-  function save() {
-    startTransition(async () => {
-      const result = await updateDocumentAction(document.id, savePayload());
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
+  const save = useCallback(
+    (options?: { silent?: boolean }) => {
+      if (!canEdit || !dirty) return;
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
       }
-      setDocument(result.document);
-      setSavedDocument(result.document);
-      toast.success("Rascunho salvo");
-    });
-  }
-
-  async function exportPdf() {
-    setExporting(true);
-    try {
-      let current = document;
-      if (dirty) {
+      startTransition(async () => {
         const result = await updateDocumentAction(document.id, savePayload());
         if (!result.ok) {
           toast.error(result.error);
           return;
         }
-        current = result.document;
         setDocument(result.document);
         setSavedDocument(result.document);
+        if (!options?.silent) {
+          toast.success("Rascunho salvo");
+        }
+      });
+    },
+    [canEdit, dirty, document.id, savePayload],
+  );
+
+  useEffect(() => {
+    if (!canEdit || !dirty || pending) {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
       }
+      return;
+    }
+
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      save({ silent: true });
+    }, AUTOSAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [canEdit, dirty, pending, document, save]);
+
+  useEffect(() => {
+    if (!canEdit) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        save();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canEdit, save]);
+
+  useEffect(() => {
+    if (!canEdit || !dirty) return;
+
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [canEdit, dirty]);
+
+  async function ensureSavedForExport() {
+    if (!dirty) return document;
+    const result = await updateDocumentAction(document.id, savePayload());
+    if (!result.ok) {
+      toast.error(result.error);
+      return null;
+    }
+    setDocument(result.document);
+    setSavedDocument(result.document);
+    return result.document;
+  }
+
+  async function exportPdf() {
+    setExporting(true);
+    try {
+      const current = await ensureSavedForExport();
+      if (!current) return;
 
       const response = await fetch(`/api/documents/${current.id}/pdf`);
       if (!response.ok) throw new Error("Não foi possível gerar o PDF");
@@ -295,6 +403,27 @@ export function DocumentEditor({
       toast.success("PDF gerado", { description: "O arquivo foi baixado com cabeçalho e rodapé em todas as páginas." });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível gerar o PDF");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function exportMarkdown() {
+    setExporting(true);
+    try {
+      const current = await ensureSavedForExport();
+      if (!current) return;
+
+      const blob = new Blob([current.content], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${current.slug}.md`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success("Markdown baixado", { description: "O arquivo .md foi salvo no seu dispositivo." });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível baixar o Markdown");
     } finally {
       setExporting(false);
     }
@@ -359,6 +488,21 @@ export function DocumentEditor({
       }
       setReleases((current) => current.map((release) => (release.id === releaseId ? result.release : release)));
       toast.success(disabled ? "Versão desativada" : "Versão reativada");
+    });
+  }
+
+  function restoreRelease(releaseId: string, version: number) {
+    startTransition(async () => {
+      const result = await restoreDocumentReleaseAction(document.id, releaseId);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setDocument(result.document);
+      setSavedDocument(result.document);
+      toast.success(`Rascunho restaurado a partir da v${version}`, {
+        description: "O conteúdo publicado foi copiado para o rascunho. Use Publicar para gerar uma nova versão.",
+      });
     });
   }
 
@@ -451,7 +595,7 @@ export function DocumentEditor({
       <header className="editor-topbar no-print">
         <div className="editor-topbar-inner">
         <div className="editor-context flex min-w-0 items-center gap-2">
-          <Button variant="ghost" size="icon" asChild><Link href="/biblioteca" aria-label="Voltar à biblioteca"><ArrowLeft /></Link></Button>
+          <Button variant="ghost" size="icon-sm" asChild><Link href="/biblioteca" aria-label="Voltar à biblioteca"><ArrowLeft /></Link></Button>
           <div className="min-w-0">
             <strong className="block truncate text-sm">{document.title}</strong>
             <small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small>
@@ -465,17 +609,17 @@ export function DocumentEditor({
               onClick={isOwner ? () => setShareDialogOpen(true) : undefined}
             />
           ) : null}
-          <div className="flex items-center gap-1">
+          <div className="editor-actions-group">
           {canEdit ? (
             <>
               {dirty ? (
-                <Button size="sm" onClick={save} disabled={pending}>
+                <Button onClick={() => save()} disabled={pending}>
                   {pending ? <LoaderCircle className="animate-spin" /> : <Save />}
                   <span className="hidden sm:inline">{pending ? "Salvando" : "Salvar"}</span>
                 </Button>
               ) : null}
               {canPublish ? (
-                <Button variant="outline" size="sm" onClick={publish} disabled={pending}>
+                <Button variant="outline" onClick={publish} disabled={pending}>
                   <Globe />
                   <span className="hidden sm:inline">Publicar</span>
                 </Button>
@@ -483,7 +627,7 @@ export function DocumentEditor({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-flex">
-                      <Button variant="outline" size="sm" disabled>
+                      <Button variant="outline" disabled>
                         <Globe />
                         <span className="hidden sm:inline">Publicar</span>
                       </Button>
@@ -499,6 +643,10 @@ export function DocumentEditor({
                   <DropdownMenuItem onClick={exportPdf} disabled={exporting || pending}>
                     {exporting ? <LoaderCircle className="animate-spin" /> : <Download />}
                     {exporting ? "Gerando PDF" : "Exportar PDF"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportMarkdown} disabled={exporting || pending}>
+                    <FileText />
+                    Baixar Markdown
                   </DropdownMenuItem>
                   {isOwner ? <DropdownMenuItem onClick={() => setShareDialogOpen(true)}><Share2 />Compartilhar</DropdownMenuItem> : null}
                   <DropdownMenuSeparator />
@@ -550,6 +698,10 @@ export function DocumentEditor({
                   {exporting ? <LoaderCircle className="animate-spin" /> : <Download />}
                   {exporting ? "Gerando PDF" : "Exportar PDF"}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportMarkdown} disabled={exporting || pending}>
+                  <FileText />
+                  Baixar Markdown
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -588,16 +740,30 @@ export function DocumentEditor({
             <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo do documento…" aria-label="Resumo do documento" readOnly={!canEdit} />
           </div>
           <Tabs defaultValue="content" className="editor-tabs">
-            <TabsList variant="line" className="editor-tabs-list"><TabsTrigger value="content"><FileText />Conteúdo</TabsTrigger><TabsTrigger value="metadata">Metadados</TabsTrigger><TabsTrigger value="history"><History />Histórico</TabsTrigger></TabsList>
+            <TabsList variant="line" className="editor-tabs-list"><TabsTrigger value="content"><FileText />Conteúdo</TabsTrigger>{currentUserId ? <TabsTrigger value="review"><MessageSquare />Revisão</TabsTrigger> : null}<TabsTrigger value="metadata"><Tags />Metadados</TabsTrigger><TabsTrigger value="history"><History />Histórico</TabsTrigger></TabsList>
             <TabsContent value="content" className="editor-tab-content editor-tab-content-markdown">
               <div className="markdown-hint">
                 <span>Markdown</span>
                 {canEdit ? (
-                  <Button type="button" variant="ghost" size="xs" onClick={openComponentPicker}><Plus />Adicionar componente</Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button type="button" variant="ghost" size="sm" onClick={openComponentPicker}><Plus />Adicionar componente</Button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={6}>⌘⇧C / Ctrl+Shift+C</TooltipContent>
+                  </Tooltip>
                 ) : null}
               </div>
-              <Textarea ref={markdownEditorRef} className="markdown-editor" value={document.content} onChange={(event) => patch("content", event.target.value)} spellCheck={false} aria-label="Conteúdo em Markdown" readOnly={!canEdit} />
+              <Textarea ref={markdownEditorRef} className="markdown-editor" value={document.content} onChange={(event) => patch("content", event.target.value)} onKeyDown={handleMarkdownKeyDown} spellCheck={false} aria-label="Conteúdo em Markdown" readOnly={!canEdit} />
             </TabsContent>
+            {currentUserId ? (
+              <TabsContent value="review" className="editor-tab-content review-tab-content">
+                <DocumentReviewPanel
+                  documentId={document.id}
+                  content={document.content}
+                  currentUserId={currentUserId}
+                />
+              </TabsContent>
+            ) : null}
             <TabsContent value="metadata" className="editor-tab-content metadata-form">
               <Field label="Template">
                 <Select value={document.templateId} onValueChange={changeTemplate} disabled={!canEdit}>
@@ -647,30 +813,65 @@ export function DocumentEditor({
               <div className="metadata-summary"><span>ID</span><code>{document.id}</code><span>Link público</span><code>{document.slug}</code><span>Versão</span><code>{document.version}</code></div>
             </TabsContent>
             <TabsContent value="history" className="editor-tab-content version-history">
-              <div className="version-history-heading">
-                <div>
+              <div className="version-history-heading split-row">
+                <div className="split-row__main">
                   <span>Versões publicadas</span>
                   <p>Salvar atualiza apenas o rascunho. Cada publicação cria um snapshot imutável e um novo link de versão fixa.</p>
                 </div>
-                <strong>{releases.length} {releases.length === 1 ? "versão" : "versões"}</strong>
+                <div className="version-history-heading-actions split-row__actions split-row__actions--stacked">
+                  <strong>{releases.length} {releases.length === 1 ? "versão" : "versões"}</strong>
+                  {releases.length > 1 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openVersionDiff(
+                          releaseSideId(releases[1]!.id),
+                          releaseSideId(releases[0]!.id),
+                        )
+                      }
+                    >
+                      <GitCompareArrows />
+                      Comparar releases
+                    </Button>
+                  ) : null}
+                </div>
               </div>
+              {canPublish && latestRelease ? (
+                <div className="version-history-pending split-row">
+                  <div className="split-row__main">
+                    <strong>Rascunho com alterações não publicadas</strong>
+                    <span>Compare o rascunho atual com a última versão publicada antes de publicar.</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openVersionDiff(releaseSideId(latestRelease.id), "draft")}
+                  >
+                    <GitCompareArrows />
+                    Comparar com v{latestRelease.version}
+                  </Button>
+                </div>
+              ) : null}
               {releases.length ? (
                 <>
-                  <div className="version-history-stable">
-                    <div>
+                  <div className="version-history-stable split-row">
+                    <div className="split-row__main">
                       <strong>Link estável (UUID — sempre a última versão)</strong>
                       <span>Identificador fixo; renomear o título não altera este link</span>
                       <code>/d/{document.slug}</code>
                     </div>
-                    <div className="version-history-actions flex items-center gap-2">
-                      <Button type="button" variant="outline" size="xs" onClick={() => copyShareUrl(`/d/${document.slug}`, "Link estável")}><Link2 />Copiar link</Button>
-                      <Button type="button" variant="outline" size="xs" asChild><Link href={`/d/${document.slug}`} target="_blank"><ExternalLink />Abrir</Link></Button>
+                    <div className="version-history-actions split-row__actions">
+                      <Button type="button" variant="outline" size="sm" onClick={() => copyShareUrl(`/d/${document.slug}`, "Link estável")}><Link2 />Copiar link</Button>
+                      <Button type="button" variant="outline" size="sm" asChild><Link href={`/d/${document.slug}`} target="_blank"><ExternalLink />Abrir</Link></Button>
                     </div>
                   </div>
                   <ol className="version-history-list">
                     {releases.map((release) => (
-                      <li key={release.id} className={cn(release.disabled && "version-history-item-disabled")}>
-                        <div>
+                      <li key={release.id} className={cn("split-row", release.disabled && "version-history-item-disabled")}>
+                        <div className="split-row__main">
                           <strong>
                             v{release.version} · versão fixa
                             {release.disabled ? " · desativada" : ""}
@@ -683,32 +884,81 @@ export function DocumentEditor({
                           </span>
                           <code>/p/{release.id}</code>
                         </div>
-                        <div className="version-history-actions flex flex-wrap items-center gap-2">
-                          <Button type="button" variant="outline" size="xs" onClick={() => copyShareUrl(`/p/${release.id}`, `Versão fixa v${release.version}`)}><Link2 />Copiar link</Button>
-                          <Button type="button" variant="outline" size="xs" asChild><Link href={`/p/${release.id}`} target="_blank"><ExternalLink />Abrir</Link></Button>
-                          {canEdit ? (
-                            release.disabled ? (
-                              <Button type="button" variant="outline" size="xs" onClick={() => toggleReleaseDisabled(release.id, false)} disabled={pending || document.disabled}><RotateCcw />Reativar</Button>
-                            ) : (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button type="button" variant="destructive" size="xs" disabled={pending || document.disabled}><Ban />Desativar</Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Desativar versão v{release.version}?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      O link /p/{release.id} deixará de exibir o conteúdo. Outras versões e o link estável /d/{document.slug} (se houver versões ativas) continuam funcionando.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => toggleReleaseDisabled(release.id, true)}>Desativar versão</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )
-                          ) : null}
+                        <div className="version-history-actions split-row__actions">
+                          <Button type="button" variant="outline" size="sm" onClick={() => copyShareUrl(`/p/${release.id}`, `Versão fixa v${release.version}`)}><Link2 />Copiar link</Button>
+                          <Button type="button" variant="outline" size="sm" asChild><Link href={`/p/${release.id}`} target="_blank"><ExternalLink />Abrir</Link></Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="outline" size="sm" aria-label={`Mais ações da versão v${release.version}`}>
+                                <MoreHorizontal />
+                                Mais
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  openVersionDiff(
+                                    releaseSideId(release.id),
+                                    canPublish ? "draft" : releaseSideId((releases.find((item) => item.id !== release.id) ?? release).id),
+                                  )
+                                }
+                              >
+                                <GitCompareArrows />
+                                Comparar
+                              </DropdownMenuItem>
+                              {canEdit ? (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(event) => event.preventDefault()} disabled={pending || document.disabled}>
+                                      <Undo2 />
+                                      Restaurar no rascunho
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Restaurar v{release.version} no rascunho?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        O conteúdo, metadados e template desta versão publicada substituirão o rascunho atual. As versões já publicadas não são alteradas — use Publicar depois para registrar uma nova release.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => restoreRelease(release.id, release.version)}>Restaurar no rascunho</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              ) : null}
+                              {canEdit ? (
+                                release.disabled ? (
+                                  <DropdownMenuItem onClick={() => toggleReleaseDisabled(release.id, false)} disabled={pending || document.disabled}>
+                                    <RotateCcw />
+                                    Reativar versão
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-destructive" disabled={pending || document.disabled}>
+                                        <Ban />
+                                        Desativar versão
+                                      </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Desativar versão v{release.version}?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          O link /p/{release.id} deixará de exibir o conteúdo. Outras versões e o link estável /d/{document.slug} (se houver versões ativas) continuam funcionando.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => toggleReleaseDisabled(release.id, true)}>Desativar versão</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )
+                              ) : null}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </li>
                     ))}
@@ -849,10 +1099,29 @@ export function DocumentEditor({
           <DialogFooter className="markdown-component-dialog-footer"><Button type="button" variant="outline" onClick={() => setComponentPickerOpen(false)}>Cancelar</Button><Button type="button" disabled={!canInsertSelectedComponent} onClick={() => insertMarkdownComponent(selectedMarkdownComponent)}><Plus />Inserir componente</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <VersionDiffDialog
+        open={versionDiffOpen}
+        onOpenChange={setVersionDiffOpen}
+        document={document}
+        releases={releases}
+        initialLeft={versionDiffLeft}
+        initialRight={versionDiffRight}
+        canRestore={canEdit && !document.disabled}
+        restorePending={pending}
+        onRestore={(releaseId, version) => {
+          restoreRelease(releaseId, version);
+          setVersionDiffOpen(false);
+        }}
+      />
     </div>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-2"><Label>{label}</Label>{children}</div>;
+  return (
+    <div className="metadata-field">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
 }

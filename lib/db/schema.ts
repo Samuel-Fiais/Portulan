@@ -139,3 +139,24 @@ export const documentShares = portulanSchema.table(
     index("idx_document_shares_email").on(table.email),
   ],
 );
+
+export const documentComments = portulanSchema.table(
+  "document_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    sectionAnchor: text("section_anchor"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_document_comments_document_id").on(table.documentId),
+    index("idx_document_comments_user_id").on(table.userId),
+    index("idx_document_comments_created_at").on(table.createdAt),
+  ],
+);

@@ -153,7 +153,7 @@ export function DocumentShareDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {hideTrigger ? null : (
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline">
             <Share2 />
             <span className="hidden sm:inline">Compartilhar</span>
           </Button>
@@ -168,24 +168,25 @@ export function DocumentShareDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-3 sm:grid-cols-[1fr_160px_auto] sm:items-end">
-          <div className="grid gap-2">
-            <Label htmlFor="share-email">E-mail</Label>
+        <div className="share-invite-controls">
+          <div className="share-invite-field share-invite-field--email">
+            <Label htmlFor="share-email" className="share-invite-control-label">E-mail</Label>
             <Input
               id="share-email"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="colega@empresa.com"
+              className="share-invite-control-input"
             />
             {email.trim() && shares.some((share) => normalizeShareEmail(share.email) === normalizeShareEmail(email)) ? (
-              <p className="text-xs text-muted-foreground">Esta pessoa já tem acesso. Altere o papel na lista abaixo.</p>
+              <p className="share-invite-hint text-xs text-muted-foreground">Esta pessoa já tem acesso. Altere o papel na lista abaixo.</p>
             ) : null}
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="share-role">Papel</Label>
+          <div className="share-invite-field share-invite-field--role">
+            <Label htmlFor="share-role" className="share-invite-control-label">Papel</Label>
             <Select value={role} onValueChange={(value: DocumentShareRole) => setRole(value)}>
-              <SelectTrigger id="share-role">
+              <SelectTrigger id="share-role" className="share-invite-control-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -194,18 +195,21 @@ export function DocumentShareDialog({
               </SelectContent>
             </Select>
           </div>
-          <Button
-            type="button"
-            onClick={() => void addShare()}
-            disabled={
-              adding
-              || !email.trim()
-              || shares.some((share) => normalizeShareEmail(share.email) === normalizeShareEmail(email))
-            }
-          >
-            {adding ? <LoaderCircle className="animate-spin" /> : <UserPlus />}
-            Adicionar
-          </Button>
+          <div className="share-invite-action">
+            <Button
+              type="button"
+              className="share-invite-control-button"
+              onClick={() => void addShare()}
+              disabled={
+                adding
+                || !email.trim()
+                || shares.some((share) => normalizeShareEmail(share.email) === normalizeShareEmail(email))
+              }
+            >
+              {adding ? <LoaderCircle className="animate-spin" /> : <UserPlus />}
+              Adicionar
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -223,6 +227,7 @@ export function DocumentShareDialog({
                       login={owner.login}
                       email={owner.email}
                       imageUrl={owner.avatarUrl}
+                      size="md"
                     />
                     <div className="min-w-0">
                       <strong className="block truncate text-sm">{personLabel(owner)}</strong>
@@ -242,6 +247,7 @@ export function DocumentShareDialog({
                       login={share.userLogin}
                       email={share.email}
                       imageUrl={share.userAvatarUrl}
+                      size="md"
                     />
                     <div className="min-w-0">
                       <strong className="block truncate text-sm">{share.userLogin ?? share.userName ?? share.email}</strong>

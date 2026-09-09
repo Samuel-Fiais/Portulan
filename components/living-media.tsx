@@ -10,6 +10,28 @@ type GalleryItem = {
   caption?: string;
 };
 
+function ReportMediaImage({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="fp-figure-fallback" role="img" aria-label={alt || "Imagem indisponível"}>
+        <strong>Imagem indisponível</strong>
+        {alt ? <p>{alt}</p> : null}
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />
+  );
+}
+
 function Lightbox({
   items,
   index,
@@ -90,12 +112,10 @@ export function LivingFigure({
     <figure className={`fp-figure fp-figure--${sizeClass} fp-figure--${alignClass}`}>
       {interactive ? (
         <button type="button" className="fp-figure-zoom" onClick={() => setOpen(true)} aria-label={label ? `Ampliar: ${label}` : "Ampliar imagem"}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={alt} loading="lazy" />
+          <ReportMediaImage src={src} alt={alt} />
         </button>
       ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={alt} loading="lazy" />
+        <ReportMediaImage src={src} alt={alt} />
       )}
       {caption ? <figcaption><InlineMarkdown>{caption}</InlineMarkdown></figcaption> : null}
       {open ? (
@@ -171,12 +191,10 @@ export function LivingGallery({
               onClick={() => setOpenIndex(index)}
               aria-label={item.caption ? `Ampliar: ${item.caption}` : `Ampliar imagem ${index + 1}`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.src} alt={item.caption || `Imagem ${index + 1}`} loading="lazy" />
+              <ReportMediaImage src={item.src} alt={item.caption || `Imagem ${index + 1}`} />
             </button>
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.src} alt={item.caption || `Imagem ${index + 1}`} loading="lazy" />
+            <ReportMediaImage src={item.src} alt={item.caption || `Imagem ${index + 1}`} />
           )}
           {item.caption ? <figcaption><InlineMarkdown>{item.caption}</InlineMarkdown></figcaption> : null}
         </figure>

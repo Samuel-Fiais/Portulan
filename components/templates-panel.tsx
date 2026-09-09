@@ -34,8 +34,8 @@ export function TemplatesPanel({ templates }: { templates: TemplateRecord[] }) {
   return (
     <main className="page-wrap dashboard-main">
       <section className="doc-section">
-        <div className="page-heading">
-          <div>
+        <div className="page-heading split-row">
+          <div className="split-row__main">
             <h1 className="fp-h1">Templates editoriais</h1>
             <p className="fp-lead">
               Paleta, logo e conteúdo-base dos relatórios. O Default interno
@@ -278,7 +278,7 @@ function TemplateFormDialog({
             >
               Logo (opcional)
             </Label>
-            <div className="flex items-center gap-2">
+            <div className="control-strip">
               <BlobImageUpload
                 purpose="template-logo"
                 templateId={template?.id}

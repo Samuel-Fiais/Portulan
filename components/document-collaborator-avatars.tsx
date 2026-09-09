@@ -32,7 +32,7 @@ export function DocumentCollaboratorAvatars({
   const overflow = collaborators.length - visible.length;
 
   return (
-    <div className={cn("flex items-center -space-x-2", className)}>
+    <div className={cn("document-collaborator-avatars flex items-center -space-x-2", className)}>
       {visible.map((person) => {
         const name = collaboratorName(person);
         const avatar = (
@@ -41,6 +41,7 @@ export function DocumentCollaboratorAvatars({
             login={person.login}
             email={person.email}
             imageUrl={person.avatarUrl}
+            size="md"
             className="ring-2 ring-background"
           />
         );

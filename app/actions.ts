@@ -3,19 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import {
+  addDocumentComment,
   addDocumentShare,
+  canReadDocument,
   createDocument,
   createMcpToken,
   createTemplate,
   deleteDocument,
+  deleteDocumentComment,
   deleteTemplate,
   getDocument,
   isDocumentOwner,
   listDocumentCollaborators,
+  listDocumentComments,
   listDocumentShares,
   listLinkableDocuments,
   listMcpTokens,
   publishDocument,
+  restoreDocumentRelease,
   revokeDocumentShare,
   revokeMcpToken,
   setDocumentDisabled,
@@ -26,7 +31,10 @@ import {
   updateTemplate,
 } from "@/lib/db";
 import { documentAccessContext } from "@/lib/access-context";
+import { validateDocumentCommentInput } from "@/lib/document-comment-policy";
+import { extractSectionHeadings } from "@/lib/markdown-toc";
 import {
+  documentCommentInputSchema,
   documentInputSchema,
   documentShareInputSchema,
   documentShareUpdateSchema,
@@ -147,6 +155,23 @@ export async function setDocumentDisabledAction(id: string, disabled: boolean) {
   revalidatePath("/");
   revalidatePath(`/documents/${id}`);
   revalidatePath(`/documents/${document.slug}`);
+  revalidatePath(`/d/${document.slug}`);
+  return { ok: true as const, document };
+}
+
+export async function restoreDocumentReleaseAction(documentId: string, releaseId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para restaurar versões." };
+  }
+
+  const document = await restoreDocumentRelease(documentId, releaseId, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Versão não encontrada ou sem permissão." };
+
+  revalidatePath("/");
+  revalidatePath(`/documents/${documentId}`);
+  revalidatePath(`/documents/${document.slug}`);
+  revalidatePath(`/documents/${document.id}/preview`);
   revalidatePath(`/d/${document.slug}`);
   return { ok: true as const, document };
 }
@@ -341,5 +366,74 @@ export async function revokeDocumentShareAction(documentId: string, shareId: str
 
   revalidatePath(`/documents/${documentId}`);
   revalidatePath(`/documents/${document.slug}`);
+  return { ok: true as const };
+}
+
+export async function listDocumentCommentsAction(documentId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para ver comentários de revisão." };
+  }
+
+  const ctx = await accessContext(session.user.id);
+  const document = await getDocument(documentId, ctx);
+  if (!document || !(await canReadDocument(document, ctx))) {
+    return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  }
+
+  const comments = await listDocumentComments(documentId);
+  return { ok: true as const, comments };
+}
+
+export async function addDocumentCommentAction(documentId: string, input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para comentar." };
+  }
+
+  const parsed = documentCommentInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Comentário inválido." };
+
+  const ctx = await accessContext(session.user.id);
+  const document = await getDocument(documentId, ctx);
+  if (!document || !(await canReadDocument(document, ctx))) {
+    return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  }
+
+  const validated = validateDocumentCommentInput({
+    body: parsed.data.body,
+    sectionAnchor: parsed.data.sectionAnchor,
+    validSectionAnchors: extractSectionHeadings(document.content).map((heading) => heading.id),
+  });
+  if (!validated.ok) return { ok: false as const, error: validated.error };
+
+  const comment = await addDocumentComment(
+    documentId,
+    session.user.id,
+    parsed.data.body,
+    parsed.data.sectionAnchor,
+  );
+  if (!comment) return { ok: false as const, error: "Não foi possível salvar o comentário." };
+
+  revalidatePath(`/documents/${documentId}`);
+  return { ok: true as const, comment };
+}
+
+export async function deleteDocumentCommentAction(documentId: string, commentId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para remover comentários." };
+  }
+
+  const ctx = await accessContext(session.user.id);
+  const document = await getDocument(documentId, ctx);
+  if (!document || !(await canReadDocument(document, ctx))) {
+    return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  }
+
+  const deleted = await deleteDocumentComment(commentId, documentId, session.user.id);
+  if (!deleted) return { ok: false as const, error: "Comentário não encontrado ou sem permissão." };
+
+  revalidatePath(`/documents/${documentId}`);
   return { ok: true as const };
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { Children, isValidElement, useCallback, useEffect, useState, type ReactNode } from "react";
-import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function nodeText(node: ReactNode): string {
@@ -37,7 +36,6 @@ export function LivingCopyButton({
   getText,
   label = "Copiar",
   compact = false,
-  tone = "light",
   className,
   children,
 }: {
@@ -45,7 +43,6 @@ export function LivingCopyButton({
   getText?: () => string;
   label?: string;
   compact?: boolean;
-  tone?: "light" | "dark";
   className?: string;
   children?: ReactNode;
 }) {
@@ -73,7 +70,6 @@ export function LivingCopyButton({
       type="button"
       className={cn(
         !children && "fp-copy-btn",
-        !children && tone === "dark" && "fp-copy-btn-on-dark",
         !children && compact && "fp-copy-btn-compact",
         className,
       )}
@@ -85,12 +81,7 @@ export function LivingCopyButton({
       title={copied ? "Copiado" : label}
       data-copied={copied || undefined}
     >
-      {children ?? (
-        <>
-          {copied ? <Check /> : <Copy />}
-          {compact ? null : <span>{copied ? "Copiado" : label}</span>}
-        </>
-      )}
+      {children ?? <span>{copied ? "Copiado" : label}</span>}
     </button>
   );
 }

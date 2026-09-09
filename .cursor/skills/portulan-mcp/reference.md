@@ -98,10 +98,12 @@ Fluxo recomendado: upload → `update_document` com a URL → `publish_document`
 ```json
 {
   "query": "webhook",
-  "type": "incident",
+  "template_id": "portulan-default",
   "status": "published"
 }
 ```
+
+`query` busca em título, resumo, tags e corpo Markdown do rascunho.
 
 **Output:**
 
@@ -163,6 +165,23 @@ Aceita UUID ou slug.
 ```
 
 **Output:** `{ "document": { ... } }` com `version: 1`.
+
+---
+
+### `duplicate_document`
+
+**Input:**
+
+```json
+{
+  "id": "uuid-ou-slug",
+  "title": "opcional — padrão: {título original} — cópia"
+}
+```
+
+Clona o rascunho atual em um documento novo (`draft`, `version: 1`, novo slug UUID). Copia resumo, template, autor, time, tags e conteúdo. Releases do original **não** são copiadas. Apenas o responsável pode duplicar (RN-10).
+
+**Output:** `{ "document": { ... } }` com o clone criado.
 
 ---
 
@@ -485,7 +504,7 @@ Formato: `rótulo | atual | meta`.
 
 ## Erros comuns do agente
 
-1. **Duplicar documentos** — sempre `list_documents` + `get_document` antes de `create_document`.
+1. **Duplicar documentos** — para clonar um documento inteiro, use `duplicate_document`; não recrie o assunto com `create_document` (RN-52).
 2. **Esperar link sem publicar** — `update_document` com `status: "published"` não gera `/p/{id}`; use `publish_document`.
 3. **Editar link antigo** — releases são imutáveis; publique nova versão para novo link.
 4. **Slug no delete** — `delete_document` rejeita slug; use UUID.

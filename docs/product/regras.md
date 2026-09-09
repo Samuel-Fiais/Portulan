@@ -6,7 +6,7 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 
 ## Documento e rascunho
 
-- **RN-01** Salvar o rascunho não cria versão publicada e não incrementa `version`.
+- **RN-01** Salvar o rascunho não cria versão publicada e não incrementa `version`. Autosave (debounce após pausa na edição) e Cmd/Ctrl+S seguem a mesma regra.
 - **RN-02** Publicar só é permitido se o rascunho difere da última release (título, resumo, template/paleta/logo, autor, time, tags ou conteúdo). Sem diferença, recusar.
 - **RN-03** Publicar cria um snapshot imutável, avança `version` e passa o status editorial para publicado.
 - **RN-04** Links `/p/{id}` já emitidos não mudam de conteúdo quando o rascunho é editado ou republicado.
@@ -14,6 +14,7 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 - **RN-06** Excluir documento é irreversível e exige o UUID (`id`), não o slug.
 - **RN-07** Título 3–180, resumo ≤ 500, autor/time ≤ 100, até 12 tags (1–40), conteúdo ≤ 250.000.
 - **RN-08** O slug público (`/d/{uuid}`) é um UUID definido na criação do documento. Renomear o título **não** altera o slug. Dois documentos podem ter o mesmo título. Slugs legados derivados do título continuam resolvendo via tabela de aliases até expirarem.
+- **RN-09** Restaurar uma release no rascunho copia título, resumo, template, autor, time, tags e conteúdo daquela versão para o rascunho. Não altera releases existentes, não incrementa `version` e não publica automaticamente. Responsável e editor convidado podem restaurar. O estado living já salvo no rascunho prevalece sobre o snapshot (RN-54).
 
 ## Acesso
 
@@ -46,20 +47,30 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 - **RN-45** Upload de anexo de relatório (`:::file`) aceita qualquer tipo de arquivo até 5 MB; imagens em `:::figure` continuam restritas a PNG, JPG, WEBP, SVG e GIF. Logo de template permanece só imagem.
 - **RN-46** `:::file` exige `url` e `name` (nome original com extensão). O card renderizado mostra a extensão em destaque e link para abrir/baixar o arquivo.
 - **RN-47** Em blocos de linhas com colunas (`:::properties`, `:::kv` e similares), a coluna **valor** aceita Markdown inline (links, negrito, código) com a mesma política de segurança do restante do relatório; URLs cruas continuam virando link automático quando aplicável.
+- **RN-48** Blocos de código com linguagem `mermaid` renderizam diagrama SVG na prévia, leitura pública e PDF, usando a paleta do template (flowchart, sequência e estado). Se o autor já incluir `%%{init:…}%%`, o init customizado prevalece.
+- **RN-49** Títulos `##` e `###` recebem âncoras estáveis derivadas do texto (acentos removidos, minúsculas, hífens); títulos repetidos recebem sufixo numérico. Um índice navegável na capa lista essas seções na prévia do editor, na prévia de rascunho, nas vistas públicas `/d` e `/p` e na exportação PDF.
 
 ## MCP
 
 - **RN-50** Toda chamada MCP exige `Authorization: Bearer` com token pessoal válido.
 - **RN-51** O agente opera com a identidade e as permissões daquele usuário — não há bypass de dono.
-- **RN-52** Preferir `update_document` em documento existente; não duplicar o assunto com `create_document`.
+- **RN-52** Preferir `update_document` em documento existente; não duplicar o assunto com `create_document`. Para clonar um documento inteiro, usar duplicar na UI ou `duplicate_document` no MCP.
 - **RN-53** Upload via MCP (`upload_image`, `upload_file`) usa o mesmo Blob, limites (RN-45) e prefixo por usuário/documento da UI; exige token MCP válido e permissão de edição no documento de destino.
 - **RN-54** Ao substituir o Markdown do rascunho (MCP `update_document`, `publish_document` com `content`, ou qualquer API que envie `content` completo), o servidor **preserva o estado living já salvo** no rascunho atual: para cada `:::testcase` com o mesmo `id`, mantém o `status` do rascunho (ignora o `status` do payload); para cada item de `:::checklist` com o mesmo título (primeira coluna, comparação normalizada), mantém `[x]`/`[ ]` do rascunho. Itens novos no payload usam o estado do agente; itens removidos do payload somem. O rascunho prevalece sobre o incoming — agentes não resetam marcações do usuário via replace de conteúdo.
+
+## Publicação
+
+- **RN-63** Diff de versões compara snapshots publicados e o rascunho atual (metadados + Markdown). Não altera conteúdo; só leitura na aba Histórico do editor.
+
+## Editor
+
+- **RN-62** Com alterações no rascunho ainda não persistidas, fechar ou sair da aba do editor exibe aviso do navegador (`beforeunload`). Após o autosave ou salvamento manual concluir, o aviso deixa de aparecer.
 
 ## Chrome do workspace
 
 - **RN-70** A navegação do workspace aparece só em Dashboard, Biblioteca, Templates e Integrações. No desktop é um trilho de ícones com tooltips. Não aparece na leitura pública (`/d`, `/p`), na prévia do rascunho, na exportação PDF nem no editor.
 
-## Revisão (hoje vs. planejado)
+## Revisão
 
-- **RN-60** (hoje) Status `review` é rótulo. Não há comentários nem fila de aprovação.
-- **RN-61** (planejado, ICE `review-comments`) Comentários só para quem já tem acesso ao documento. Sem comentário anônimo em `/p`.
+- **RN-60** Status `review` é rótulo editorial; não dispara fila de aprovação automática.
+- **RN-61** Comentários de revisão só no editor autenticado, para quem já tem acesso ao documento (responsável, editor ou leitor). Sem comentário anônimo em `/d` ou `/p`. Cada comentário pode referenciar opcionalmente uma seção `##` do rascunho atual.

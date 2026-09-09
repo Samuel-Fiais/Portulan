@@ -3,6 +3,7 @@ export {
   canMutateDocument,
   canReadDocument,
   createDocument,
+  duplicateDocument,
   deleteDocument,
   getDocument,
   getDocumentAccessLevel,
@@ -14,6 +15,7 @@ export {
   listDocuments,
   listLinkableDocuments,
   publishDocument,
+  restoreDocumentRelease,
   resolvePublicLatestReleaseBySlug,
   resolvePublicReleaseById,
   setDocumentDisabled,
@@ -32,6 +34,12 @@ export {
   revokeDocumentShare,
   updateDocumentShareRole,
 } from "@/lib/db/document-shares";
+
+export {
+  addDocumentComment,
+  deleteDocumentComment,
+  listDocumentComments,
+} from "@/lib/db/document-comments";
 
 export {
   createTemplate,

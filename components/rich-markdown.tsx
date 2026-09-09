@@ -1,7 +1,6 @@
 import { type CSSProperties } from "react";
 import ReactMarkdown from "react-markdown";
 import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
-import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { InlineMarkdown } from "@/components/inline-markdown";
 import { MarkdownCode } from "@/components/markdown-code";
 import { MarkdownDocListItem, MarkdownDocListOl, MarkdownDocListUl } from "@/components/markdown-doc-list";
@@ -15,8 +14,18 @@ import { LivingFileTree } from "@/components/living-filetree";
 import { LivingFigure, LivingFileCard, LivingGallery } from "@/components/living-media";
 import { LivingApi, LivingDiff, LivingEnv, LivingKv, LivingLogs, LivingTerminal, LivingTests } from "@/components/living-tech-blocks";
 import { parseChartDirective } from "@/lib/chart-directive";
+import { createHeadingIdSource, extractMarkdownHeadings } from "@/lib/markdown-headings";
 import { parseMarkdownBlocks, type MarkdownDirective } from "@/lib/markdown-blocks";
 import { ReportLinkCard } from "@/components/report-link-card";
+
+type HeadingIdSource = ReturnType<typeof createHeadingIdSource>;
+
+function riskLevelLabel(level: string) {
+  const normalized = level.trim().toLowerCase();
+  if (normalized === "high" || normalized === "alto") return "Alto";
+  if (normalized === "low" || normalized === "baixo") return "Baixo";
+  return "Médio";
+}
 
 function splitSections(source: string) {
   const sections: Array<{ title?: string; body: string }> = [];
@@ -61,24 +70,41 @@ function prepareBlockMarkdown(source: string) {
     .join("\n");
 }
 
-function SectionLabel({ title }: { title: string }) {
+function SectionLabel({ title, id }: { title: string; id?: string }) {
   const match = title.match(/^(\d+)(\s[\s\S]*)$/);
-  if (!match) return <div className="tmpl-label">{title}</div>;
   return (
-    <div className="tmpl-label">
-      <span className="tmpl-label-index">{match[1]}</span>
-      <span className="tmpl-label-text">{match[2]}</span>
-    </div>
+    <h2 id={id} className="tmpl-label">
+      {match ? (
+        <>
+          <span className="tmpl-label-index">{match[1]}</span>
+          <span className="tmpl-label-text"><InlineMarkdown>{match[2]}</InlineMarkdown></span>
+        </>
+      ) : <InlineMarkdown>{title}</InlineMarkdown>}
+    </h2>
   );
 }
 
-function Markdown({ children, interactive = false }: { children: string; interactive?: boolean }) {
+function Markdown({
+  children,
+  interactive = false,
+  headingIds,
+}: {
+  children: string;
+  interactive?: boolean;
+  headingIds?: HeadingIdSource;
+}) {
   return (
     <ReactMarkdown
       remarkPlugins={portulanRemarkPlugins}
       components={{
-        h2: ({ children }) => <h2 className="report-section-title">{children}</h2>,
-        h3: ({ children }) => <h3 className="report-subtitle">{children}</h3>,
+        h2: ({ children }) => {
+          const id = headingIds?.consume(2);
+          return <h2 id={id} className="report-section-title">{children}</h2>;
+        },
+        h3: ({ children }) => {
+          const id = headingIds?.consume(3);
+          return <h3 id={id} className="report-subtitle">{children}</h3>;
+        },
         blockquote: ({ children }) => <blockquote className="fp-callout">{children}</blockquote>,
         ul: ({ children }) => <MarkdownDocListUl>{children}</MarkdownDocListUl>,
         ol: ({ children }) => <MarkdownDocListOl>{children}</MarkdownDocListOl>,
@@ -108,10 +134,8 @@ function AlertDirective({ directive, interactive }: { directive: MarkdownDirecti
   const variant = ["info", "success", "warning", "error", "accent"].includes(directive.attributes.variant)
     ? directive.attributes.variant
     : "accent";
-  const Icon = variant === "success" ? CheckCircle2 : variant === "warning" ? TriangleAlert : variant === "error" ? AlertCircle : Info;
   return (
     <aside className={`fp-alert ${variant} ${directive.attributes.style || "tint"}`}>
-      <span className="alert-icon"><Icon /></span>
       <strong className="alert-title">{directive.attributes.title || "Nota"}</strong>
       <div className="alert-body"><Markdown interactive={interactive}>{directive.body}</Markdown></div>
     </aside>
@@ -125,9 +149,19 @@ type LivingDocumentOptions = {
   blockIndex: number;
 };
 
-function DirectiveRenderer({ directive, living }: { directive: MarkdownDirective; living: LivingDocumentOptions }) {
+function DirectiveRenderer({
+  directive,
+  living,
+  headingIds,
+}: {
+  directive: MarkdownDirective;
+  living: LivingDocumentOptions;
+  headingIds?: HeadingIdSource;
+}) {
   const data = rows(directive.body);
-  const md = (source: string) => <Markdown interactive={living.interactive}>{source}</Markdown>;
+  const md = (source: string) => (
+    <Markdown interactive={living.interactive} headingIds={headingIds}>{source}</Markdown>
+  );
 
   if (directive.name === "image") {
     return (
@@ -261,7 +295,7 @@ function DirectiveRenderer({ directive, living }: { directive: MarkdownDirective
   if (directive.name === "comparison") return <div className="fp-comparison">{data.map(([label, current, target], index) => <div key={`${label}-${index}`}><span>{label}</span><strong>{current}</strong><small>Meta: {target}</small></div>)}</div>;
   if (directive.name === "milestones") return <div className="fp-milestones">{data.map(([date, title, state = directive.attributes.state || "planned"], index) => <div className={`fp-milestone ${state}`} key={`${date}-${index}`}><time>{date}</time><span /><strong><InlineMarkdown>{title}</InlineMarkdown></strong></div>)}</div>;
   if (directive.name === "actions") return <div className="fp-actions">{data.map(([action, owner, due, state = directive.attributes.state || "open"], index) => <div className={`fp-action ${state}`} key={`${action}-${index}`}><strong><InlineMarkdown>{action}</InlineMarkdown></strong><span>{owner}</span><time>{due}</time><em>{state === "done" ? "Concluída" : state === "blocked" ? "Bloqueada" : "Aberta"}</em></div>)}</div>;
-  if (directive.name === "risks") return <div className="fp-risks">{data.map(([risk, impact, mitigation, level = directive.attributes.level || "medium"], index) => <div className={`fp-risk ${level}`} key={`${risk}-${index}`}><span>{impact}</span><strong><InlineMarkdown>{risk}</InlineMarkdown></strong><small><InlineMarkdown>{mitigation}</InlineMarkdown></small></div>)}</div>;
+  if (directive.name === "risks") return <div className="fp-risks">{data.map(([risk, impact, mitigation, level = directive.attributes.level || "medium"], index) => <div className={`fp-risk ${level}`} key={`${risk}-${index}`}><span>{riskLevelLabel(level)}</span><strong><InlineMarkdown>{risk}</InlineMarkdown></strong><small>{impact ? <>{impact} — </> : null}<InlineMarkdown>{mitigation}</InlineMarkdown></small></div>)}</div>;
   if (directive.name === "scorecard") return <div className="fp-scorecard">{data.map(([objective, status, evidence], index) => { const tone = /atenção|risco|bloque/i.test(status) ? "warn" : /fora|erro|falha/i.test(status) ? "err" : "ok"; return <article className={tone} key={`${objective}-${index}`}><header><span>{status}</span><strong><InlineMarkdown>{objective}</InlineMarkdown></strong></header><p><InlineMarkdown>{evidence}</InlineMarkdown></p></article>; })}</div>;
   if (directive.name === "evidence") return <div className="fp-evidence">{data.map(([evidence, source, date], index) => <article key={`${evidence}-${index}`}><span className="fp-evidence-mark">{String(index + 1).padStart(2, "0")}</span><div><strong><InlineMarkdown>{evidence}</InlineMarkdown></strong><small>{source}</small></div><time>{date}</time></article>)}</div>;
   if (directive.name === "api") {
@@ -361,6 +395,8 @@ function DirectiveRenderer({ directive, living }: { directive: MarkdownDirective
               documentKey={living.documentKey}
               sectionIndexBase={living.sectionIndex}
               blockIndexBase={living.blockIndex * 10 + index + 1}
+              anchorHeadings={Boolean(headingIds)}
+              headingIds={headingIds}
             />
           </div>
         ))}
@@ -376,21 +412,25 @@ function RenderedSection({
   interactive,
   documentKey,
   blockIndexBase = 0,
+  headingIds,
 }: {
   section: { title?: string; body: string };
   sectionIndex: number;
   interactive: boolean;
   documentKey: string;
   blockIndexBase?: number;
+  headingIds?: HeadingIdSource;
 }) {
   const blocks = parseBlocks(section.body);
+  const sectionId = section.title ? headingIds?.consume(2) : undefined;
+
   return (
     <section className="tmpl-section">
-      {section.title ? <SectionLabel title={section.title} /> : null}
+      {section.title ? <SectionLabel title={section.title} id={sectionId} /> : null}
       {blocks.map((block, blockIndex) => (
         <div className={`tmpl-block tmpl-block-${block.kind}`} key={`${block.kind}-${blockIndex}`}>
           {block.kind === "markdown"
-            ? <Markdown interactive={interactive}>{block.body}</Markdown>
+            ? <Markdown interactive={interactive} headingIds={headingIds}>{block.body}</Markdown>
             : (
               <DirectiveRenderer
                 directive={block.directive}
@@ -400,6 +440,7 @@ function RenderedSection({
                   sectionIndex,
                   blockIndex: blockIndexBase + blockIndex,
                 }}
+                headingIds={headingIds}
               />
             )}
         </div>
@@ -415,6 +456,8 @@ export function RichMarkdown({
   documentKey = "",
   sectionIndexBase = 0,
   blockIndexBase = 0,
+  anchorHeadings = false,
+  headingIds,
 }: {
   source: string;
   tableRows?: boolean;
@@ -422,7 +465,11 @@ export function RichMarkdown({
   documentKey?: string;
   sectionIndexBase?: number;
   blockIndexBase?: number;
+  anchorHeadings?: boolean;
+  headingIds?: HeadingIdSource;
 }) {
+  const resolvedHeadingIds = headingIds ?? (anchorHeadings ? createHeadingIdSource(extractMarkdownHeadings(source)) : undefined);
+
   return splitSections(source).map((section, sectionIndex) => tableRows
     ? (
       <tr className="tmpl-section-row" key={`${section.title || "intro"}-${sectionIndex}`}>
@@ -433,6 +480,7 @@ export function RichMarkdown({
             interactive={interactive}
             documentKey={documentKey}
             blockIndexBase={blockIndexBase}
+            headingIds={resolvedHeadingIds}
           />
         </td>
       </tr>
@@ -445,6 +493,7 @@ export function RichMarkdown({
         interactive={interactive}
         documentKey={documentKey}
         blockIndexBase={blockIndexBase}
+        headingIds={resolvedHeadingIds}
       />
     ));
 }
