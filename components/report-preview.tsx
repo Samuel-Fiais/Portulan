@@ -7,7 +7,7 @@ import { LivingDocumentProvider } from "@/components/living-document-context";
 import { reportPaletteStyle } from "@/lib/color-utils";
 import { ReportToc } from "@/components/report-toc";
 import { statusMeta, type DocumentRecord } from "@/lib/documents";
-import { extractMarkdownHeadings } from "@/lib/markdown-headings";
+import { createHeadingIdSource, extractMarkdownHeadings } from "@/lib/markdown-headings";
 import { formatDate } from "@/lib/utils";
 
 export function ReportPreview({
@@ -43,7 +43,7 @@ export function ReportPreview({
   const isLiving = interactive && Boolean(livingKey);
   const previewDocument = { ...document, content: livingContent };
   const tocHeadings = extractMarkdownHeadings(previewDocument.content);
-  const anchorHeadings = tocHeadings.length > 0;
+  const headingIds = tocHeadings.length > 0 ? createHeadingIdSource(tocHeadings) : undefined;
 
   const handleContentChange = (content: string) => {
     setLivingContent(content);
@@ -87,7 +87,7 @@ export function ReportPreview({
           tableRows
           interactive={isLiving}
           documentKey={livingKey}
-          anchorHeadings={anchorHeadings}
+          headingIds={headingIds}
         />
       </tbody>
       <tfoot><tr><td>

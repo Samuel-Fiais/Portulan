@@ -157,18 +157,8 @@ async function addRunningFurniture(source: Uint8Array, input: {
   version: number;
   date: string;
 }) {
-  const sourcePdf = await PDFDocument.load(source);
-  const normalizedPdf = await PDFDocument.create();
-  const sourcePages = sourcePdf.getPages();
-  const embeddedPages = await normalizedPdf.embedPdf(source, sourcePages.map((_, index) => index));
-
-  for (let index = 0; index < sourcePages.length; index += 1) {
-    const { width, height } = sourcePages[index].getSize();
-    const page = normalizedPdf.addPage([width, height]);
-    page.drawPage(embeddedPages[index], { x: 0, y: 0, width, height });
-  }
-
-  const pdf = await PDFDocument.load(await normalizedPdf.save());
+  // Draw directly on the Puppeteer PDF so internal/external link annotations survive.
+  const pdf = await PDFDocument.load(source);
   const logo = input.logo.mime === "jpg"
     ? await pdf.embedJpg(input.logo.bytes)
     : await pdf.embedPng(input.logo.bytes);
@@ -183,6 +173,7 @@ async function addRunningFurniture(source: Uint8Array, input: {
   const headerBodyHeight = mm(10);
   const headerGradientHeight = mm(1);
   const headerHeight = headerTopPadding + headerBodyHeight;
+  const headerTotalHeight = headerHeight + headerGradientHeight;
   const footerHeight = mm(8);
   const inset = mm(7);
   const metadata = `v${input.version} · ${input.date}`;
@@ -190,8 +181,8 @@ async function addRunningFurniture(source: Uint8Array, input: {
 
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();
-    page.drawRectangle({ x: 0, y: height - headerHeight, width, height: headerHeight, color: surface });
-    drawGradient(page, height - headerHeight - headerGradientHeight, width, headerGradientHeight, primary, secondary);
+    page.drawRectangle({ x: 0, y: height - headerTotalHeight, width, height: headerTotalHeight, color: surface });
+    drawGradient(page, height - headerTotalHeight, width, headerGradientHeight, primary, secondary);
 
     const headerLogoHeight = mm(5);
     const headerLogoWidth = logo.width * (headerLogoHeight / logo.height);
@@ -246,10 +237,9 @@ function mm(value: number) {
   return value * 72 / 25.4;
 }
 
-/** Matches pdf-export body inset (`--sp-6`, 32px). */
-const PDF_CONTENT_TOP_PADDING_MM = 8.5;
+/** Must match the running header block drawn in addRunningFurniture (3 + 10 + 1 mm). */
+const PDF_HEADER_FURNITURE_MM = 3 + 10 + 1;
 
-/** Header furniture (14 mm) plus body inset below it. */
 function pdfTopMarginMm() {
-  return 3 + 10 + 1 + PDF_CONTENT_TOP_PADDING_MM;
+  return PDF_HEADER_FURNITURE_MM;
 }

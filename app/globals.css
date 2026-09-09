@@ -2379,7 +2379,7 @@ h2.tmpl-label,
 /* The PDF endpoint owns the physical A4 sheet. Running header/footer sit on the page edge;
    component padding remains inside the document renderer. */
 @media print {
-  @page { size: A4; margin: 22.5mm 0 8mm; }
+  @page { size: A4; margin: 0; }
   html:has(.pdf-export-page), body:has(.pdf-export-page), .pdf-export-page {
     width: 210mm;
     min-height: 297mm;
@@ -2389,6 +2389,11 @@ h2.tmpl-label,
   }
   .pdf-export-page .report-paper { width: 210mm; margin: 0; }
   .pdf-export-page .tmpl-header { padding: var(--sp-6); }
+  .pdf-export-page .tmpl-label,
+  .pdf-export-page .report-section-title,
+  .pdf-export-page .report-subtitle {
+    scroll-margin-top: 15mm;
+  }
   .pdf-export-page .template-document-table > thead,
   .pdf-export-page .template-document-table > tfoot { display: none !important; }
   .pdf-export-page .fp-kv,
