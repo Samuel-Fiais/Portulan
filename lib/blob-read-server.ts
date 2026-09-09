@@ -14,8 +14,23 @@ function guessContentTypeFromPath(value: string) {
   return "image/png";
 }
 
+function unwrapBlobAssetReference(reference: string) {
+  try {
+    const parsed = reference.startsWith("/")
+      ? new URL(reference, "http://portulan.local")
+      : new URL(reference);
+    if (parsed.pathname !== "/api/blob/asset") return reference;
+    const blobUrl = parsed.searchParams.get("url")?.trim();
+    if (blobUrl && isPortulanBlobUrl(blobUrl)) return blobUrl;
+  } catch {
+    // Keep the original reference.
+  }
+  return reference;
+}
+
 export async function readPortulanBlobAsset(reference: string) {
-  const pathname = parseBlobAssetPathname(reference);
+  const readReference = unwrapBlobAssetReference(reference);
+  const pathname = parseBlobAssetPathname(readReference);
   if (!pathname) return null;
 
   const cached = await readBlobCache(pathname);
@@ -24,9 +39,10 @@ export async function readPortulanBlobAsset(reference: string) {
   }
 
   const token = getBlobReadWriteToken();
-  if (token && isPortulanBlobUrl(reference)) {
+  if (token) {
     try {
-      const result = await get(reference, { access: "public", token });
+      const target = isPortulanBlobUrl(readReference) ? readReference : pathname;
+      const result = await get(target, { access: "public", token });
       if (result?.statusCode === 200 && result.stream) {
         const bytes = new Uint8Array(await new Response(result.stream).arrayBuffer());
         await writeBlobCache(pathname, bytes).catch(() => undefined);
@@ -42,9 +58,9 @@ export async function readPortulanBlobAsset(reference: string) {
     }
   }
 
-  if (isPortulanBlobUrl(reference)) {
+  if (isPortulanBlobUrl(readReference)) {
     try {
-      const response = await fetch(reference, { headers: { Accept: "image/*" } });
+      const response = await fetch(readReference, { headers: { Accept: "image/*" } });
       if (response.ok) {
         const bytes = new Uint8Array(await response.arrayBuffer());
         await writeBlobCache(pathname, bytes).catch(() => undefined);

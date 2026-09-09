@@ -1223,6 +1223,11 @@ article.report-paper.markdown-component-preview-paper .tmpl-section { margin: 0;
   filter: none;
   padding: 0;
 }
+.report-paper .custom-report-logo[data-logo-tone="light"] {
+  background: #ececec;
+  border-radius: 2px;
+  padding: 2px 7px;
+}
 .dark .report-paper .custom-report-logo[data-logo-tone="dark"] {
   background: #ececec;
   padding: 2px 7px;

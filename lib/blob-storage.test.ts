@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildBlobPath, buildLocalBlobAssetUrl, fileExtensionLabel, isPortulanBlobUrl, isResolvableBlobAssetReference, parseBlobAssetPathname, parsePortulanBlobPathname, portulanBlobAssetUrl, validateBlobFile, validateBlobImage } from "./blob-storage.ts";
+import { buildBlobPath, buildLocalBlobAssetUrl, fileExtensionLabel, isPortulanBlobUrl, isResolvableBlobAssetReference, parseBlobAssetPathname, parsePortulanBlobPathname, portulanBlobAssetUrl, shouldProxyPortulanBlobUrl, validateBlobFile, validateBlobImage } from "./blob-storage.ts";
 
 test("buildBlobPath organiza logos de template por usuário", () => {
   const path = buildBlobPath({
@@ -65,11 +65,14 @@ test("parsePortulanBlobPathname extrai pathname do blob", () => {
   );
 });
 
-test("portulanBlobAssetUrl aponta para proxy autenticado", () => {
-  const url = "https://abc.public.blob.vercel-storage.com/portulan/users/u1/logo.png";
+test("shouldProxyPortulanBlobUrl só proxia referências locais de cache", () => {
+  const blobUrl = "https://abc.public.blob.vercel-storage.com/portulan/users/u1/logo.png";
+  const localUrl = buildLocalBlobAssetUrl("portulan/users/u1/logo.png");
+  assert.equal(shouldProxyPortulanBlobUrl(blobUrl), false);
+  assert.equal(shouldProxyPortulanBlobUrl(localUrl), true);
   assert.equal(
-    portulanBlobAssetUrl(url),
-    `/api/blob/asset?url=${encodeURIComponent(url)}`,
+    portulanBlobAssetUrl(blobUrl),
+    `/api/blob/asset?url=${encodeURIComponent(blobUrl)}`,
   );
 });
 

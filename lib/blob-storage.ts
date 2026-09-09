@@ -117,6 +117,8 @@ export function buildLocalBlobAssetUrl(pathname: string) {
 }
 
 export function isResolvableBlobAssetReference(reference: string) {
+  if (isPortulanBlobUrl(reference)) return true;
+  if (reference.startsWith("/api/blob/asset")) return true;
   return parseBlobAssetPathname(reference) !== null;
 }
 
@@ -126,7 +128,8 @@ export function portulanBlobAssetUrl(url: string) {
 }
 
 export function shouldProxyPortulanBlobUrl(url: string | null | undefined) {
+  // Public Vercel Blob URLs are served directly in preview/PDF.
+  // Only local cache fallbacks use /api/blob/asset (auth-protected).
   if (!url) return false;
-  if (url.startsWith("/api/blob/asset")) return false;
-  return isPortulanBlobUrl(url);
+  return url.startsWith("/api/blob/asset");
 }
