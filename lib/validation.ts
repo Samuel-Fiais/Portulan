@@ -80,4 +80,49 @@ export const documentCommentInputSchema = z.object({
     .optional()
     .nullable()
     .transform((value) => value ?? null),
+  quotedText: z
+    .string()
+    .trim()
+    .max(280)
+    .optional()
+    .nullable()
+    .transform((value) => value ?? null),
+  parentId: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .transform((value) => value ?? null),
 });
+
+export const documentCommentResolveInputSchema = z.object({
+  resolved: z.boolean(),
+});
+
+export const accountHandleSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(30)
+  .regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/)
+  .transform((value) => value.toLowerCase());
+
+export const accountPasswordSchema = z.string().min(8).max(128);
+
+export const accountRegisterSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  login: accountHandleSchema,
+  email: z.string().trim().email().max(320).transform((value) => value.toLowerCase()),
+  password: accountPasswordSchema,
+});
+
+export const accountProfileSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  login: accountHandleSchema,
+});
+
+export const accountSetPasswordSchema = z.object({
+  currentPassword: z.string().max(128).optional(),
+  password: accountPasswordSchema,
+});
+

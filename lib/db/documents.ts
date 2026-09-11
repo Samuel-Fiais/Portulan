@@ -12,6 +12,7 @@ import { documentReleases, documentSlugAliases, documents, templates, users } fr
 import { getDefaultTemplate, resolveTemplateForUser } from "@/lib/db/templates";
 import { mergeLivingDocumentState } from "@/lib/living-document-mutations.ts";
 import {
+  allowsAnonymousPublishedRead,
   hasUnpublishedChanges,
   type DocumentAccessLevel,
   type DocumentInput,
@@ -54,6 +55,7 @@ function mapRow(row: DocumentRow, template: Pick<TemplateRow, "name" | "primaryC
     updatedAt: row.updatedAt,
     publishedAt: row.publishedAt,
     disabled: row.disabled,
+    isPublic: row.isPublic,
   };
 }
 
@@ -257,6 +259,7 @@ export async function createDocument(
     updatedAt: now,
     publishedAt,
     disabled: false,
+    isPublic: false,
   });
 
   return (await getDocument(id, { userId, bypassOwnership: true }))!;
@@ -391,12 +394,18 @@ export async function getDocumentRelease(releaseId: string) {
     : null;
 }
 
-export async function resolvePublicReleaseById(releaseId: string): Promise<PublicReleaseResult> {
+export async function resolvePublicReleaseById(
+  releaseId: string,
+  ctx: DocumentAccessContext = {},
+): Promise<PublicReleaseResult> {
   const db = await getDb();
   const [row] = await db
     .select({
       release: documentReleases,
       documentDisabled: documents.disabled,
+      documentIsPublic: documents.isPublic,
+      documentUserId: documents.userId,
+      documentId: documents.id,
       slug: documents.slug,
       publisherLogin: users.login,
       publisherName: users.name,
@@ -411,15 +420,27 @@ export async function resolvePublicReleaseById(releaseId: string): Promise<Publi
   if (!row) return { access: "not_found" };
   if (row.documentDisabled) return { access: "document_disabled", slug: row.slug };
   if (row.release.disabled) return { access: "release_disabled", slug: row.slug };
-  return {
-    access: "ok",
-    release: mapReleaseRow(row.release, {
-      login: row.publisherLogin,
-      name: row.publisherName,
-      avatarUrl: row.publisherAvatarUrl,
-    }),
-    slug: row.slug,
-  };
+
+  const release = mapReleaseRow(row.release, {
+    login: row.publisherLogin,
+    name: row.publisherName,
+    avatarUrl: row.publisherAvatarUrl,
+  });
+
+  if (
+    allowsAnonymousPublishedRead({
+      disabled: row.documentDisabled,
+      isPublic: row.documentIsPublic,
+      userId: row.documentUserId,
+    })
+  ) {
+    return { access: "ok", release, slug: row.slug };
+  }
+
+  const document = await getDocument(row.documentId, ctx);
+  if (document) return { access: "ok", release, slug: row.slug };
+  if (!ctx.userId) return { access: "login_required", slug: row.slug };
+  return { access: "forbidden", slug: row.slug };
 }
 
 export async function getLatestDocumentReleaseBySlug(slug: string) {
@@ -437,13 +458,22 @@ export async function getLatestDocumentReleaseBySlug(slug: string) {
   return row ? mapReleaseRow(row.release) : null;
 }
 
-export async function resolvePublicLatestReleaseBySlug(slug: string): Promise<PublicReleaseResult> {
+export async function resolvePublicLatestReleaseBySlug(
+  slug: string,
+  ctx: DocumentAccessContext = {},
+): Promise<PublicReleaseResult> {
   const documentId = await resolveDocumentId(slug);
   if (!documentId) return { access: "not_found" };
 
   const db = await getDb();
   const [documentRow] = await db
-    .select({ id: documents.id, disabled: documents.disabled, slug: documents.slug })
+    .select({
+      id: documents.id,
+      disabled: documents.disabled,
+      isPublic: documents.isPublic,
+      userId: documents.userId,
+      slug: documents.slug,
+    })
     .from(documents)
     .where(eq(documents.id, documentId))
     .limit(1);
@@ -465,15 +495,27 @@ export async function resolvePublicLatestReleaseBySlug(slug: string): Promise<Pu
     .limit(1);
 
   if (!releaseRow) return { access: "no_enabled_release", slug: documentRow.slug };
-  return {
-    access: "ok",
-    release: mapReleaseRow(releaseRow.release, {
-      login: releaseRow.publisherLogin,
-      name: releaseRow.publisherName,
-      avatarUrl: releaseRow.publisherAvatarUrl,
-    }),
-    slug: documentRow.slug,
-  };
+
+  const release = mapReleaseRow(releaseRow.release, {
+    login: releaseRow.publisherLogin,
+    name: releaseRow.publisherName,
+    avatarUrl: releaseRow.publisherAvatarUrl,
+  });
+
+  if (
+    allowsAnonymousPublishedRead({
+      disabled: documentRow.disabled,
+      isPublic: documentRow.isPublic,
+      userId: documentRow.userId,
+    })
+  ) {
+    return { access: "ok", release, slug: documentRow.slug };
+  }
+
+  const document = await getDocument(documentRow.id, ctx);
+  if (document) return { access: "ok", release, slug: documentRow.slug };
+  if (!ctx.userId) return { access: "login_required", slug: documentRow.slug };
+  return { access: "forbidden", slug: documentRow.slug };
 }
 
 export async function listLinkableDocuments(
@@ -732,6 +774,16 @@ export async function setDocumentDisabled(id: string, disabled: boolean, ctx: Do
   const db = await getDb();
   const now = new Date().toISOString();
   await db.update(documents).set({ disabled, updatedAt: now }).where(eq(documents.id, id));
+  return getDocument(id, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership });
+}
+
+export async function setDocumentPublic(id: string, isPublic: boolean, ctx: DocumentAccessContext = {}) {
+  const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
+  if (!current || !canMutateDocument(current, ctx)) return null;
+
+  const db = await getDb();
+  const now = new Date().toISOString();
+  await db.update(documents).set({ isPublic, updatedAt: now }).where(eq(documents.id, id));
   return getDocument(id, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership });
 }
 

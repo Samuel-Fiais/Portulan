@@ -1,0 +1,27 @@
+/* Biblioteca — workspace page polish */
+
+.workspace-page--library .workspace-page-body {
+  gap: var(--sp-5);
+}
+
+.workspace-page--library .filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(9.5rem, 11rem));
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.workspace-page--library .filter-bar > .relative {
+  min-width: 0;
+}
+
+.workspace-page--library .section-header {
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 760px) {
+  .workspace-page--library .filter-bar {
+    grid-template-columns: 1fr;
+  }
+}

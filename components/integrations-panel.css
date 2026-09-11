@@ -1,0 +1,47 @@
+/* Integrações — workspace page polish */
+
+.workspace-page--integrations .workspace-page-body {
+  gap: var(--sp-5);
+}
+
+.workspace-page--integrations .integration-rumos {
+  gap: var(--sp-5);
+}
+
+.workspace-page--integrations .integration-copy-block {
+  gap: var(--sp-2);
+}
+
+.workspace-page--integrations .integration-copy-row {
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.workspace-page--integrations .integration-copy-row > code {
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.workspace-page--integrations .integration-block__actions {
+  align-self: start;
+}
+
+.workspace-page--integrations .mcp-token-table tbody tr {
+  transition: background-color 150ms ease;
+}
+
+.workspace-page--integrations .mcp-token-table tbody tr:hover {
+  background: color-mix(in srgb, var(--primary) 4%, var(--background));
+}
+
+.workspace-page--integrations .mcp-token-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace-page--integrations .integration-tools-disclosure > summary {
+  cursor: pointer;
+}
+
+.workspace-page--integrations .integration-tool-list li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}

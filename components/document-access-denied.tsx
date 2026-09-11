@@ -7,20 +7,30 @@ const messages = {
   unauthenticated: {
     title: "Este documento é privado.",
     description:
-      "Faça login com GitHub para acessar documentos compartilhados com você. Se ainda não tem conta Portulan, entre uma vez — convites por e-mail são vinculados automaticamente ao seu GitHub.",
-    action: { href: "/login", label: "Entrar com GitHub", icon: LogIn },
+      "Faça login para acessar documentos compartilhados com você. Convites por e-mail são vinculados automaticamente ao entrar com o mesmo e-mail.",
+    action: { href: "/login", label: "Entrar", icon: LogIn },
   },
   forbidden: {
     title: "Você não tem acesso a este documento.",
     description:
-      "Peça ao responsável para compartilhar o documento com o e-mail vinculado à sua conta GitHub. Convites pendentes só funcionam após login com o mesmo e-mail.",
+      "Peça ao responsável para compartilhar o documento com o e-mail da sua conta. Convites pendentes só funcionam após login com o mesmo e-mail.",
     action: { href: "/biblioteca", label: "Voltar à biblioteca", icon: ArrowLeft },
   },
 } as const;
 
-export function DocumentAccessDenied({ reason }: { reason: keyof typeof messages }) {
+export function DocumentAccessDenied({
+  reason,
+  callbackUrl,
+}: {
+  reason: keyof typeof messages;
+  callbackUrl?: string;
+}) {
   const message = messages[reason];
   const ActionIcon = message.action.icon;
+  const href =
+    reason === "unauthenticated" && callbackUrl?.startsWith("/")
+      ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+      : message.action.href;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-5 p-6 text-center">
@@ -31,7 +41,7 @@ export function DocumentAccessDenied({ reason }: { reason: keyof typeof messages
         <p className="mt-2 max-w-lg text-muted-foreground">{message.description}</p>
       </div>
       <Button asChild>
-        <Link href={message.action.href}>
+        <Link href={href}>
           <ActionIcon />
           {message.action.label}
         </Link>

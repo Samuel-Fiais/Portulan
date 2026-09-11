@@ -6,7 +6,7 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 
 ## Documento e rascunho
 
-- **RN-01** Salvar o rascunho não cria versão publicada e não incrementa `version`. Autosave (debounce após pausa na edição) e Cmd/Ctrl+S seguem a mesma regra.
+- **RN-01** Salvar o rascunho não cria versão publicada e não incrementa `version`. Cmd/Ctrl+S e o botão **Salvar** seguem a mesma regra.
 - **RN-02** Publicar só é permitido se o rascunho difere da última release (título, resumo, template/paleta/logo, autor, time, tags ou conteúdo). Sem diferença, recusar.
 - **RN-03** Publicar cria um snapshot imutável, avança `version` e passa o status editorial para publicado.
 - **RN-04** Links `/p/{id}` já emitidos não mudam de conteúdo quando o rascunho é editado ou republicado.
@@ -18,12 +18,14 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 
 ## Acesso
 
-- **RN-10** Só o responsável compartilha, altera papel, revoga, desativa o documento inteiro, duplica e exclui.
-- **RN-11** Editor convidado edita o rascunho e pode publicar. Leitor não edita.
+- **RN-10** Só o responsável compartilha, altera papel, revoga, liga ou desliga o acesso público, desativa o documento inteiro, duplica e exclui.
+- **RN-11** Editor convidado edita o rascunho e pode publicar (criar versão). Leitor não edita. Publicar não torna o documento visível a visitantes.
 - **RN-12** Não compartilhar com o responsável (mesmo e-mail ou mesma conta).
 - **RN-13** Não duplicar convite para o mesmo e-mail no mesmo documento. Papel igual ao atual não é alteração.
-- **RN-14** Documento sem responsável (legado) permanece acessível para leitura/edição no modo legado.
-- **RN-15** Visitante público nunca vê rascunho. Só release habilitada de documento não desativado.
+- **RN-14** Documento sem responsável (legado) permanece acessível para leitura/edição no modo legado; os links `/d` e `/p` continuam legíveis sem login.
+- **RN-15** Visitante sem login nunca vê rascunho. Só vê release habilitada de documento não desativado **e** com acesso público ligado.
+- **RN-16** Todo documento nasce privado (`isPublic` falso). Criar, duplicar ou publicar uma versão **não** abre o link a visitantes.
+- **RN-17** Com acesso público desligado, `/d` e `/p` só abrem para o responsável e para quem foi convidado (leitor ou editor), autenticados. Com acesso público ligado, qualquer pessoa com o link vê a release habilitada (RN-15), salvo documento ou versão desativados.
 
 ## Publicação desligada
 
@@ -62,9 +64,14 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 
 - **RN-63** Diff de versões compara snapshots publicados e o rascunho atual (metadados + Markdown). Não altera conteúdo; só leitura na aba Histórico do editor.
 
+## PDF
+
+- **RN-64** O PDF exportado mantém os links do relatório clicáveis: Markdown, índice (`##`/`###`), cards de outro relatório e URLs. Âncoras internas saltam na mesma versão; o restante abre no navegador.
+- **RN-71** PDF do rascunho (menu **Exportar PDF** do editor) usa o conteúdo atual do rascunho. PDF de versão publicada (aba **Histórico**) usa o snapshot imutável da release escolhida, com metadados e paleta daquela versão. Ambos exigem autenticação e acesso ao documento. Não há exportação PDF anônima em `/d` ou `/p`.
+
 ## Editor
 
-- **RN-62** Com alterações no rascunho ainda não persistidas, fechar ou sair da aba do editor exibe aviso do navegador (`beforeunload`). Após o autosave ou salvamento manual concluir, o aviso deixa de aparecer.
+- **RN-62** Com alterações no rascunho ainda não persistidas, fechar ou sair da aba do editor exibe aviso do navegador (`beforeunload`). Após o salvamento manual concluir, o aviso deixa de aparecer.
 
 ## Chrome do workspace
 
@@ -73,4 +80,15 @@ Formato: **pode / não pode / acontece**. Sem caminho de arquivo.
 ## Revisão
 
 - **RN-60** Status `review` é rótulo editorial; não dispara fila de aprovação automática.
-- **RN-61** Comentários de revisão só no editor autenticado, para quem já tem acesso ao documento (responsável, editor ou leitor). Sem comentário anônimo em `/d` ou `/p`. Cada comentário pode referenciar opcionalmente uma seção `##` do rascunho atual.
+- **RN-61** Comentários de revisão só no editor autenticado, para quem já tem acesso ao documento (responsável, editor ou leitor). Sem comentário anônimo em `/d` ou `/p`. O comentário-raiz pode ancorar a qualquer bloco visível na prévia do rascunho (capa, título `##`/`###`, parágrafo ou componente) e pode citar um trecho; sem âncora vale para o documento inteiro. Vários fios podem ancorar o mesmo bloco, cada um com o próprio trecho; o marcador do bloco abre todos. A âncora e o trecho são do instante do comentário: se o rascunho mudar, o fio continua visível.
+- **RN-65** Resposta só a um comentário-raiz do mesmo documento. Um nível: resposta não tem respostas aninhadas. A resposta herda âncora e trecho do raiz. Remover o raiz remove o fio. Cada autor remove o próprio comentário (raiz ou resposta).
+- **RN-66** Estado resolvido pertence ao comentário-raiz do fio. Quem tem acesso ao documento (responsável, editor ou leitor) pode resolver e reabrir. Fio resolvido permanece visível na prévia e na aba Revisão; some só se o autor remover o raiz. A aba Revisão filtra abertos, resolvidos ou todos. Sem e-mail ou notificação.
+
+## Conta e autenticação
+
+- **RN-80** Handle e e-mail (quando houver) são únicos, comparação sem maiúsculas. Cadastro com senha exige handle, e-mail, nome e senha de pelo menos 8 caracteres. Sem e-mail de confirmação.
+- **RN-81** Entrar com senha aceita handle **ou** e-mail, mais a senha. GitHub permanece no mesmo ecrã de acesso.
+- **RN-82** Uma conta tem GitHub, senha, ou os dois. Não pode desligar o último método. Cadastro com senha **não** mescla em silêncio: e-mail ou handle já usados recusam e pedem para entrar.
+- **RN-83** Mescla na mesma conta: (1) quem já entrou define ou troca a senha, ou conecta o GitHub, no modal da conta; (2) login GitHub cujo e-mail já existe em conta **sem** GitHub anexa o GitHub a essa conta. GitHub já ligado a outra conta recusa.
+- **RN-84** Clique na foto de perfil abre o modal da conta (não um menu só com Sair). O modal mostra nome, handle, e-mail e foto, métodos de entrada, o seletor de tema (cinco papéis, claro/escuro e personalizado), atalho para Integrações e Sair. Sem recuperação por e-mail: quem esqueceu a senha só recupera se a conta já tiver GitHub.
+- **RN-85** Tema é preferência local deste navegador, não da conta. Há cinco papéis (Carta, Pergaminho, Névoa, Costa, Lacre), cada um com modo claro e escuro e tinta de ação própria, mais **Personalizado**: ao escolher, a pessoa abre o seletor e define a cor livremente; essa tinta vira a ação do chrome naquele modo. Workspace, tela de acesso e leitura pública compartilham essa preferência. Valor legado claro/escuro vira Carta no mesmo modo. A marca de três barras e as tintas de tipo de documento não mudam com o tema. PDF e impressão permanecem papel branco Carta.

@@ -15,7 +15,7 @@ export default async function DocumentExportPage({ params }: Props) {
 
   return (
     <main className="pdf-export-page">
-      <ReportPreview document={document} />
+      <ReportPreview document={document} exportMode />
     </main>
   );
 }

@@ -199,6 +199,8 @@ Clona o rascunho atual em um documento novo (`draft`, `version: 1`, novo slug UU
 
 Salva o rascunho sem criar uma nova versão publicada.
 
+`is_public` (opcional, só o responsável): `true` permite que qualquer pessoa com `/d` ou `/p` veja a versão publicada; `false` restringe a responsável e convidados. Documentos nascem privados.
+
 Quando `content` é enviado, o servidor faz merge do estado living (RN-54): `status` de `:::testcase` e checkboxes de `:::checklist` já salvos no rascunho prevalecem sobre os valores do payload para o mesmo `id` ou título de item. Itens novos no payload mantêm o estado enviado pelo agente.
 
 ### `publish_document`
@@ -212,7 +214,7 @@ Quando `content` é enviado, o servidor faz merge do estado living (RN-54): `sta
 }
 ```
 
-Cria uma nova versão publicada e um snapshot imutável, usando o rascunho atual junto de qualquer campo enviado.
+Cria uma nova versão e um snapshot imutável. **Não** torna o documento visível a visitantes; use `update_document` com `is_public: true` para isso.
 
 Se `content` for enviado, aplica RN-54 (mesmo merge de estado living do rascunho que `update_document`) antes de publicar.
 
@@ -264,6 +266,120 @@ URL completa em dev: `http://localhost:3000/d/{slug}` (última versão) ou `http
 ```
 
 Ordenado por versão decrescente.
+
+---
+
+### `restore_document`
+
+**Input:**
+
+```json
+{
+  "document_id": "uuid-ou-slug",
+  "release_id": "uuid-release"
+}
+```
+
+Copia título, resumo, template, autor, time, tags e conteúdo da release indicada para o rascunho (RN-09). Releases existentes permanecem intactas; `version` do documento não avança; nada é publicado automaticamente. Estado living já salvo no rascunho prevalece sobre o snapshot (RN-54). Responsável e editor convidado podem restaurar.
+
+Use `list_document_releases` para descobrir `release_id` e `version`.
+
+**Output:**
+
+```json
+{
+  "document": { "...": "rascunho atualizado" },
+  "restoredFromRelease": {
+    "id": "uuid-release",
+    "version": 3,
+    "publicPath": "/p/uuid-release"
+  }
+}
+```
+
+**Erros:** documento inexistente; release inexistente; sem permissão de edição.
+
+---
+
+### `list_document_comments`
+
+**Input:**
+
+```json
+{ "document_id": "uuid-ou-slug" }
+```
+
+Lista fios de comentários do rascunho (RN-61). Cada fio tem `root` (comentário-raiz) e `replies` (respostas de um nível). Responsável, editor e leitor convidado veem todos os fios. Visitantes em `/d` ou `/p` não têm acesso.
+
+**Output:**
+
+```json
+{
+  "documentId": "uuid",
+  "threads": [
+    {
+      "root": {
+        "id": "uuid",
+        "body": "Revisar escopo.",
+        "sectionAnchor": "block-0-0",
+        "quotedText": "Trecho citado.",
+        "parentId": null,
+        "userName": "Ana",
+        "createdAt": "ISO"
+      },
+      "replies": []
+    }
+  ]
+}
+```
+
+---
+
+### `create_document_comment`
+
+**Input (comentário-raiz):**
+
+```json
+{
+  "document_id": "uuid-ou-slug",
+  "body": "Precisamos revisar o escopo.",
+  "section_anchor": "block-0-0",
+  "quoted_text": "Parágrafo citado."
+}
+```
+
+**Input (resposta):**
+
+```json
+{
+  "document_id": "uuid-ou-slug",
+  "body": "Concordo.",
+  "parent_id": "uuid-do-comentario-raiz-ou-resposta"
+}
+```
+
+Cria comentário-raiz ou responde em um fio existente (RN-61, RN-65). Resposta herda âncora e trecho do raiz; resposta a resposta achata para o raiz. Sem `section_anchor` = comentário geral no documento. Âncora deve existir na prévia atual (`cover-title`, ids de `##`/`###`, `block-{section}-{index}`).
+
+Limites: `body` até 2.000 caracteres; `quoted_text` até 280.
+
+**Output:** `{ "documentId": "uuid", "comment": { ... } }`
+
+---
+
+### `delete_document_comment`
+
+**Input:**
+
+```json
+{
+  "document_id": "uuid-ou-slug",
+  "comment_id": "uuid-do-comentario"
+}
+```
+
+Remove o próprio comentário (raiz ou resposta). Remover o raiz encerra o fio (RN-65). Só no editor autenticado — não em `/d` ou `/p`.
+
+**Output:** `{ "deleted": true, "documentId": "uuid", "commentId": "uuid" }`
 
 ---
 
@@ -498,7 +614,7 @@ Formato: `rótulo | atual | meta`.
 - Transporte: Streamable HTTP (POST/GET/DELETE em `/api/mcp`)
 - Spec: MCP SDK v2 via `mcp-handler`
 - Initialize retorna `serverInfo.name: "portulan"`
-- Instruções do servidor: preferir atualizar documentos existentes; usar `publish_document` para links públicos
+- Instruções do servidor: preferir atualizar documentos existentes; publish_document gera versão; is_public controla visitantes
 
 ---
 

@@ -16,10 +16,12 @@ export function HomeDashboard({
   documents,
   stats,
   templates,
+  currentUserId,
 }: {
   documents: DocumentSummary[];
   stats: DocumentStats;
   templates: TemplateRecord[];
+  currentUserId: string;
 }) {
   const recent = documents.slice(0, RECENT_LIMIT);
 
@@ -91,6 +93,7 @@ export function HomeDashboard({
         </div>
         <DocumentSummaryList
           documents={recent}
+          currentUserId={currentUserId}
           emptyTitle="Nenhum documento ainda"
           emptyDescription="Crie o primeiro relatório para começar a biblioteca."
         />

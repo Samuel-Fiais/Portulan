@@ -7,6 +7,7 @@ import {
   addDocumentShareAction,
   listDocumentSharesAction,
   revokeDocumentShareAction,
+  setDocumentPublicAction,
   updateDocumentShareAction,
 } from "@/app/actions";
 import { UserAvatar } from "@/components/user-avatar";
@@ -29,6 +30,8 @@ function personLabel(person: Pick<DocumentCollaborator, "name" | "login" | "emai
 
 export function DocumentShareDialog({
   documentId,
+  isPublic,
+  onVisibilityChange,
   initialCollaborators = [],
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
@@ -36,6 +39,8 @@ export function DocumentShareDialog({
   hideTrigger = false,
 }: {
   documentId: string;
+  isPublic: boolean;
+  onVisibilityChange?: (isPublic: boolean) => void;
   initialCollaborators?: DocumentCollaborator[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -52,6 +57,7 @@ export function DocumentShareDialog({
   const [adding, setAdding] = useState(false);
   const [updatingShareId, setUpdatingShareId] = useState<string | null>(null);
   const [removingShareId, setRemovingShareId] = useState<string | null>(null);
+  const [updatingVisibility, setUpdatingVisibility] = useState(false);
 
   const loadShares = useCallback(async () => {
     setLoading(true);
@@ -146,6 +152,27 @@ export function DocumentShareDialog({
     }
   }
 
+  async function changeVisibility(next: "private" | "public") {
+    const nextPublic = next === "public";
+    if (nextPublic === isPublic) return;
+    setUpdatingVisibility(true);
+    try {
+      const result = await setDocumentPublicAction(documentId, nextPublic);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      onVisibilityChange?.(result.document.isPublic);
+      toast.success(result.document.isPublic ? "Documento público" : "Documento privado", {
+        description: result.document.isPublic
+          ? "Qualquer pessoa com o link da versão publicada pode abrir."
+          : "Só você e as pessoas convidadas têm acesso.",
+      });
+    } finally {
+      setUpdatingVisibility(false);
+    }
+  }
+
   const owner = collaborators.find((person) => person.role === "owner");
   const hasAccessList = Boolean(owner) || shares.length > 0;
 
@@ -163,10 +190,31 @@ export function DocumentShareDialog({
         <DialogHeader>
           <DialogTitle>Compartilhar documento</DialogTitle>
           <DialogDescription>
-            Convide pessoas por e-mail com acesso de leitor ou editor. Se ainda não tiverem conta Portulan, o convite fica
-            pendente até o primeiro login com GitHub usando o mesmo e-mail.
+            O documento nasce privado. Convide pessoas por e-mail ou, se quiser, libere o link para qualquer pessoa.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="share-visibility">
+          <Label htmlFor="share-visibility">Quem pode abrir o link</Label>
+          <Select
+            value={isPublic ? "public" : "private"}
+            onValueChange={(value: "private" | "public") => void changeVisibility(value)}
+            disabled={updatingVisibility}
+          >
+            <SelectTrigger id="share-visibility">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="private">Privado — só pessoas convidadas</SelectItem>
+              <SelectItem value="public">Público — qualquer pessoa com o link</SelectItem>
+            </SelectContent>
+          </Select>
+          <p>
+            {isPublic
+              ? "Visitantes com /d ou /p veem a versão publicada, sem precisar de convite."
+              : "Responsável e convidados autenticados acessam o documento. Visitantes não entram."}
+          </p>
+        </div>
 
         <div className="share-invite-controls">
           <div className="share-invite-field share-invite-field--email">

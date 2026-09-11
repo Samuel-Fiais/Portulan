@@ -1,0 +1,50 @@
+/* Templates — workspace page polish */
+
+.workspace-page--templates .workspace-page-body {
+  gap: var(--sp-5);
+}
+
+.workspace-page--templates .section-header {
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-page--templates .template-grid {
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--sp-4);
+}
+
+.workspace-page--templates .template-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.workspace-page--templates .template-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  font: 700 12px/1 var(--font-mono);
+}
+
+.workspace-page--templates .template-card-body {
+  padding: var(--sp-4) var(--sp-5) 0;
+}
+
+.workspace-page--templates .template-card-body h3 {
+  margin-bottom: var(--sp-2);
+}
+
+.workspace-page--templates .template-color-row {
+  margin-top: var(--sp-4);
+  gap: var(--sp-2);
+}
+
+.workspace-page--templates .template-card-actions {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-5) var(--sp-5);
+}

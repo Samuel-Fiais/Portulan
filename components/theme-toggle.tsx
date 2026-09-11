@@ -2,26 +2,33 @@
 
 import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ThemePicker } from "@/components/theme-picker";
 
-export function ThemeToggle({ className }: { className?: string }) {
-  function toggle() {
-    const next = !document.documentElement.classList.contains("dark");
-    document.documentElement.classList.toggle("dark", next);
-    const theme = next ? "dark" : "light";
-    localStorage.setItem("portulan-theme", theme);
-    localStorage.removeItem("festpay-docs-theme");
-  }
-
+export function ThemeToggle({
+  className,
+  side = "right",
+}: {
+  className?: string;
+  side?: "top" | "right" | "bottom" | "left";
+}) {
   return (
-    <button
-      type="button"
-      className={cn("theme-toggle", className)}
-      onClick={toggle}
-      aria-label="Alternar tema claro ou escuro"
-      title="Alternar tema"
-    >
-      <Sun className="theme-icon-sun" />
-      <Moon className="theme-icon-moon" />
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn("theme-toggle theme-picker-trigger", className)}
+        aria-label="Escolher tema"
+        title="Escolher tema"
+      >
+        <Sun className="theme-icon-sun" />
+        <Moon className="theme-icon-moon" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" side={side} sideOffset={8} className="theme-picker-menu">
+        <ThemePicker variant="menu" />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -9,7 +9,7 @@ import {
 import { buildGlobalAvoidErrorsSection, getComponentAvoidErrors } from "./markdown-pitfalls.ts";
 import { TESTCASE_STATUS_LABELS, TESTCASE_STATUSES } from "./living-document-mutations.ts";
 
-const MCP_SERVER_VERSION = "0.8.0";
+const MCP_SERVER_VERSION = "0.9.0";
 
 const LIVING_COMPONENT_IDS = new Set(["checklist", "testcase"]);
 
@@ -156,8 +156,8 @@ export function buildSystemGuide() {
       product: "Portulan — biblioteca técnica de documentos Markdown com templates, publicação e MCP.",
       documents: "Rascunhos editáveis; publicação cria snapshot imutável (release).",
       links: {
-        stable: "/d/{uuid} — identificador fixo (UUID); sempre aponta para a release habilitada mais recente",
-        fixed: "/p/{releaseId} — versão fixa; conteúdo não muda após publicada",
+        stable: "/d/{uuid} — identificador fixo (UUID); aponta para a release habilitada mais recente. Visitante anônimo só entra se isPublic for verdadeiro",
+        fixed: "/p/{releaseId} — versão fixa; conteúdo não muda após publicada. Mesma regra de visibilidade",
       },
       templates: "Paleta, logo e conteúdo-base via list_templates / get_template.",
       auth: "MCP exige Authorization: Bearer com token pessoal (Integrações → MCP no dashboard).",
@@ -166,8 +166,11 @@ export function buildSystemGuide() {
         "list_markdown_components — catálogo resumido",
         "explain_markdown_component — detalhe de um componente",
         "get_document / update_document — ler e persistir conteúdo",
-        "publish_document — gerar links públicos",
+        "publish_document — gerar versão imutável (documento continua privado)",
+        "restore_document — copiar uma release publicada para o rascunho sem publicar (RN-09)",
+        "update_document is_public — ligar ou desligar acesso de visitantes ao link",
         "upload_image / upload_file — enviar mídia e anexos antes de inserir no Markdown",
+        "list_document_comments / create_document_comment / delete_document_comment — revisão com fios (RN-61, RN-65); só rascunho autenticado",
       ],
     },
     markdownCatalog: {

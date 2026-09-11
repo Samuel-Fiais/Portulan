@@ -32,7 +32,7 @@ export function DocumentCollaboratorAvatars({
   const overflow = collaborators.length - visible.length;
 
   return (
-    <div className={cn("document-collaborator-avatars flex items-center -space-x-2", className)}>
+    <div className={cn("document-collaborator-avatars", className)}>
       {visible.map((person) => {
         const name = collaboratorName(person);
         const avatar = (
@@ -42,7 +42,6 @@ export function DocumentCollaboratorAvatars({
             email={person.email}
             imageUrl={person.avatarUrl}
             size="md"
-            className="ring-2 ring-background"
           />
         );
 
@@ -50,11 +49,16 @@ export function DocumentCollaboratorAvatars({
           <Tooltip key={person.id}>
             <TooltipTrigger asChild>
               {onClick ? (
-                <button type="button" className="rounded-none" onClick={onClick} aria-label={`${name} · ${roleLabels[person.role]}`}>
+                <button
+                  type="button"
+                  className="document-collaborator-avatar-trigger"
+                  onClick={onClick}
+                  aria-label={`${name} · ${roleLabels[person.role]}`}
+                >
                   {avatar}
                 </button>
               ) : (
-                <span className="inline-flex rounded-none">{avatar}</span>
+                <span className="document-collaborator-avatar-slot">{avatar}</span>
               )}
             </TooltipTrigger>
             <TooltipContent sideOffset={6}>
@@ -67,7 +71,7 @@ export function DocumentCollaboratorAvatars({
       {overflow > 0 ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="inline-flex size-7 items-center justify-center rounded-none bg-muted font-mono text-[10px] font-semibold text-muted-foreground ring-2 ring-background">
+            <span className="document-collaborator-avatar-slot document-collaborator-avatar-overflow">
               +{overflow}
             </span>
           </TooltipTrigger>

@@ -3,15 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import {
-  addDocumentComment,
   addDocumentShare,
   canReadDocument,
   createDocument,
   createMcpToken,
   createTemplate,
   deleteDocument,
-  deleteDocumentComment,
+  setDocumentCommentResolved,
   deleteTemplate,
+  duplicateTemplate,
   getDocument,
   isDocumentOwner,
   listDocumentCollaborators,
@@ -24,6 +24,7 @@ import {
   revokeDocumentShare,
   revokeMcpToken,
   setDocumentDisabled,
+  setDocumentPublic,
   setDocumentReleaseDisabled,
   updateDocument,
   updateDocumentLivingContent,
@@ -31,10 +32,24 @@ import {
   updateTemplate,
 } from "@/lib/db";
 import { documentAccessContext } from "@/lib/access-context";
-import { validateDocumentCommentInput } from "@/lib/document-comment-policy";
-import { extractSectionHeadings } from "@/lib/markdown-toc";
+import {
+  createDocumentCommentForAccess,
+  deleteDocumentCommentForAccess,
+  listDocumentCommentThreadsForAccess,
+} from "@/lib/document-comment-ops";
+import { validateDocumentCommentResolveInput } from "@/lib/document-comment-resolve-policy";
+import {
+  disconnectSignedInGitHub,
+  registerPasswordAccount,
+  removeSignedInPassword,
+  setSignedInPassword,
+  updateSignedInProfile,
+} from "@/lib/account-ops";
+import { setGitHubLinkCookie } from "@/lib/github-link-cookie";
+import { getUserById, toPublicAccount } from "@/lib/users";
 import {
   documentCommentInputSchema,
+  documentCommentResolveInputSchema,
   documentInputSchema,
   documentShareInputSchema,
   documentShareUpdateSchema,
@@ -50,7 +65,7 @@ async function accessContext(userId?: string) {
 export async function createDocumentAction(input: unknown) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login com GitHub para criar documentos." };
+    return { ok: false as const, error: "Faça login para criar documentos." };
   }
 
   const parsed = documentInputSchema.safeParse(input);
@@ -159,6 +174,22 @@ export async function setDocumentDisabledAction(id: string, disabled: boolean) {
   return { ok: true as const, document };
 }
 
+export async function setDocumentPublicAction(id: string, isPublic: boolean) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para alterar o acesso público." };
+  }
+
+  const document = await setDocumentPublic(id, isPublic, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+
+  revalidatePath("/");
+  revalidatePath(`/documents/${id}`);
+  revalidatePath(`/documents/${document.slug}`);
+  revalidatePath(`/d/${document.slug}`);
+  return { ok: true as const, document };
+}
+
 export async function restoreDocumentReleaseAction(documentId: string, releaseId: string) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -247,6 +278,18 @@ export async function deleteTemplateAction(id: string) {
   if (!deleted) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const };
+}
+
+export async function duplicateTemplateAction(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para duplicar templates." };
+  }
+
+  const template = await duplicateTemplate(session.user.id, id);
+  if (!template) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
+  revalidatePath("/");
+  return { ok: true as const, template };
 }
 
 export async function createMcpTokenAction(input: unknown) {
@@ -376,13 +419,13 @@ export async function listDocumentCommentsAction(documentId: string) {
   }
 
   const ctx = await accessContext(session.user.id);
-  const document = await getDocument(documentId, ctx);
-  if (!document || !(await canReadDocument(document, ctx))) {
-    return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
-  }
+  const result = await listDocumentCommentThreadsForAccess(documentId, ctx);
+  if (!result.ok) return result;
 
-  const comments = await listDocumentComments(documentId);
-  return { ok: true as const, comments };
+  return {
+    ok: true as const,
+    comments: result.threads.flatMap((thread) => [thread.root, ...thread.replies]),
+  };
 }
 
 export async function addDocumentCommentAction(documentId: string, input: unknown) {
@@ -395,28 +438,11 @@ export async function addDocumentCommentAction(documentId: string, input: unknow
   if (!parsed.success) return { ok: false as const, error: "Comentário inválido." };
 
   const ctx = await accessContext(session.user.id);
-  const document = await getDocument(documentId, ctx);
-  if (!document || !(await canReadDocument(document, ctx))) {
-    return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
-  }
-
-  const validated = validateDocumentCommentInput({
-    body: parsed.data.body,
-    sectionAnchor: parsed.data.sectionAnchor,
-    validSectionAnchors: extractSectionHeadings(document.content).map((heading) => heading.id),
-  });
-  if (!validated.ok) return { ok: false as const, error: validated.error };
-
-  const comment = await addDocumentComment(
-    documentId,
-    session.user.id,
-    parsed.data.body,
-    parsed.data.sectionAnchor,
-  );
-  if (!comment) return { ok: false as const, error: "Não foi possível salvar o comentário." };
+  const result = await createDocumentCommentForAccess(documentId, session.user.id, ctx, parsed.data);
+  if (!result.ok) return result;
 
   revalidatePath(`/documents/${documentId}`);
-  return { ok: true as const, comment };
+  return { ok: true as const, comment: result.comment };
 }
 
 export async function deleteDocumentCommentAction(documentId: string, commentId: string) {
@@ -426,14 +452,103 @@ export async function deleteDocumentCommentAction(documentId: string, commentId:
   }
 
   const ctx = await accessContext(session.user.id);
+  const result = await deleteDocumentCommentForAccess(documentId, commentId, session.user.id, ctx);
+  if (!result.ok) return result;
+
+  revalidatePath(`/documents/${documentId}`);
+  return { ok: true as const };
+}
+
+export async function setDocumentCommentResolvedAction(
+  documentId: string,
+  commentId: string,
+  input: unknown,
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para resolver comentários." };
+  }
+
+  const parsed = documentCommentResolveInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Estado inválido." };
+
+  const ctx = await accessContext(session.user.id);
   const document = await getDocument(documentId, ctx);
   if (!document || !(await canReadDocument(document, ctx))) {
     return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
   }
 
-  const deleted = await deleteDocumentComment(commentId, documentId, session.user.id);
-  if (!deleted) return { ok: false as const, error: "Comentário não encontrado ou sem permissão." };
+  const existing = await listDocumentComments(documentId);
+  const comment = existing.find((item) => item.id === commentId);
+  const validated = validateDocumentCommentResolveInput({ comment, resolved: parsed.data.resolved });
+  if (!validated.ok) return { ok: false as const, error: validated.error };
+
+  const updated = await setDocumentCommentResolved(commentId, documentId, parsed.data.resolved);
+  if (!updated) return { ok: false as const, error: "Não foi possível atualizar o fio." };
 
   revalidatePath(`/documents/${documentId}`);
+  return { ok: true as const, comment: updated };
+}
+
+export async function getAccountAction() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para ver a conta." };
+  }
+  const user = await getUserById(session.user.id);
+  if (!user) return { ok: false as const, error: "Conta não encontrada." };
+  return { ok: true as const, user: toPublicAccount(user) };
+}
+
+export async function registerAccountAction(input: unknown) {
+  return registerPasswordAccount(input);
+}
+
+export async function updateAccountProfileAction(input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para editar a conta." };
+  }
+  const result = await updateSignedInProfile(session.user.id, input);
+  if (result.ok) revalidatePath("/");
+  return result;
+}
+
+export async function setAccountPasswordAction(input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para alterar a senha." };
+  }
+  const result = await setSignedInPassword(session.user.id, input);
+  if (result.ok) revalidatePath("/");
+  return result;
+}
+
+export async function removeAccountPasswordAction() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para alterar a senha." };
+  }
+  const result = await removeSignedInPassword(session.user.id);
+  if (result.ok) revalidatePath("/");
+  return result;
+}
+
+export async function disconnectGitHubAction() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para alterar a conta." };
+  }
+  const result = await disconnectSignedInGitHub(session.user.id);
+  if (result.ok) revalidatePath("/");
+  return result;
+}
+
+export async function startGitHubLinkAction() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para conectar o GitHub." };
+  }
+  await setGitHubLinkCookie(session.user.id);
   return { ok: true as const };
 }

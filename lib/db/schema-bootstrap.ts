@@ -11,7 +11,7 @@ type Db = NeonHttpDatabase<typeof schema>;
 
 /** Required Portulan tables and columns inside the dedicated Postgres schema. */
 export const PORTULAN_TABLE_COLUMNS = {
-  users: ["id", "github_id", "login", "name", "avatar_url", "email", "created_at"],
+  users: ["id", "github_id", "login", "name", "avatar_url", "email", "password_hash", "created_at"],
   templates: [
     "id",
     "user_id",
@@ -41,6 +41,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "updated_at",
     "published_at",
     "disabled",
+    "is_public",
   ],
   document_releases: [
     "id",
@@ -62,7 +63,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "published_by_user_id",
   ],
   document_shares: ["id", "document_id", "email", "role", "invited_by", "user_id", "created_at"],
-  document_comments: ["id", "document_id", "user_id", "body", "section_anchor", "created_at"],
+  document_comments: ["id", "document_id", "user_id", "body", "section_anchor", "quoted_text", "parent_id", "resolved_at", "created_at"],
 } as const;
 
 type PortulanTable = keyof typeof PORTULAN_TABLE_COLUMNS;
@@ -131,11 +132,23 @@ function tableHasExpectedColumns(table: PortulanTable, columns: Set<string> | un
   return PORTULAN_TABLE_COLUMNS[table].every((column) => columns.has(column));
 }
 
-export async function isPortulanSchemaReady(db: Db): Promise<boolean> {
+export async function listMissingPortulanColumns(db: Db): Promise<string[]> {
   const columnsByTable = await loadTableColumns(db);
-  return (Object.keys(PORTULAN_TABLE_COLUMNS) as PortulanTable[]).every((table) =>
-    tableHasExpectedColumns(table, columnsByTable.get(table)),
-  );
+  const missing: string[] = [];
+  for (const table of Object.keys(PORTULAN_TABLE_COLUMNS) as PortulanTable[]) {
+    const columns = columnsByTable.get(table) ?? new Set<string>();
+    for (const column of PORTULAN_TABLE_COLUMNS[table]) {
+      if (!columns.has(column)) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+  }
+  return missing;
+}
+
+export async function isPortulanSchemaReady(db: Db): Promise<boolean> {
+  const missing = await listMissingPortulanColumns(db);
+  return missing.length === 0;
 }
 
 async function portulanTableSchemaConflict(db: Db, table: PortulanTable): Promise<string | null> {
@@ -250,11 +263,12 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     db,
     `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      github_id TEXT NOT NULL UNIQUE,
+      github_id TEXT UNIQUE,
       login TEXT NOT NULL,
       name TEXT,
       avatar_url TEXT,
       email TEXT,
+      password_hash TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
   );
@@ -267,6 +281,22 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
         `ALTER TABLE ${PORTULAN_PG_SCHEMA}.users ADD COLUMN IF NOT EXISTS email TEXT`,
       );
     }
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.users ADD COLUMN IF NOT EXISTS password_hash TEXT`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.users ALTER COLUMN github_id DROP NOT NULL`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE UNIQUE INDEX IF NOT EXISTS users_login_lower_uidx ON ${PORTULAN_PG_SCHEMA}.users (LOWER(login))`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_uidx ON ${PORTULAN_PG_SCHEMA}.users (LOWER(email)) WHERE email IS NOT NULL`,
+    );
   }
 
   await executeSchemaStatement(
@@ -423,6 +453,12 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
         `ALTER TABLE ${PORTULAN_PG_SCHEMA}.documents ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE`,
       );
     }
+    if (!columns.has("is_public")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.documents ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE`,
+      );
+    }
   }
 
   if (await portulanTableExists(db, "document_releases")) {
@@ -470,6 +506,36 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     );
   }
 
+  if (await portulanTableExists(db, "document_comments")) {
+    const commentColumns = (await loadTableColumns(db)).get("document_comments") ?? new Set<string>();
+    if (!commentColumns.has("quoted_text")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_comments ADD COLUMN IF NOT EXISTS quoted_text TEXT`,
+      );
+    }
+    if (!commentColumns.has("parent_id")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_comments ADD COLUMN IF NOT EXISTS parent_id UUID`,
+      );
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_comments DROP CONSTRAINT IF EXISTS document_comments_parent_id_fkey`,
+      );
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_comments ADD CONSTRAINT document_comments_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES ${PORTULAN_PG_SCHEMA}.document_comments(id) ON DELETE CASCADE`,
+      );
+    }
+    if (!commentColumns.has("resolved_at")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.document_comments ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ`,
+      );
+    }
+  }
+
   await executeSchemaStatement(
     db,
     `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_comments (
@@ -478,6 +544,9 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
       body TEXT NOT NULL,
       section_anchor TEXT,
+      quoted_text TEXT,
+      parent_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.document_comments(id) ON DELETE CASCADE,
+      resolved_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
   );
@@ -494,6 +563,10 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     await executeSchemaStatement(
       db,
       `CREATE INDEX IF NOT EXISTS idx_document_comments_created_at ON ${PORTULAN_PG_SCHEMA}.document_comments (created_at)`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_document_comments_parent_id ON ${PORTULAN_PG_SCHEMA}.document_comments (parent_id)`,
     );
   }
 
@@ -544,9 +617,15 @@ export async function applyPortulanSchema(db: Db): Promise<void> {
     await executeSchemaStatement(db, statement);
   }
 
-  if (!(await isPortulanSchemaReady(db))) {
-    throw new PortulanSchemaConflictError(
-      `Schema bootstrap finished but the Portulan tables in "${PORTULAN_PG_SCHEMA}" are still incomplete. Check database permissions and existing objects in the Portulan schema.`,
-    );
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const missing = await listMissingPortulanColumns(db);
+    if (missing.length === 0) return;
+    if (attempt < 4) {
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+    } else {
+      throw new PortulanSchemaConflictError(
+        `Schema bootstrap finished but the Portulan tables in "${PORTULAN_PG_SCHEMA}" are still incomplete (${missing.join(", ")}). Check database permissions and existing objects in the Portulan schema.`,
+      );
+    }
   }
 }

@@ -1,0 +1,76 @@
+/* Comment thread — scoped to review panel and preview rail */
+
+.comment-thread-card {
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+}
+
+.comment-thread-card-resolved {
+  background: color-mix(in srgb, var(--primary) 4%, var(--background));
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+}
+
+.comment-thread-head {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--sp-2) var(--sp-3);
+}
+
+.comment-thread-head:not(:has(.review-comment-section)) {
+  justify-content: flex-end;
+}
+
+.comment-thread-head .review-comment-section {
+  flex: 1 1 12rem;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.comment-thread-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
+.comment-thread-messages {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.comment-thread-replies {
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0 0 0 var(--sp-4);
+}
+
+.review-comment-body {
+  margin-top: var(--sp-2);
+}
+
+.review-compose {
+  gap: var(--sp-3);
+}
+
+.review-compose-compact {
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
+  padding-top: var(--sp-4);
+}
+
+.review-compose-compact button[type="submit"] {
+  width: 100%;
+}
+
+.review-compose textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.comment-quote {
+  padding: var(--sp-3) var(--sp-4);
+}

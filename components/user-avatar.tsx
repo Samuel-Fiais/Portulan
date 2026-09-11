@@ -38,13 +38,13 @@ export function UserAvatar({
 
   if (imageUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={imageUrl}
-        alt={label}
+      <span
         title={label}
-        className={cn("rounded-none object-cover", sizeClass, className)}
-      />
+        className={cn("inline-flex shrink-0 overflow-hidden rounded-none", sizeClass, className)}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={imageUrl} alt={label} className="size-full object-cover" />
+      </span>
     );
   }
 
@@ -52,7 +52,7 @@ export function UserAvatar({
     <span
       title={label}
       className={cn(
-        "inline-flex items-center justify-center rounded-none bg-muted font-mono font-semibold uppercase text-muted-foreground",
+        "inline-flex shrink-0 items-center justify-center rounded-none bg-muted font-mono font-semibold uppercase text-muted-foreground",
         sizeClass,
         className,
       )}

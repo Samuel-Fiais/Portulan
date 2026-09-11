@@ -1,0 +1,234 @@
+/* Conta — modal de perfil e entrada */
+
+.account-dialog[data-slot="dialog-content"] {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+  gap: 0;
+  padding: var(--sp-5);
+  border-top: 3px solid var(--primary);
+}
+
+.account-dialog [data-slot="dialog-title"] {
+  font: 700 16px/1.2 var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+.account-dialog [data-slot="dialog-description"] {
+  font: 400 13px/1.55 var(--font-sans);
+  color: var(--text-2);
+}
+
+.account-dialog-heading {
+  min-width: 0;
+}
+
+.account-dialog-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.account-dialog-login {
+  font: 500 13px/1.4 var(--font-mono);
+  color: var(--text);
+}
+
+.account-dialog-identity-sep {
+  color: var(--text-3);
+  font: 400 13px/1 var(--font-sans);
+}
+
+.account-dialog-email {
+  overflow: hidden;
+  color: var(--text-2);
+  font: 400 13px/1.4 var(--font-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-dialog-header {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-4);
+  text-align: left;
+}
+
+.account-dialog-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.account-dialog-avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+
+.account-dialog-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding-block: var(--sp-4);
+  border-top: 1px solid var(--border);
+}
+
+.account-section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: 0;
+}
+
+.account-section-heading::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.account-section-heading .eyebrow {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.account-dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.account-dialog .login-field {
+  gap: var(--sp-2);
+}
+
+.account-dialog .login-field input {
+  height: var(--control-height);
+  font-size: 13px;
+}
+
+.account-dialog-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+.account-method-list {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.account-method-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: var(--control-height);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border);
+  background: var(--background);
+}
+
+.account-method-title {
+  margin: 0;
+  font: 600 12px/1.3 var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+.account-method-status {
+  margin: 4px 0 0;
+  font: 400 12px/1.4 var(--font-sans);
+  color: var(--text-2);
+}
+
+.account-method-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
+.account-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  background: var(--muted);
+}
+
+.account-password-form .account-dialog-grid {
+  grid-template-columns: 1fr;
+}
+
+.account-dialog-hint {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid color-mix(in srgb, var(--burgundy) 25%, var(--border));
+  background: color-mix(in srgb, var(--burgundy) 4%, var(--background));
+  color: var(--text-2);
+  font: 400 12px/1.5 var(--font-sans);
+}
+
+.account-dialog-footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding-top: var(--sp-4);
+}
+
+.account-dialog-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.account-sign-out {
+  color: var(--destructive);
+}
+
+@media (max-width: 480px) {
+  .account-dialog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-method-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .account-method-actions {
+    justify-content: stretch;
+  }
+
+  .account-method-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .account-dialog-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .account-dialog-footer-actions {
+    width: 100%;
+  }
+
+  .account-dialog-footer-actions > * {
+    flex: 1 1 auto;
+  }
+}

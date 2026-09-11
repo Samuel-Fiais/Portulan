@@ -11,7 +11,7 @@ export function PublicDocumentShell({
     <div className="public-document-shell">
       {notice ? <div className="draft-preview-notice no-print">{notice}</div> : null}
       <div className="public-document-toolbar no-print">
-        <ThemeToggle />
+        <ThemeToggle side="bottom" />
       </div>
       <main className="public-document-main">{children}</main>
     </div>

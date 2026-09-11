@@ -11,14 +11,22 @@ type ColorPickerProps = {
   value: string;
   onChange: (value: string) => void;
   align?: "start" | "end";
+  variant?: "field" | "inline";
 };
 
-export function ColorPicker({ id, label, value, onChange, align = "start" }: ColorPickerProps) {
+export function ColorPicker({
+  id,
+  label,
+  value,
+  onChange,
+  align = "start",
+  variant = "field",
+}: ColorPickerProps) {
   const generatedId = useId();
   const fieldId = id ?? generatedId;
   const rootRef = useRef<HTMLDivElement>(null);
   const sbRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(variant === "inline");
   const [hexInput, setHexInput] = useState(value);
   const [hsv, setHsv] = useState<[number, number, number]>(() => rgbToHsv(...hexToRgb(value)));
 
@@ -28,7 +36,7 @@ export function ColorPicker({ id, label, value, onChange, align = "start" }: Col
   }, [value]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || variant === "inline") return;
 
     const onPointerDown = (event: PointerEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) {
@@ -48,7 +56,7 @@ export function ColorPicker({ id, label, value, onChange, align = "start" }: Col
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, variant]);
 
   function commitHsv(next: [number, number, number]) {
     setHsv(next);
@@ -88,6 +96,59 @@ export function ColorPicker({ id, label, value, onChange, align = "start" }: Col
   }
 
   const hueColor = rgbToHex(...hsvToRgb(hsv[0], 100, 100));
+  const panel = (
+    <div className="color-picker-panel" role="dialog" aria-label={`Seletor de ${label.toLowerCase()}`}>
+      <div
+        ref={sbRef}
+        className="color-picker-sb"
+        style={{ backgroundColor: hueColor }}
+        onPointerDown={startSbDrag}
+      >
+        <div className="color-picker-sb-overlay color-picker-sb-overlay-white" />
+        <div className="color-picker-sb-overlay color-picker-sb-overlay-black" />
+        <span
+          className="color-picker-sb-thumb"
+          style={{ left: `${hsv[1]}%`, top: `${100 - hsv[2]}%` }}
+        />
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={360}
+        value={Math.round(hsv[0])}
+        className="color-picker-hue"
+        aria-label={`Matiz de ${label.toLowerCase()}`}
+        onChange={(event) => commitHsv([Number(event.target.value), hsv[1], hsv[2]])}
+      />
+      <div className="color-picker-hex-row">
+        <span className="color-picker-hex-label">HEX</span>
+        <input
+          type="text"
+          id={variant === "inline" ? fieldId : undefined}
+          className="color-picker-hex-input"
+          value={hexInput}
+          spellCheck={false}
+          aria-label={`Código hex de ${label.toLowerCase()}`}
+          onChange={(event) => setHexInput(event.target.value)}
+          onBlur={() => commitHex(hexInput)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              commitHex(hexInput);
+              if (variant === "field") setOpen(false);
+            }
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  if (variant === "inline") {
+    return (
+      <div className="color-picker color-picker-inline" ref={rootRef}>
+        {panel}
+      </div>
+    );
+  }
 
   return (
     <div className={`color-picker color-picker-align-${align}`} ref={rootRef}>
@@ -105,50 +166,7 @@ export function ColorPicker({ id, label, value, onChange, align = "start" }: Col
           <span className="color-picker-value">{value}</span>
           <ChevronDown className="color-picker-chevron" aria-hidden="true" />
         </button>
-        {open ? (
-          <div className="color-picker-panel" role="dialog" aria-label={`Seletor de ${label.toLowerCase()}`}>
-            <div
-              ref={sbRef}
-              className="color-picker-sb"
-              style={{ backgroundColor: hueColor }}
-              onPointerDown={startSbDrag}
-            >
-              <div className="color-picker-sb-overlay color-picker-sb-overlay-white" />
-              <div className="color-picker-sb-overlay color-picker-sb-overlay-black" />
-              <span
-                className="color-picker-sb-thumb"
-                style={{ left: `${hsv[1]}%`, top: `${100 - hsv[2]}%` }}
-              />
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={360}
-              value={Math.round(hsv[0])}
-              className="color-picker-hue"
-              aria-label={`Matiz de ${label.toLowerCase()}`}
-              onChange={(event) => commitHsv([Number(event.target.value), hsv[1], hsv[2]])}
-            />
-            <div className="color-picker-hex-row">
-              <span className="color-picker-hex-label">HEX</span>
-              <input
-                type="text"
-                className="color-picker-hex-input"
-                value={hexInput}
-                spellCheck={false}
-                aria-label={`Código hex de ${label.toLowerCase()}`}
-                onChange={(event) => setHexInput(event.target.value)}
-                onBlur={() => commitHex(hexInput)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    commitHex(hexInput);
-                    setOpen(false);
-                  }
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
+        {open ? panel : null}
       </div>
     </div>
   );

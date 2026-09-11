@@ -145,10 +145,10 @@ Two registers, one world. The authenticated workspace is tool chrome: hairlines,
 - Square stamps: every control, card, and dialog is radius 0.
 - Hairline structure: depth is a 1px rule and a tonal wash, never a drop shadow.
 - Two tokens, two jobs: JetBrains Mono (`--font-mono`) is the product face — titles, labels, badges, tabs, buttons, stats, and code. IBM Plex Sans (`--font-sans`) is running prose only.
-- Chart Ink is the only action fill; Seal Wax and Compass Brass are identity, not buttons.
-- A 3px identity rule: Chart Ink → Seal Wax under the header and editor top bar; solid Chart Ink on stat cards and integration panels.
+- One action fill per paper stock. Carta uses Chart Ink; Pergaminho umber; Névoa graphite; Costa Sounding Teal Ink; Lacre Seal Wax. Compass Brass stays identity, never a button.
+- A 3px identity rule under the header and editor top bar: the stock’s action ink into its accent. Solid action ink on stat cards and integration panels.
 - Instrument chrome is 28px tall (`--control-height`). Rail icons stay 36×36 inside a 48px rail.
-- Light paper is canonical; dark remaps the same inks (it is not a second brand).
+- Light Carta is canonical. Four other stocks remap paper, action ink, accent, and night — they are registers of the same chart, not a second product. The three-bar mark always stays Chart Ink / Seal Wax / Compass Brass.
 
 ## Colors
 
@@ -156,7 +156,7 @@ A cartographic ink set on white paper: one action navy, one sounding teal for en
 
 ### Primary
 
-- **Chart Ink**: The navy of the chart. Primary actions, focus borders, the rail’s active state, the 3px top rule on stats and integration panels, and the first bar of the brand mark. In dark mode filled buttons and focus use Chart Ink Inverse so they stay legible on ink-dark paper; the brand bars use a lifted navy (`#2C3E5F`), not the inverse. Its weight comes from being the ink, not from saturation.
+- **Chart Ink**: The navy of the chart. On Carta it is the action fill, focus, rail active state, and the 3px top rule on stats and panels. It is always the first bar of the brand mark. In dark Carta, filled buttons use Chart Ink Inverse; the brand bars use a lifted navy (`#2C3E5F`), not the inverse. Other paper stocks keep this navy on the mark and choose a different action ink.
 
 ### Secondary
 
@@ -165,8 +165,8 @@ A cartographic ink set on white paper: one action navy, one sounding teal for en
 
 ### Tertiary
 
-- **Seal Wax**: The middle brand bar, the header’s trailing gradient, eyebrows, text selection, and the active template-choice inset. Never a primary fill.
-- **Compass Brass**: The third brand bar and the default “relatório” template accent. Ornament of identity, not of chrome.
+- **Seal Wax**: The middle brand bar. On Carta it is eyebrow, selection, and the header’s trailing stop — never the action fill. On Lacre it *is* the action fill; eyebrow and header trailing stop move to Chart Ink.
+- **Compass Brass**: The third brand bar and the default “relatório” template accent. Ornament of identity, not of chrome. Never a button, even on Pergaminho.
 - **Coral**, **Chart Purple**, **Chart Indigo**: Document-type inks (incident, feature, reference) and report-paper accents. They color the reading register and type badges; they do not color workspace actions.
 
 ### Neutral
@@ -182,11 +182,25 @@ A cartographic ink set on white paper: one action navy, one sounding teal for en
 - **Hairline**: Default 1px rule.
 - **Input Stroke**: Field border, slightly darker than Hairline so inputs read as instruments.
 
+### Paper stocks
+
+Five grounds, one chart. Each stock has its own paper, action ink, and accent. The three-bar mark and document-type inks stay Carta’s trio.
+
+| Stock | Paper | Action | Accent |
+|---|---|---|---|
+| **Carta** | White / ink-dark | Chart Ink / Inverse | Seal Wax |
+| **Pergaminho** | Vellum / cabin | Umber / brass-light | Rust |
+| **Névoa** | Mist / graphite | Slate / steel | Chart Indigo |
+| **Costa** | Tide paper / deep water | Sounding Teal Ink / buoy | Chart Ink |
+| **Lacre** | Wax wash / wine night | Seal Wax / rose | Chart Ink |
+
+The picker is a stamp grid (Claro / Escuro × six chips in one row). The sixth stamp, **Livre**, uses the same paper + bar structure; clicking it opens the color instrument and that hex becomes the action ink for the chosen mode. Preference is local to the browser. Print and PDF stay white Carta.
+
 ### Named Rules
 
-**The Seal Wax Rule.** Seal Wax appears as eyebrow, selection, and the brand’s middle bar. It is never the fill of a primary action.
+**The Seal Wax Rule.** Seal Wax is the brand’s middle bar. On Carta it is eyebrow and selection, never a primary fill. On Lacre it becomes the action ink; Chart Ink takes the eyebrow.
 
-**The Chart Ink Rule.** Chart Ink is the only action fill. Solid 3px bars on stats and integration panels are Chart Ink; the header/editor identity rule is Chart Ink into Seal Wax. Teal, coral, purple, and indigo enumerate and accent; they do not compete for the button.
+**The Chart Ink Rule.** On Carta, Chart Ink is the only action fill; the header rule is Chart Ink into Seal Wax. Other stocks pick one cartographic ink as their action (umber, slate, sounding teal, seal wax). Teal, coral, purple, and indigo still enumerate document types; they do not become a second button on the same screen.
 
 ## Typography
 
@@ -198,8 +212,8 @@ A cartographic ink set on white paper: one action navy, one sounding teal for en
 
 ### Hierarchy
 
-- **Display** (700, clamp 30–48px, line-height 1.08, tracking −0.045em): Workspace page titles (`page-heading h1`), JetBrains Mono.
-- **Headline** (700, clamp 26–40px): Dashboard and login (`fp-h1`). Editor document title is 700, clamp 24–34px. Title on the paper is 600, clamp 20–28px.
+- **Display** (700, clamp 30–48px, line-height 1.08, tracking −0.045em): Full masthead titles in JetBrains Mono — not the Biblioteca / Templates / Integrações register.
+- **Headline** (700, clamp 26–40px): Dashboard, login, Biblioteca, Templates, and Integrações (`fp-h1`). Editor document title is 700, clamp 24–34px. Title on the paper is 600, clamp 20–28px.
 - **Title** (600, 16px, tracking −0.015em): Workspace document rows. Report `###`, step titles, and alert titles are the same family at 13px / 600.
 - **Body:** Plex Sans 14px / 1.65–1.7 on the paper and in app copy. Form fields are 12px Plex Sans. Markdown source in the editor is JetBrains Mono 13px / 1.75.
 - **Label:** Eyebrows (10px / 600 / tracking 0.12em / uppercase Seal Wax), report `##` / `tmpl-label` (same), the index title (same) and entries (14px / 500; `###` at 13px), tabs, badges (9px / tracking 0.06em), field captions (10px / tracking 0.08em).
@@ -212,7 +226,7 @@ A cartographic ink set on white paper: one action navy, one sounding teal for en
 
 The spatial model is a sheet on a desk, not a fluid marketing canvas.
 
-Workspace pages sit in a centered column: 1100px for library, templates, integrations, login; 1380px for the dashboard. Library pages pad `sp-7` / `sp-6` (48px / 32px). The dashboard is tighter at the top (52px) and uses `clamp(24px, 4vw, 64px)` on the sides. The editor is full-bleed beside a 48px icon rail; the top chrome is 61px (58px inner + 3px identity rule), solid Paper, no frost. Mobile replaces the rail with a 56px sticky bar and a drawer.
+Workspace pages sit in a centered column: 1100px for library, templates, integrations, login; 1380px for the dashboard. Biblioteca, Templates, and Integrações share one register: padding `sp-7` / `sp-6` (48px / 32px), Seal Wax eyebrow, Headline `h1` (clamp 26–40px), and 14px lead. The dashboard is tighter at the top (52px) and uses `clamp(24px, 4vw, 64px)` on the sides. The editor is full-bleed beside a 48px icon rail; the top chrome is 61px (58px inner + 3px identity rule), solid Paper, no frost. Mobile replaces the rail with a 56px sticky bar and a drawer.
 
 Hairline lists (document rows) stack as a single ruled column — one 1px border around the list, 1px between rows, 16–24px internal padding. Grids are auto-fit: stats from 180px, shortcuts from 240px, templates four columns collapsing to two at 1100px and one at 480px. Breakpoints in use: 1100px, 760px (the mobile gate: rail hides, editor preview hides, page padding 16px), 480px.
 
@@ -291,18 +305,18 @@ A full-bleed web sheet in its pane (Paper ground, Plex Sans 14px / 1.68 for pros
 
 - **Do** set radius to 0 and borders to 1px Hairline on every new control, card, and overlay.
 - **Do** keep JetBrains Mono as the product face (chrome, report titles, `##` labels, the index, code) and IBM Plex Sans for running prose only.
-- **Do** use Chart Ink as the only filled primary action; keep the 3px header rule as Chart Ink → Seal Wax and the 3px card/panel bars as solid Chart Ink.
+- **Do** use the stock’s single action ink as the only filled primary; keep the 3px header rule as action → accent and the 3px card/panel bars as that action ink.
 - **Do** stamp chrome at 28px (`--control-height`) unless the control is explicitly lg (40px) or xs (24px).
 - **Do** treat Seal Wax as eyebrow/selection/brand, Sounding Teal Ink as enumeration, Compass Brass as identity.
 - **Do** keep workspace measure at 1100px (dashboard 1380px), report reading full-bleed in its pane on screen, and A4 only in print/PDF.
 - **Do** write product UI in Portuguese (pt-BR), technical and direct — labels in mono where the chrome already does.
-- **Do** remap the same inks in `.dark` (Chart Ink Inverse on filled actions, lifted navy on the brand bars) without inventing a second palette.
+- **Do** let each paper stock remap action, accent, and paper, and keep the brand bars on Chart Ink / Seal Wax / Compass Brass (lifted in `.dark`).
 
 ### Don't:
 
 - **Don't** use rounded-lg, pills, glass, marketing gradients, or drop shadows on chrome (Soft-SaaS). The color-picker thumbs and its panel shadow stay where they are; they are not a license for menus or dialogs.
 - **Don't** ship default shadcn look: 8px radius, 3px focus rings, `shadow-sm` / `shadow-md`.
-- **Don't** fill a primary button with Seal Wax, teal, coral, purple, or gold.
+- **Don't** put two action fills on the same screen, or fill a Carta button with Seal Wax, teal, coral, purple, or gold. Lacre may fill with Seal Wax; Costa with Sounding Teal Ink; Pergaminho with umber — not with brass.
 - **Don't** put Plex Sans on tabs, badges, or report titles, or let `system-ui` / `ui-monospace` become the face of `.report-paper`.
 - **Don't** swap JetBrains Mono for Geist, Inter, IBM Plex Mono, or a system-only stack, and don't add a third family.
 - **Don't** dress the editor chrome like a magazine, or the report like an app shell.

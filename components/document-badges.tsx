@@ -36,10 +36,29 @@ export function StatusBadge({ status }: { status: DocumentStatus }) {
   );
 }
 
+export function VisibilityBadge({ isPublic }: { isPublic: boolean }) {
+  return (
+    <Badge variant="outline" className={cn("status-badge", isPublic ? "status-public" : "status-private")}>
+      {isPublic ? "Público" : "Privado"}
+    </Badge>
+  );
+}
+
 export function DisabledBadge() {
   return (
     <Badge variant="outline" className={cn("status-badge", "status-disabled")}>
       Desativado
+    </Badge>
+  );
+}
+
+export function OwnershipBadge({ isOwner }: { isOwner: boolean }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn("status-badge", isOwner ? "ownership-mine" : "ownership-shared")}
+    >
+      {isOwner ? "Meu" : "Compartilhado"}
     </Badge>
   );
 }

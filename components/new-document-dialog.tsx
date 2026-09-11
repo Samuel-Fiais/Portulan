@@ -1,5 +1,7 @@
 "use client";
 
+import "./workspace-dialogs.css";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, FilePlus2 } from "lucide-react";
@@ -60,18 +62,19 @@ export function NewDocumentDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger ?? <Button><FilePlus2 />Novo documento</Button>}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="workspace-dialog new-document-dialog sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Novo documento</DialogTitle>
           <DialogDescription>Escolha um template com as cores editoriais do documento.</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-2 py-2 sm:grid-cols-3">
+        <div className="template-choice-grid">
           {templates.map((item) => (
             <button
               type="button"
               key={item.id}
               onClick={() => setTemplateId(item.id)}
               className={cn("template-choice", templateId === item.id && "active")}
+              aria-pressed={templateId === item.id}
             >
               <span
                 className="template-choice-line"
@@ -82,16 +85,18 @@ export function NewDocumentDialog({
             </button>
           ))}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="new-title">Título</Label>
-          <Input id="new-title" autoFocus value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Relatório de estabilidade — agosto" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="new-summary">Resumo <span className="text-muted-foreground">(opcional)</span></Label>
-          <Textarea id="new-summary" value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Resumo executivo do documento…" rows={3} />
+        <div className="field-stack">
+          <div>
+            <Label htmlFor="new-title">Título</Label>
+            <Input id="new-title" autoFocus value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Relatório de estabilidade — agosto" />
+          </div>
+          <div>
+            <Label htmlFor="new-summary">Resumo <span className="normal-case tracking-normal">(opcional)</span></Label>
+            <Textarea id="new-summary" value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Resumo executivo do documento…" rows={3} />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
           <Button onClick={submit} disabled={pending || title.trim().length < 3 || !selectedTemplate}>
             {pending ? "Criando…" : "Criar e editar"}<ArrowRight />
           </Button>

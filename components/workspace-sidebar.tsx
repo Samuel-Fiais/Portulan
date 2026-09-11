@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Bot, LayoutDashboard, Library, Menu, Palette, X } from "lucide-react";
 import type { Session } from "next-auth";
 import { AuthControls } from "@/components/auth-controls";
+import type { PublicAccount } from "@/lib/account-types";
 import { BrandMark } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -78,9 +79,11 @@ function MobileNavLinks({ pathname }: { pathname: string }) {
 
 export function WorkspaceSidebar({
   session,
+  account,
   children,
 }: {
   session: Session | null;
+  account?: PublicAccount | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -119,7 +122,7 @@ export function WorkspaceSidebar({
         <Link href="/" aria-label="Portulan" className="workspace-mobile-brand">
           <BrandMark compact />
         </Link>
-        <ThemeToggle className="workspace-rail-link" />
+        <ThemeToggle className="workspace-rail-link" side="bottom" />
       </header>
 
       <nav
@@ -148,10 +151,10 @@ export function WorkspaceSidebar({
                 </span>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={10}>
-                Alternar tema
+                Escolher tema
               </TooltipContent>
             </Tooltip>
-            <AuthControls session={session} menuPlacement="rail" compact />
+            <AuthControls session={session} account={account} compact />
           </div>
         </div>
       </nav>
@@ -179,7 +182,7 @@ export function WorkspaceSidebar({
           <MobileNavLinks pathname={pathname} />
         </nav>
         <div className="workspace-mobile-drawer-footer">
-          <AuthControls session={session} menuPlacement="top" />
+          <AuthControls session={session} account={account} />
         </div>
       </aside>
 

@@ -1,7 +1,9 @@
 "use client";
 
+import "./library-panel.css";
+
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { DocumentSummaryList } from "@/components/document-summary-list";
 import { NewDocumentDialog } from "@/components/new-document-dialog";
@@ -21,61 +23,97 @@ import {
   type TemplateRecord,
 } from "@/lib/documents";
 import {
+  buildBibliotecaUrl,
+  filterDocumentsByOwnership,
   filterDocumentsByStatus,
+  type OwnershipFilter,
   type StatusFilter,
 } from "@/lib/library-filters";
 
 export function LibraryPanel({
   documents,
   templates,
+  currentUserId,
   initialStatusFilter = "all",
+  initialOwnershipFilter = "all",
 }: {
   documents: DocumentLibraryItem[];
   templates: TemplateRecord[];
+  currentUserId: string;
   initialStatusFilter?: StatusFilter;
+  initialOwnershipFilter?: OwnershipFilter;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [query, setQuery] = useState("");
   const [templateFilter, setTemplateFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatusFilter);
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>(
+    initialOwnershipFilter,
+  );
 
   useEffect(() => {
     setStatusFilter(initialStatusFilter);
   }, [initialStatusFilter]);
 
+  useEffect(() => {
+    setOwnershipFilter(initialOwnershipFilter);
+  }, [initialOwnershipFilter]);
+
+  function replaceLibraryUrl(next: {
+    status?: StatusFilter;
+    ownership?: OwnershipFilter;
+  }) {
+    router.replace(
+      buildBibliotecaUrl({
+        status: next.status ?? statusFilter,
+        ownership: next.ownership ?? ownershipFilter,
+      }),
+    );
+  }
+
   function updateStatusFilter(value: StatusFilter) {
     setStatusFilter(value);
-    const params = new URLSearchParams();
-    if (value !== "all") params.set("status", value);
-    router.replace(params.size ? `${pathname}?${params.toString()}` : pathname);
+    replaceLibraryUrl({ status: value });
+  }
+
+  function updateOwnershipFilter(value: OwnershipFilter) {
+    setOwnershipFilter(value);
+    replaceLibraryUrl({ ownership: value });
   }
 
   const filtered = useMemo(
     () =>
-      filterDocumentsByStatus(documents, statusFilter).filter((document) => {
+      filterDocumentsByOwnership(
+        filterDocumentsByStatus(documents, statusFilter),
+        currentUserId,
+        ownershipFilter,
+      ).filter((document) => {
         const matchesTemplate =
           templateFilter === "all" || document.templateId === templateFilter;
         return (
           matchesTemplate && documentMatchesSearchQuery(document, query)
         );
       }),
-    [documents, query, statusFilter, templateFilter],
+    [currentUserId, documents, ownershipFilter, query, statusFilter, templateFilter],
   );
 
   return (
-    <main className="page-wrap dashboard-main">
+    <main className="page-wrap workspace-page workspace-page--library">
       <section className="doc-section">
-        <div className="page-heading split-row">
-          <div className="split-row__main">
+        <header className="page-heading split-row">
+          <div className="split-row__main workspace-heading">
+            <span className="eyebrow">Biblioteca</span>
             <h1 className="fp-h1">Biblioteca</h1>
-            <p className="fp-lead">
+            <p className="workspace-lead">
               Documentos seus e compartilhados com você. Busque por título,
               tema, tag ou conteúdo.
             </p>
           </div>
-          <NewDocumentDialog templates={templates} />
-        </div>
+          <div className="split-row__actions">
+            <NewDocumentDialog templates={templates} />
+          </div>
+        </header>
+        <div className="workspace-page-body">
         <div className="filter-bar">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -86,6 +124,19 @@ export function LibraryPanel({
               className="pl-9"
             />
           </div>
+          <Select value={ownershipFilter} onValueChange={updateOwnershipFilter}>
+            <SelectTrigger
+              className="template-filter-select"
+              aria-label="Filtrar por origem"
+            >
+              <SelectValue placeholder="Todos os documentos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="mine">Meus</SelectItem>
+              <SelectItem value="shared">Compartilhados comigo</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={updateStatusFilter}>
             <SelectTrigger
               className="template-filter-select"
@@ -125,7 +176,8 @@ export function LibraryPanel({
             {filtered.length} documento{filtered.length === 1 ? "" : "s"}
           </span>
         </div>
-        <DocumentSummaryList documents={filtered} />
+        <DocumentSummaryList documents={filtered} currentUserId={currentUserId} />
+        </div>
       </section>
     </main>
   );

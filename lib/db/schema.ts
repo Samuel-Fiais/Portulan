@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgSchema, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, foreignKey, index, integer, pgSchema, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 export const PORTULAN_PG_SCHEMA = "portulan";
 
@@ -6,11 +6,12 @@ export const portulanSchema = pgSchema(PORTULAN_PG_SCHEMA);
 
 export const users = portulanSchema.table("users", {
   id: uuid("id").primaryKey().defaultRandom(),
-  githubId: text("github_id").notNull().unique(),
+  githubId: text("github_id").unique(),
   login: text("login").notNull(),
   name: text("name"),
   avatarUrl: text("avatar_url"),
   email: text("email"),
+  passwordHash: text("password_hash"),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });
 
@@ -68,6 +69,7 @@ export const documents = portulanSchema.table(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true, mode: "string" }),
     disabled: boolean("disabled").notNull().default(false),
+    isPublic: boolean("is_public").notNull().default(false),
   },
   (table) => [
     index("idx_documents_updated_at").on(table.updatedAt),
@@ -152,11 +154,20 @@ export const documentComments = portulanSchema.table(
       .references(() => users.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
     sectionAnchor: text("section_anchor"),
+    quotedText: text("quoted_text"),
+    parentId: uuid("parent_id"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: "string" }),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [
     index("idx_document_comments_document_id").on(table.documentId),
     index("idx_document_comments_user_id").on(table.userId),
     index("idx_document_comments_created_at").on(table.createdAt),
+    index("idx_document_comments_parent_id").on(table.parentId),
+    foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+      name: "document_comments_parent_id_fk",
+    }).onDelete("cascade"),
   ],
 );

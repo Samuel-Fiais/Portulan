@@ -1,0 +1,139 @@
+.theme-picker {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.theme-picker-group {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.theme-picker-label {
+  margin: 0;
+  color: var(--text-3);
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.theme-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.theme-picker-custom {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.theme-swatch {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.theme-swatch:focus-visible {
+  outline: none;
+}
+
+.theme-swatch-chip {
+  position: relative;
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--theme-swatch-muted, var(--border));
+  background: var(--theme-swatch-paper);
+  box-shadow: none;
+}
+
+.theme-swatch-chip::before {
+  content: "";
+  position: absolute;
+  inset-inline: -1px;
+  top: -1px;
+  height: 3px;
+  background: var(--theme-swatch-bar);
+}
+
+.theme-swatch[data-selected="true"] .theme-swatch-chip,
+.theme-swatch:hover .theme-swatch-chip,
+.theme-swatch:focus-visible .theme-swatch-chip {
+  border-color: var(--primary);
+}
+
+.theme-swatch-name {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--text-2);
+  font: 600 9px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-swatch[data-selected="true"] .theme-swatch-name {
+  color: var(--primary);
+}
+
+.theme-picker-custom .color-picker-sb {
+  height: 88px;
+}
+
+.theme-picker-menu {
+  width: min(calc(100vw - 24px), 400px);
+  padding: 12px;
+  overflow: visible;
+}
+
+.theme-picker-menu .theme-picker-grid {
+  gap: 8px;
+}
+
+.theme-picker-menu .theme-swatch {
+  height: auto;
+  min-height: 0;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.theme-picker-menu .theme-swatch:focus,
+.theme-picker-menu .theme-swatch:focus-visible {
+  background: transparent;
+  color: inherit;
+}
+
+.theme-picker-trigger {
+  display: grid;
+  place-items: center;
+}
+
+.login-header .theme-toggle,
+.public-document-toolbar .theme-toggle {
+  width: var(--control-height);
+  height: var(--control-height);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.login-header .theme-toggle:hover,
+.public-document-toolbar .theme-toggle:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.login-header .theme-toggle svg,
+.public-document-toolbar .theme-toggle svg,
+.account-footer-theme-toggle svg {
+  width: 16px;
+  height: 16px;
+}

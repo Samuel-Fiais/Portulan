@@ -8,7 +8,5 @@ export default async function WorkspaceLayout({
 }) {
   const session = await auth();
 
-  return (
-    <WorkspaceSidebar session={session}>{children}</WorkspaceSidebar>
-  );
+  return <WorkspaceSidebar session={session}>{children}</WorkspaceSidebar>;
 }

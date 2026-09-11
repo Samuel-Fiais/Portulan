@@ -10,6 +10,7 @@ import {
   deleteTemplate,
   duplicateTemplate,
   getDocument,
+  getDocumentRelease,
   getTemplateForUser,
   isDocumentOwner,
   listDocumentReleases,
@@ -18,14 +19,21 @@ import {
   listTemplates,
   previewTemplateContent,
   publishDocument,
+  restoreDocumentRelease,
   revokeDocumentShare,
   setDocumentDisabled,
+  setDocumentPublic,
   setDocumentReleaseDisabled,
   updateDocument,
   updateTemplate,
   validateMcpToken,
 } from "@/lib/db";
 import { documentAccessContext } from "@/lib/access-context";
+import {
+  createDocumentCommentForAccess,
+  deleteDocumentCommentForAccess,
+  listDocumentCommentThreadsForAccess,
+} from "@/lib/document-comment-ops";
 import { documentShareInputSchema } from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
@@ -324,7 +332,7 @@ const mcpHandler = createMcpHandler((server) => {
     "create_document",
     {
       title: "Criar documento",
-      description: "Cria um documento Markdown associado ao usuário autenticado. O link estável /d/{uuid} recebe um UUID fixo na criação; o título pode ser renomeado depois sem alterar o link.",
+      description: "Cria um documento Markdown associado ao usuário autenticado, sempre privado. O link estável /d/{uuid} recebe um UUID fixo na criação; o título pode ser renomeado depois sem alterar o link. Publicar uma versão não abre o documento a visitantes — use is_public em update_document.",
       inputSchema: z.object({
         title: z.string().min(3).max(180),
         summary: z.string().max(500).default(""),
@@ -370,13 +378,18 @@ const mcpHandler = createMcpHandler((server) => {
         team: z.string().max(100).optional(),
         tags: z.array(z.string().min(1).max(40)).max(12).optional(),
         content: z.string().max(250_000).optional(),
-        disabled: z.boolean().optional().describe("Desativa ou reativa o acesso público a todo o documento"),
+        disabled: z.boolean().optional().describe("Desativa ou reativa os links /d e /p do documento"),
+        is_public: z.boolean().optional().describe("true: qualquer pessoa com o link vê a versão publicada; false: só responsável e convidados (padrão na criação)"),
       }),
     },
-    async ({ id, template_id, disabled, ...changes }) => {
+    async ({ id, template_id, disabled, is_public, ...changes }) => {
       if (disabled !== undefined) {
         const toggled = await setDocumentDisabled(id, disabled, await requireAccessContext());
         if (!toggled) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+      }
+      if (is_public !== undefined) {
+        const toggled = await setDocumentPublic(id, is_public, await requireAccessContext());
+        if (!toggled) return { ...textResult({ error: "Documento não encontrado ou sem permissão para alterar o acesso público." }), isError: true };
       }
       const document = await updateDocument(id, { ...changes, templateId: template_id }, await requireAccessContext());
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
@@ -418,7 +431,7 @@ const mcpHandler = createMcpHandler((server) => {
     "publish_document",
     {
       title: "Publicar documento",
-      description: "Cria uma nova versão publicada a partir do rascunho, com snapshot imutável e link público compartilhável.",
+      description: "Cria uma nova versão imutável a partir do rascunho. O documento permanece privado até is_public=true em update_document.",
       inputSchema: z.object({
         id: z.string().min(1),
         title: z.string().min(3).max(180).optional(),
@@ -464,6 +477,43 @@ const mcpHandler = createMcpHandler((server) => {
         slug: document.slug,
         stablePublicPath: `/d/${document.slug}`,
         releases,
+      });
+    },
+  );
+
+  server.registerTool(
+    "restore_document",
+    {
+      title: "Restaurar versão no rascunho",
+      description:
+        "Copia título, resumo, template, autor, time, tags e conteúdo de uma release publicada para o rascunho (RN-09). Não altera releases existentes, não incrementa version e não publica. Estado living do rascunho prevalece (RN-54). Responsável e editor convidado podem restaurar.",
+      inputSchema: z.object({
+        document_id: z.string().min(1).describe("ID UUID ou UUID do link estável /d/{uuid}"),
+        release_id: z.string().uuid().describe("ID da versão publicada (release) a restaurar"),
+      }),
+    },
+    async ({ document_id, release_id }) => {
+      const ctx = await requireAccessContext();
+      const current = await getDocument(document_id, ctx);
+      if (!current) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+
+      const release = await getDocumentRelease(release_id);
+      if (!release || release.documentId !== current.id) {
+        return { ...textResult({ error: "Versão não encontrada." }), isError: true };
+      }
+
+      const document = await restoreDocumentRelease(current.id, release_id, ctx);
+      if (!document) {
+        return { ...textResult({ error: "Versão não encontrada ou sem permissão." }), isError: true };
+      }
+
+      return textResult({
+        document,
+        restoredFromRelease: {
+          id: release.id,
+          version: release.version,
+          publicPath: `/p/${release.id}`,
+        },
       });
     },
   );
@@ -563,10 +613,103 @@ const mcpHandler = createMcpHandler((server) => {
         : { ...textResult({ error: "Compartilhamento não encontrado." }), isError: true };
     },
   );
+
+  const documentCommentFields = {
+    body: z.string().trim().min(1).max(2_000),
+    section_anchor: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .optional()
+      .nullable()
+      .describe("Opcional. ID do bloco na prévia (capa, título ##/###, parágrafo ou componente). Sem âncora = documento inteiro."),
+    quoted_text: z
+      .string()
+      .trim()
+      .max(280)
+      .optional()
+      .nullable()
+      .describe("Opcional. Trecho citado do rascunho (até 280 caracteres). Só no comentário-raiz."),
+    parent_id: z
+      .string()
+      .uuid()
+      .optional()
+      .nullable()
+      .describe("Opcional. ID do comentário-raiz ou de uma resposta para responder no mesmo fio (RN-65)."),
+  };
+
+  server.registerTool(
+    "list_document_comments",
+    {
+      title: "Listar comentários de revisão",
+      description:
+        "Lista fios de comentários do rascunho (RN-61). Responsável, editor e leitor convidado veem todos os fios; visitantes em /d ou /p não têm acesso.",
+      inputSchema: z.object({
+        document_id: z.string().min(1).describe("ID UUID ou UUID do link estável /d/{uuid}"),
+      }),
+    },
+    async ({ document_id }) => {
+      const result = await listDocumentCommentThreadsForAccess(document_id, await requireAccessContext());
+      return result.ok
+        ? textResult({ documentId: result.documentId, threads: result.threads })
+        : { ...textResult({ error: result.error }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "create_document_comment",
+    {
+      title: "Criar comentário de revisão",
+      description:
+        "Cria comentário-raiz (âncora e trecho citado opcionais) ou responde a um fio existente (RN-61, RN-65). Resposta herda âncora do raiz; um nível apenas.",
+      inputSchema: z.object({
+        document_id: z.string().min(1).describe("ID UUID ou UUID do link estável /d/{uuid}"),
+        ...documentCommentFields,
+      }),
+    },
+    async ({ document_id, section_anchor, quoted_text, parent_id, body }) => {
+      const ctx = await requireAccessContext();
+      const result = await createDocumentCommentForAccess(
+        document_id,
+        requireUserId(),
+        ctx,
+        {
+          body,
+          sectionAnchor: section_anchor,
+          quotedText: quoted_text,
+          parentId: parent_id,
+        },
+      );
+      return result.ok
+        ? textResult({ documentId: result.documentId, comment: result.comment })
+        : { ...textResult({ error: result.error }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "delete_document_comment",
+    {
+      title: "Remover comentário de revisão",
+      description:
+        "Remove o próprio comentário (raiz ou resposta). Remover o raiz encerra o fio (RN-65). Só no editor autenticado — não em /d ou /p.",
+      inputSchema: z.object({
+        document_id: z.string().min(1).describe("ID UUID ou UUID do link estável /d/{uuid}"),
+        comment_id: z.string().uuid().describe("ID do comentário a remover"),
+      }),
+    },
+    async ({ document_id, comment_id }) => {
+      const ctx = await requireAccessContext();
+      const result = await deleteDocumentCommentForAccess(document_id, comment_id, requireUserId(), ctx);
+      return result.ok
+        ? textResult({ deleted: true, documentId: result.documentId, commentId: comment_id })
+        : { ...textResult({ error: result.error }), isError: true };
+    },
+  );
 }, {
   serverInfo: { name: "portulan", version: getMcpServerVersion() },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Use publish_document para gerar links públicos: stablePublicPath (/d/{uuid}) é um UUID fixo na criação e não muda ao renomear o título; publicPath (/p/{releaseId}) fixa uma versão específica. Slugs legados derivados do título ainda resolvem via alias. Para imagens e anexos em relatórios, chame upload_image ou upload_file (base64 + filename + content_type + document_id) antes de inserir a URL retornada em :::figure{src=...} ou :::file{url=... name=...}. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Documentos nascem privados. Use publish_document para gerar uma versão imutável (stablePublicPath /d/{uuid} e publicPath /p/{releaseId}); isso não abre o link a visitantes. Use restore_document para copiar uma release publicada de volta ao rascunho sem publicar (RN-09). Comentários de revisão (list/create/delete) seguem RN-61 e RN-65: só no rascunho autenticado, para quem tem acesso; sem comentário em /d ou /p. Para qualquer pessoa com o link ver a versão publicada, o responsável define is_public=true em update_document. Slugs legados derivados do título ainda resolvem via alias. Para imagens e anexos em relatórios, chame upload_image ou upload_file (base64 + filename + content_type + document_id) antes de inserir a URL retornada em :::figure{src=...} ou :::file{url=... name=...}. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {

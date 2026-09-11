@@ -1,11 +1,15 @@
 "use client";
 
+import "./templates-panel.css";
+import "./workspace-dialogs.css";
+
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   createTemplateAction,
   deleteTemplateAction,
+  duplicateTemplateAction,
   updateTemplateAction,
 } from "@/app/actions";
 import { BlobImageUpload } from "@/components/blob-image-upload";
@@ -32,22 +36,33 @@ import { pickContrastInkColor } from "@/lib/color-utils";
 
 export function TemplatesPanel({ templates }: { templates: TemplateRecord[] }) {
   return (
-    <main className="page-wrap dashboard-main">
+    <main className="page-wrap workspace-page workspace-page--templates">
       <section className="doc-section">
-        <div className="page-heading split-row">
-          <div className="split-row__main">
-            <h1 className="fp-h1">Templates editoriais</h1>
-            <p className="fp-lead">
+        <header className="page-heading split-row">
+          <div className="split-row__main workspace-heading">
+            <span className="eyebrow">Templates</span>
+            <h1 className="fp-h1">Templates</h1>
+            <p className="workspace-lead">
               Paleta, logo e conteúdo-base dos relatórios. O Default interno
               não pode ser excluído.
             </p>
           </div>
-          <TemplateFormDialog />
+          <div className="split-row__actions">
+            <TemplateFormDialog />
+          </div>
+        </header>
+        <div className="workspace-page-body">
+        <div className="section-header split-row">
+          <h2 className="section-title">Templates</h2>
+          <span className="section-desc">
+            {templates.length} template{templates.length === 1 ? "" : "s"}
+          </span>
         </div>
-        <div className="fp-card-grid template-grid">
+        <div className="template-grid">
           {templates.map((template, index) => (
             <TemplateCard key={template.id} template={template} index={index} />
           ))}
+        </div>
         </div>
       </section>
     </main>
@@ -63,6 +78,17 @@ function TemplateCard({
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  function duplicate() {
+    startTransition(async () => {
+      const result = await duplicateTemplateAction(template.id);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Template duplicado");
+    });
+  }
 
   function remove() {
     if (template.isBuiltin) return;
@@ -91,48 +117,68 @@ function TemplateCard({
         >
           {(index + 1).toString().padStart(2, "0")}
         </div>
-        <h3>{template.name}</h3>
-        <p>
-          {template.isBuiltin
-            ? "Template padrão Portulan (navy + burgundy)."
-            : "Template personalizado com cores próprias."}
-        </p>
-        <div className="template-color-row">
-          <span
-            className="template-swatch"
-            style={{ backgroundColor: template.primaryColor }}
-            title="Cor primária"
-          />
-          <span
-            className="template-swatch"
-            style={{ backgroundColor: template.secondaryColor }}
-            title="Cor secundária"
-          />
-          <code className="template-color-code">{template.primaryColor}</code>
-          <code className="template-color-code">{template.secondaryColor}</code>
+        <div className="template-card-body">
+          <h3>{template.name}</h3>
+          <p>
+            {template.isBuiltin
+              ? "Template padrão Portulan (navy + burgundy)."
+              : "Template personalizado com cores próprias."}
+          </p>
+          <div className="template-color-row">
+            <span
+              className="template-swatch"
+              style={{ backgroundColor: template.primaryColor }}
+              title="Cor primária"
+            />
+            <span
+              className="template-swatch"
+              style={{ backgroundColor: template.secondaryColor }}
+              title="Cor secundária"
+            />
+            <code className="template-color-code">{template.primaryColor}</code>
+            <code className="template-color-code">{template.secondaryColor}</code>
+          </div>
         </div>
         <div className="template-card-actions">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
+            className="template-card-action"
             onClick={() => setEditOpen(true)}
           >
             <Pencil />
             Editar
           </Button>
-          {!template.isBuiltin ? (
+          <div
+            className="template-card-actions-secondary"
+            data-actions={template.isBuiltin ? "1" : "2"}
+          >
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={remove}
+              className="template-card-action"
+              onClick={duplicate}
               disabled={pending}
             >
-              <Trash2 />
-              Excluir
+              <Copy />
+              Duplicar
             </Button>
-          ) : null}
+            {!template.isBuiltin ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="template-card-action"
+                onClick={remove}
+                disabled={pending}
+              >
+                <Trash2 />
+                Excluir
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
       <TemplateFormDialog
@@ -189,6 +235,7 @@ function TemplateFormDialog({
       updatedAt: new Date().toISOString(),
       publishedAt: null,
       disabled: false,
+      isPublic: false,
     }),
     [name, primaryColor, secondaryColor, logoUrl, template?.id],
   );
@@ -237,13 +284,13 @@ function TemplateFormDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       {!isEdit ? (
         <DialogTrigger asChild>
-          <Button type="button" variant="outline" size="sm">
+          <Button type="button">
             <Plus />
             Novo template
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="template-form-dialog">
+      <DialogContent className="workspace-dialog template-form-dialog">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Editar template" : "Novo template"}
@@ -254,7 +301,7 @@ function TemplateFormDialog({
               : "Defina um nome, duas cores editoriais e, se quiser, envie um logo para cabeçalho e rodapé."}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="form-stack">
           <div className="space-y-2">
             <Label
               htmlFor={
@@ -303,7 +350,7 @@ function TemplateFormDialog({
                 type="url"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="helper-copy">
               Envie um arquivo ou cole uma URL pública. Deixe em branco para
               usar a marca Portulan.
             </p>
@@ -337,7 +384,7 @@ function TemplateFormDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)}>
             Cancelar
           </Button>
           <Button onClick={submit} disabled={pending || name.trim().length < 1}>

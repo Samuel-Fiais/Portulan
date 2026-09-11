@@ -11,7 +11,7 @@ Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable
 
 1. App rodando: `npm run dev` (Node 20+) no repo Portulan
 2. Endpoint: `http://localhost:3000/api/mcp`
-3. Servidor MCP: `portulan` v0.8.0
+3. Servidor MCP: `portulan` v0.9.0
 
 Sem o dev server, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
 
@@ -68,7 +68,7 @@ Authorization: Bearer <MCP_API_KEY>
 
 No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
 
-## Ferramentas (24)
+## Ferramentas (28)
 
 | Ferramenta | Quando usar |
 |---|---|
@@ -80,7 +80,8 @@ No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quan
 | `create_document` | Assunto novo, sem documento equivalente |
 | `duplicate_document` | Clonar documento como rascunho novo (apenas responsável; releases não copiadas) |
 | `update_document` | Editar rascunho/revisão; não cria versão publicada |
-| `publish_document` | Gerar link público imutável da versão atual |
+| `publish_document` | Gerar versão imutável; o documento continua privado |
+| `restore_document` | Copiar uma release publicada para o rascunho; não publica nem apaga versões (RN-09) |
 | `list_document_releases` | Recuperar links `/d/{slug}` (estável) e `/p/{id}` (versão fixa) já publicados |
 | `delete_document` | Remover definitivamente (só UUID) |
 | `list_templates` | Descobrir os templates disponíveis e seus conteúdos-base |
@@ -92,6 +93,9 @@ No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quan
 | `delete_template` | Remover definitivamente um template particular |
 | `list_markdown_components` | Catálogo de diretivas `:::` e Markdown do editor |
 | `explain_markdown_component` | Sintaxe, atributos, armadilhas (`avoidErrors`) e exemplos de um componente |
+| `list_document_comments` | Listar fios de revisão de um documento (RN-61) |
+| `create_document_comment` | Criar comentário-raiz (âncora/trecho opcionais) ou responder com `parent_id` (RN-65) |
+| `delete_document_comment` | Remover o próprio comentário; remover o raiz encerra o fio (RN-65) |
 
 Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 
@@ -120,9 +124,9 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 - `update_document` salva o rascunho sem criar uma nova versão.
 - **Estado living (RN-54):** se o payload incluir `content`, o servidor preserva `status` de `:::testcase` (por `id`) e checkboxes de `:::checklist` (por título) já salvos no rascunho — o valor do agente no payload é ignorado para itens que já existiam. Use `get_document` antes de editar; não dependa de resetar QA com `status="pending"` ou `- [ ]` no replace completo.
 - `publish_document` com `content` aplica a mesma preservação antes de criar o snapshot.
-- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{uuid}"` (UUID fixo na criação; não muda ao renomear título) e `publicPath: "/p/{releaseId}"` (versão fixa).
+- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{uuid}"` (UUID fixo na criação; não muda ao renomear título) e `publicPath: "/p/{releaseId}"` (versão fixa). **Não** liga o acesso público: o documento nasce e permanece privado até `update_document` com `is_public: true`.
 - Links antigos `/p/...` **não mudam** quando o documento é editado depois; nova publicação = novo link de versão fixa. O link `/d/{uuid}` passa a apontar para a versão mais recente.
-- Links públicos: `http://localhost:3000/d/{uuid}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa).
+- Links `/d` e `/p`: `http://localhost:3000/d/{uuid}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa). Visitante sem login só vê se `isPublic` for verdadeiro.
 
 ### Identificadores
 
@@ -137,7 +141,8 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 ```
 1. list_documents (query opcional) → confirmar que não existe equivalente
 2. create_document → type + title + content (+ summary, tags, author, team)
-3. publish_document (se link compartilhável for necessário)
+3. publish_document (se precisar de uma versão imutável)
+4. update_document is_public=true (somente se visitantes devem abrir o link sem convite)
 ```
 
 Prefira `type` coerente com o template em `lib/documents.ts` (`templates`).
@@ -149,6 +154,16 @@ Prefira `type` coerente com o template em `lib/documents.ts` (`templates`).
 2. update_document(id, campos alterados)
 3. publish_document(id) → se precisar de link da nova versão
 ```
+
+### Restaurar versão no rascunho
+
+```
+1. list_document_releases(document_id) → obter release_id e version
+2. restore_document(document_id, release_id) → copia snapshot para o rascunho
+3. publish_document(document_id) → se precisar registrar o rascunho restaurado como nova versão
+```
+
+Regras: RN-09 (não altera releases, não incrementa version, não publica); RN-54 (estado living do rascunho prevalece). Responsável e editor convidado podem restaurar.
 
 ### Inserir imagem ou anexo
 
@@ -163,13 +178,20 @@ Prefira `type` coerente com o template em `lib/documents.ts` (`templates`).
 
 **Regra:** prefira `update_document` em documento existente; não duplique o assunto com `create_document`. Para clonar um documento inteiro, use `duplicate_document`.
 
-### Publicar para compartilhar
+### Publicar para compartilhar com convidados
 
 ```
 1. Garantir conteúdo final (update_document se necessário)
 2. publish_document(id)
-3. Compartilhar {origin}/d/{slug} para a última versão ou {origin}/p/{release.id} para fixar uma versão
-4. list_document_releases(id) → ver histórico de versões publicadas
+3. Compartilhar o documento por e-mail (UI ou MCP de shares). /d e /p abrem para responsável e convidados autenticados
+```
+
+### Abrir o link a qualquer pessoa
+
+```
+1. publish_document(id) se ainda não houver versão
+2. update_document(id, is_public: true) — só o responsável
+3. Compartilhar {origin}/d/{slug} ou {origin}/p/{release.id}
 ```
 
 ### Excluir
@@ -190,6 +212,18 @@ Irreversível. Confirme com o usuário antes.
 5. preview_template → inspecionar títulos e trecho inicial sem baixar tudo
 6. update_template → ajustar nome, cores ou conteúdo-base sem alterar documentos já criados
 ```
+
+### Revisar com comentários
+
+```
+1. get_document(id) → confirmar acesso e ver conteúdo do rascunho
+2. list_document_comments(document_id) → fios existentes (root + replies)
+3. create_document_comment(document_id, body, section_anchor?, quoted_text?) → comentário-raiz
+4. create_document_comment(document_id, body, parent_id) → resposta no fio
+5. delete_document_comment(document_id, comment_id) → remover o próprio
+```
+
+Comentários seguem RN-61 e RN-65: só no editor autenticado, para quem tem acesso ao documento. Sem comentário anônimo em `/d` ou `/p`. `section_anchor` deve existir na prévia atual (ex.: `cover-title`, ids de `##`/`###`, `block-{section}-{index}`).
 
 ### Escolher componente Markdown
 
@@ -334,7 +368,7 @@ curl -sS -X POST http://localhost:3000/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 24 ferramentas.
+Deve listar 28 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

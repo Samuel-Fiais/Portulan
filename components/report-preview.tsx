@@ -4,10 +4,12 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { ReportBrandLogo, reportPrintLogoStyle } from "@/components/report-brand-logo";
 import { RichMarkdown } from "@/components/rich-markdown";
 import { LivingDocumentProvider } from "@/components/living-document-context";
+import { CommentAnchor } from "@/components/comment-anchor";
+import { COVER_SUMMARY_ANCHOR, COVER_TITLE_ANCHOR } from "@/lib/comment-targets";
 import { reportPaletteStyle } from "@/lib/color-utils";
 import { ReportToc } from "@/components/report-toc";
 import { statusMeta, type DocumentRecord } from "@/lib/documents";
-import { createHeadingIdSource, extractMarkdownHeadings } from "@/lib/markdown-headings";
+import { extractMarkdownHeadings } from "@/lib/markdown-headings";
 import { formatDate } from "@/lib/utils";
 
 export function ReportPreview({
@@ -18,6 +20,7 @@ export function ReportPreview({
   publishedBy,
   persistable = false,
   releaseId,
+  exportMode = false,
   onContentChange,
 }: {
   document: DocumentRecord;
@@ -27,6 +30,7 @@ export function ReportPreview({
   publishedBy?: string | null;
   persistable?: boolean;
   releaseId?: string | null;
+  exportMode?: boolean;
   onContentChange?: (content: string) => void;
 }) {
   const [livingContent, setLivingContent] = useState(document.content);
@@ -43,7 +47,7 @@ export function ReportPreview({
   const isLiving = interactive && Boolean(livingKey);
   const previewDocument = { ...document, content: livingContent };
   const tocHeadings = extractMarkdownHeadings(previewDocument.content);
-  const headingIds = tocHeadings.length > 0 ? createHeadingIdSource(tocHeadings) : undefined;
+  const anchorHeadings = tocHeadings.length > 0;
 
   const handleContentChange = (content: string) => {
     setLivingContent(content);
@@ -54,6 +58,7 @@ export function ReportPreview({
     <article className={`report-paper${isLiving ? " living-document" : ""}`} style={paletteStyle}>
       <a className="report-skip-link" href="#report-body">Ir para o conteúdo</a>
       <table className="template-document-table" role="presentation">
+      {!exportMode ? (
       <thead><tr><th>
       <div className="tmpl-doc-header">
         <span className="tmpl-logo-slot"><ReportBrandLogo logoUrl={document.logoUrl} /></span>
@@ -64,12 +69,19 @@ export function ReportPreview({
       </div>
       <div className="tmpl-header-bar" />
       </th></tr></thead>
+      ) : null}
       <tbody className="tmpl-cover"><tr><td>
       <header className="tmpl-header keep-together">
         <div className="tmpl-heading-row">
           <div>
-            <h1 className="tmpl-title">{document.title}</h1>
-            {document.summary ? <p className="fp-body tmpl-summary">{document.summary}</p> : null}
+            <CommentAnchor targetId={COVER_TITLE_ANCHOR}>
+              <h1 className="tmpl-title">{document.title}</h1>
+            </CommentAnchor>
+            {document.summary ? (
+              <CommentAnchor targetId={COVER_SUMMARY_ANCHOR}>
+                <p className="fp-body tmpl-summary">{document.summary}</p>
+              </CommentAnchor>
+            ) : null}
           </div>
           <span className={`fp-badge status-badge status-${document.status}`}>{statusMeta[document.status].label}</span>
         </div>
@@ -87,9 +99,10 @@ export function ReportPreview({
           tableRows
           interactive={isLiving}
           documentKey={livingKey}
-          headingIds={headingIds}
+          anchorHeadings={anchorHeadings}
         />
       </tbody>
+      {!exportMode ? (
       <tfoot><tr><td>
       <footer className="tmpl-footer keep-together">
         <span className="tmpl-footer-logo"><ReportBrandLogo logoUrl={document.logoUrl} /></span>
@@ -100,6 +113,7 @@ export function ReportPreview({
         </span>
       </footer>
       </td></tr></tfoot>
+      ) : null}
       </table>
     </article>
   );

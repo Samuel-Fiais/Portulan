@@ -1,101 +1,88 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { signIn, signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { toast } from "sonner";
 import type { Session } from "next-auth";
-import { ChevronDown, LogOut } from "lucide-react";
+import { AccountSettingsDialog } from "@/components/account-settings-dialog";
+import { UserAvatar } from "@/components/user-avatar";
+import type { PublicAccount } from "@/lib/account-types";
 import { cn } from "@/lib/utils";
 
 export function AuthControls({
   session,
-  menuPlacement = "bottom",
+  account,
   compact = false,
 }: {
   session: Session | null;
-  menuPlacement?: "bottom" | "top" | "rail";
+  account?: PublicAccount | null;
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+    const params = new URLSearchParams(window.location.search);
+    const shouldOpen = params.get("conta") === "1";
+    const error = params.get("error");
+    if (error === "github_in_use") {
+      toast.error("Este GitHub já está ligado a outra conta.");
+    }
+    if (shouldOpen) setOpen(true);
+    if (shouldOpen || error) {
+      params.delete("conta");
+      params.delete("error");
+      const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+      window.history.replaceState({}, "", next);
+    }
+  }, []);
 
   if (!session?.user?.id) {
     return (
-      <button
-        type="button"
-        className="auth-sign-in"
-        onClick={() => signIn("github")}
-      >
-        Entrar com GitHub
-      </button>
+      <Link href="/login" className="auth-sign-in">
+        Entrar
+      </Link>
     );
   }
 
-  const login = session.user.login ?? session.user.name ?? "Conta";
-  const avatar = session.user.image;
+  const login = account?.login ?? session.user.login ?? session.user.name ?? "Conta";
+  const name = account?.name ?? session.user.name ?? login;
+  const email = account?.email ?? session.user.email ?? "";
+  const image = account?.image ?? session.user.image;
+  const hasGithub = account?.hasGithub ?? Boolean(session.user.hasGithub);
+  const hasPassword = account?.hasPassword ?? Boolean(session.user.hasPassword);
 
   return (
-    <div className="auth-menu" ref={menuRef}>
+    <>
       <button
         type="button"
-        className="auth-controls auth-menu-trigger"
-        aria-label="Menu da conta"
+        className={cn("auth-controls auth-menu-trigger", compact && "auth-menu-trigger--compact")}
+        aria-label="Configurações da conta"
         title={login}
+        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen(true)}
       >
-        {avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatar} alt="" className="auth-avatar" width={28} height={28} />
-        ) : null}
+        <UserAvatar
+          name={name}
+          login={login}
+          email={email}
+          imageUrl={image}
+          className="auth-avatar"
+        />
         {compact ? null : <span className="auth-login">{login}</span>}
-        {compact ? null : (
-          <ChevronDown className="auth-menu-chevron" aria-hidden="true" />
-        )}
       </button>
-      {open ? (
-        <div
-          className={cn(
-            "auth-menu-panel",
-            menuPlacement === "top" && "auth-menu-panel--top",
-            menuPlacement === "rail" && "auth-menu-panel--rail",
-          )}
-          role="menu"
-        >
-          <button
-            type="button"
-            className="auth-menu-item auth-menu-item-destructive"
-            role="menuitem"
-            onClick={() => signOut()}
-          >
-            <LogOut />
-            Sair
-          </button>
-        </div>
-      ) : null}
-    </div>
+      <AccountSettingsDialog
+        open={open}
+        onOpenChange={setOpen}
+        account={{
+          name,
+          login,
+          email,
+          image,
+          hasGithub,
+          hasPassword,
+        }}
+      />
+    </>
   );
 }

@@ -1,0 +1,44 @@
+/* Document rows — library and dashboard lists */
+
+.document-row {
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  transition: background-color 150ms ease;
+}
+
+.document-row:hover {
+  background: color-mix(in srgb, var(--primary) 4%, var(--background));
+}
+
+.document-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.document-row-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.document-row h3 {
+  margin-bottom: var(--sp-2);
+}
+
+.document-row > svg:last-child {
+  margin-top: 0;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.document-meta {
+  margin-top: var(--sp-2);
+  gap: var(--sp-2);
+}
+
+.document-meta span {
+  font-variant-numeric: tabular-nums;
+}

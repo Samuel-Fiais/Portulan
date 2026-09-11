@@ -15,6 +15,9 @@ function mapCommentRow(
     userId: row.userId,
     body: row.body,
     sectionAnchor: row.sectionAnchor,
+    quotedText: row.quotedText,
+    parentId: row.parentId,
+    resolvedAt: row.resolvedAt,
     createdAt: row.createdAt,
     userLogin: user?.login ?? null,
     userName: user?.name ?? null,
@@ -44,8 +47,12 @@ export async function listDocumentComments(documentId: string) {
 export async function addDocumentComment(
   documentId: string,
   userId: string,
-  body: string,
-  sectionAnchor?: string | null,
+  input: {
+    body: string;
+    sectionAnchor?: string | null;
+    quotedText?: string | null;
+    parentId?: string | null;
+  },
 ) {
   const db = await getDb();
   const [row] = await db
@@ -53,8 +60,10 @@ export async function addDocumentComment(
     .values({
       documentId,
       userId,
-      body: body.trim(),
-      sectionAnchor: sectionAnchor?.trim() || null,
+      body: input.body.trim(),
+      sectionAnchor: input.parentId ? null : input.sectionAnchor?.trim() || null,
+      quotedText: input.parentId ? null : input.quotedText?.trim() || null,
+      parentId: input.parentId || null,
     })
     .returning();
 
@@ -64,6 +73,34 @@ export async function addDocumentComment(
     .select({ login: users.login, name: users.name, avatarUrl: users.avatarUrl })
     .from(users)
     .where(eq(users.id, userId))
+    .limit(1);
+
+  return mapCommentRow(row, user ?? null);
+}
+
+export async function setDocumentCommentResolved(
+  commentId: string,
+  documentId: string,
+  resolved: boolean,
+) {
+  const db = await getDb();
+  const [row] = await db
+    .update(documentComments)
+    .set({ resolvedAt: resolved ? new Date().toISOString() : null })
+    .where(
+      and(
+        eq(documentComments.id, commentId),
+        eq(documentComments.documentId, documentId),
+      ),
+    )
+    .returning();
+
+  if (!row) return null;
+
+  const [user] = await db
+    .select({ login: users.login, name: users.name, avatarUrl: users.avatarUrl })
+    .from(users)
+    .where(eq(users.id, row.userId))
     .limit(1);
 
   return mapCommentRow(row, user ?? null);

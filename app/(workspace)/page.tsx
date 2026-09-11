@@ -24,6 +24,7 @@ export default async function DashboardPage() {
       documents={documents}
       stats={await getDocumentStats(ctx)}
       templates={await listTemplates(userId)}
+      currentUserId={userId}
     />
   );
 }

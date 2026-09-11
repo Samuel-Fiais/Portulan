@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  createHeadingIdLookup,
   createHeadingIdSource,
   extractMarkdownHeadings,
   plainHeadingText,
@@ -50,5 +51,16 @@ describe("markdown-headings", () => {
     assert.equal(source.consume(3), "b");
     assert.equal(source.consume(2), "c");
     assert.equal(source.consume(3), undefined);
+  });
+
+  it("looks up heading ids without consuming", () => {
+    const headings = extractMarkdownHeadings("## A\n### B\n## C");
+    const lookup = createHeadingIdLookup(headings);
+
+    assert.equal(lookup.idFor(2, "A"), "a");
+    assert.equal(lookup.idFor(3, "B"), "b");
+    assert.equal(lookup.idFor(2, "C"), "c");
+    assert.equal(lookup.idFor(2, "A"), "a");
+    assert.equal(lookup.idFor(3, "missing"), undefined);
   });
 });

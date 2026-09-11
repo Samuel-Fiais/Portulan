@@ -52,6 +52,7 @@ export type DocumentRecord = {
   updatedAt: string;
   publishedAt: string | null;
   disabled: boolean;
+  isPublic: boolean;
 };
 
 export type DocumentSummary = Omit<DocumentRecord, "content">;
@@ -120,6 +121,9 @@ export type DocumentCommentRecord = {
   userId: string;
   body: string;
   sectionAnchor: string | null;
+  quotedText: string | null;
+  parentId: string | null;
+  resolvedAt: string | null;
   createdAt: string;
   userLogin: string | null;
   userName: string | null;
@@ -150,14 +154,27 @@ export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecor
     updatedAt: release.publishedAt,
     publishedAt: release.publishedAt,
     disabled: false,
+    isPublic: false,
   };
+}
+
+export function allowsAnonymousPublishedRead(document: {
+  disabled: boolean;
+  isPublic: boolean;
+  userId: string | null;
+}) {
+  if (document.disabled) return false;
+  if (document.userId == null) return true;
+  return document.isPublic;
 }
 
 export type PublicAccessDenied = "not_found" | "document_disabled" | "release_disabled" | "no_enabled_release";
 
+export type PublishedLinkAccessDenied = PublicAccessDenied | "login_required" | "forbidden";
+
 export type PublicReleaseResult =
   | { access: "ok"; release: DocumentRelease; slug: string }
-  | { access: Exclude<PublicAccessDenied, "not_found"> | "not_found"; slug?: string };
+  | { access: Exclude<PublishedLinkAccessDenied, "not_found"> | "not_found"; slug?: string };
 
 export type DocumentInput = Pick<
   DocumentRecord,

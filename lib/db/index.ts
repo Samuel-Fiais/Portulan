@@ -19,6 +19,7 @@ export {
   resolvePublicLatestReleaseBySlug,
   resolvePublicReleaseById,
   setDocumentDisabled,
+  setDocumentPublic,
   setDocumentReleaseDisabled,
   updateDocument,
   updateDocumentLivingContent,
@@ -39,6 +40,7 @@ export {
   addDocumentComment,
   deleteDocumentComment,
   listDocumentComments,
+  setDocumentCommentResolved,
 } from "@/lib/db/document-comments";
 
 export {

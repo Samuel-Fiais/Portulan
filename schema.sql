@@ -6,15 +6,20 @@ CREATE SCHEMA IF NOT EXISTS portulan;
 
 CREATE TABLE IF NOT EXISTS portulan.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  github_id TEXT NOT NULL UNIQUE,
+  github_id TEXT UNIQUE,
   login TEXT NOT NULL,
   name TEXT,
   avatar_url TEXT,
   email TEXT,
+  password_hash TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE portulan.users ALTER COLUMN github_id DROP NOT NULL;
 ALTER TABLE portulan.users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE portulan.users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS users_login_lower_uidx ON portulan.users (LOWER(login));
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_uidx ON portulan.users (LOWER(email)) WHERE email IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS portulan.templates (
   id TEXT PRIMARY KEY,
@@ -60,7 +65,8 @@ CREATE TABLE IF NOT EXISTS portulan.documents (
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL,
   published_at TIMESTAMPTZ,
-  disabled BOOLEAN NOT NULL DEFAULT FALSE
+  disabled BOOLEAN NOT NULL DEFAULT FALSE,
+  is_public BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Migrations for databases created before template-based documents (must run before template_id indexes)
@@ -81,6 +87,7 @@ UPDATE portulan.documents SET template_id = 'portulan-default' WHERE template_id
 DROP INDEX IF EXISTS portulan.idx_documents_type;
 ALTER TABLE portulan.documents DROP COLUMN IF EXISTS type;
 ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON portulan.documents (updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_documents_template_id ON portulan.documents (template_id);
@@ -156,9 +163,13 @@ CREATE TABLE IF NOT EXISTS portulan.document_comments (
   user_id UUID NOT NULL REFERENCES portulan.users(id) ON DELETE CASCADE,
   body TEXT NOT NULL,
   section_anchor TEXT,
+  quoted_text TEXT,
+  parent_id UUID REFERENCES portulan.document_comments(id) ON DELETE CASCADE,
+  resolved_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_document_comments_document_id ON portulan.document_comments (document_id);
 CREATE INDEX IF NOT EXISTS idx_document_comments_user_id ON portulan.document_comments (user_id);
 CREATE INDEX IF NOT EXISTS idx_document_comments_created_at ON portulan.document_comments (created_at);
+CREATE INDEX IF NOT EXISTS idx_document_comments_parent_id ON portulan.document_comments (parent_id);

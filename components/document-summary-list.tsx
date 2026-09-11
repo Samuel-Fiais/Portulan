@@ -1,19 +1,25 @@
+import "./document-summary-list.css";
+
 import Link from "next/link";
 import { ArrowRight, Search } from "lucide-react";
 import {
   DisabledBadge,
+  OwnershipBadge,
   StatusBadge,
   TemplateBadge,
+  VisibilityBadge,
 } from "@/components/document-badges";
 import type { DocumentSummary } from "@/lib/documents";
 import { formatRelativeDate } from "@/lib/utils";
 
 export function DocumentSummaryList({
   documents,
+  currentUserId,
   emptyTitle = "Nenhum documento encontrado",
   emptyDescription = "Ajuste a busca ou crie um novo documento.",
 }: {
   documents: DocumentSummary[];
+  currentUserId?: string;
   emptyTitle?: string;
   emptyDescription?: string;
 }) {
@@ -32,13 +38,17 @@ export function DocumentSummaryList({
             }}
           />
           <div className="min-w-0 flex-1">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="document-row-badges">
               <TemplateBadge
                 name={document.templateName}
                 primaryColor={document.primaryColor}
                 secondaryColor={document.secondaryColor}
               />
               <StatusBadge status={document.status} />
+              <VisibilityBadge isPublic={document.isPublic} />
+              {currentUserId ? (
+                <OwnershipBadge isOwner={document.userId === currentUserId} />
+              ) : null}
               {document.disabled ? <DisabledBadge /> : null}
             </div>
             <h3>{document.title}</h3>
@@ -53,7 +63,7 @@ export function DocumentSummaryList({
               <span>{formatRelativeDate(document.updatedAt)}</span>
             </div>
           </div>
-          <ArrowRight className="mt-2 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+          <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" aria-hidden />
         </Link>
       ))}
       {documents.length === 0 && (

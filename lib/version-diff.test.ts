@@ -55,6 +55,7 @@ const baseDocument = {
   updatedAt: "2026-01-02T00:00:00.000Z",
   publishedAt: null,
   disabled: false,
+  isPublic: false,
 };
 
 test("compareVersions detecta metadados e linhas alteradas", () => {

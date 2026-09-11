@@ -13,7 +13,7 @@ Workspace editorial para criar, revisar, publicar e imprimir **documentos técni
 | Responsável | Dono do documento (`userId`). Único que compartilha, desativa o documento inteiro, duplica e exclui. |
 | Editor | Convidado com papel `editor`. Edita rascunho e pode publicar. |
 | Leitor | Convidado com papel `viewer`. Lê rascunho e prévia; não edita. |
-| Visitante público | Quem abre `/d/{slug}` ou `/p/{id}` sem login. Só vê versão publicada e habilitada. |
+| Visitante público | Quem abre `/d/{slug}` ou `/p/{id}` sem login. Só vê versão publicada e habilitada de documento com acesso público. |
 | Agente | Cliente MCP autenticado com token pessoal do usuário. Opera como aquele usuário. |
 | Legado | Documento sem `userId` (pré-autenticação). Tratamento especial de acesso. |
 
@@ -33,7 +33,8 @@ Rascunho vivo. Não é o que o público vê.
 | `author`, `team`, `tags` | Metadados (até 12 tags, 1–40 chars). |
 | `content` | Markdown + diretivas `:::nome` (até 250.000 chars). |
 | `version` | Número da última versão **publicada**. Salvar rascunho não incrementa. |
-| `disabled` | Se verdadeiro, nenhum link público deste documento mostra conteúdo. |
+| `disabled` | Se verdadeiro, nenhum link `/d` ou `/p` deste documento mostra conteúdo. |
+| `isPublic` | Acesso público do link. Falso na criação: só responsável e convidados. Verdadeiro: qualquer pessoa com o link vê a versão publicada habilitada. |
 
 ### Versão publicada (release)
 
@@ -62,13 +63,45 @@ Convite por e-mail, papel `viewer` ou `editor`. Um e-mail por documento.
 
 ### Comentário de revisão
 
-Feedback textual no editor, visível a todos com acesso ao documento. Não aparece em leitura pública.
+Feedback textual no editor, visível a todos com acesso ao documento. Não aparece em leitura pública. Um **fio** é um comentário-raiz e as respostas a ele.
 
 | Campo | Papel |
 |---|---|
 | `body` | Texto do comentário (até 2.000 caracteres). |
-| `sectionAnchor` | Opcional. Identificador da seção `##` do rascunho no momento do comentário. |
+| `quotedText` | Trecho citado da prévia (até 280 caracteres). Só no comentário-raiz. |
+| `blockAnchor` | Opcional. Identificador do bloco na prévia no momento do comentário (capa, título `##`/`###`, parágrafo ou componente). Só no comentário-raiz. Sem âncora = documento inteiro. |
+| `parentId` | Comentário-raiz do fio. Nulo = raiz. Resposta não aninha em outra resposta. |
+| `resolvedAt` | Marca de resolução do fio. Só no comentário-raiz; nulo = aberto. |
 | `userId` | Autor autenticado. |
+
+### Conta
+
+Identidade de quem entra no workspace. Uma pessoa, um `id` estável.
+
+| Campo | Papel |
+|---|---|
+| `id` | UUID interno. Dono de documentos, tokens e convites. |
+| Handle | Nome de usuário único (sem maiúsculas na comparação). Serve para entrar com senha. |
+| E-mail | Único quando informado. Serve para entrar com senha, convites e mescla com GitHub. |
+| Nome | Nome de exibição. |
+| Foto | URL do GitHub, se ligado; senão, iniciais do nome ou handle. |
+| Métodos | `github` e/ou `senha`. Pelo menos um. |
+
+Não há verificação de e-mail nem recuperação por mensagem. Quem esqueceu a senha só recupera se a conta já tiver GitHub (RN-84).
+
+### Tema
+
+Preferência visual **local** do navegador (RN-85). Não é campo da conta e não sincroniza entre aparelhos.
+
+| Papel | Tinta de ação | Acento |
+|---|---|---|
+| Carta | Chart Ink (navy) | Seal Wax |
+| Pergaminho | Umber | Ferrugem |
+| Névoa | Grafite | Chart Indigo |
+| Costa | Sounding Teal Ink | Chart Ink |
+| Lacre | Seal Wax | Chart Ink |
+
+Cada papel tem modo claro e escuro. **Personalizado** é a sexta opção: a pessoa escolhe qualquer cor no seletor; essa tinta vira a ação do chrome naquele modo. A marca de três barras permanece Carta.
 
 ### Token MCP
 
@@ -82,8 +115,8 @@ Bloco do catálogo (alerta, gráfico, checklist, …). A modal **Adicionar compo
 
 | URL | Significado |
 |---|---|
-| `/d/{uuid}` | Sempre a última versão publicada **habilitada**. UUID fixo na criação. |
-| `/p/{releaseId}` | Aquela versão, para sempre, até ser desativada. |
+| `/d/{uuid}` | Sempre a última versão publicada **habilitada**. UUID fixo na criação. Com acesso público, qualquer pessoa com o link vê; sem acesso público, só responsável e convidados autenticados. |
+| `/p/{releaseId}` | Aquela versão, para sempre, até ser desativada. Mesma regra de acesso que `/d`. |
 | `/documents/{id\|uuid}` | Editor autenticado. |
 | `/documents/{id}/preview` | Prévia do rascunho (quem tem acesso). |
 
@@ -94,9 +127,9 @@ Chrome com trilho de ícones (tooltips no desktop). Não vale para leitura públ
 | URL | Significado |
 |---|---|
 | `/` | Dashboard: resumo da biblioteca, documentos recentes, atalhos. |
-| `/biblioteca` | Lista completa, busca (título, resumo, tags e corpo), filtro por status e filtro por template. |
+| `/biblioteca` | Lista completa, busca (título, resumo, tags e corpo), filtro por origem (meus / compartilhados), filtro por status e filtro por template. |
 | `/templates` | Templates editoriais do usuário. |
-| `/integrations` | Endpoint MCP, tokens pessoais e skill do agente. |
+| `/integrations` | Rumos de conexão MCP (endpoint, token, skill), catálogo agrupado de ferramentas e tokens pessoais. |
 
 ## Componentes living
 

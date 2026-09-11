@@ -68,3 +68,18 @@ export function createHeadingIdSource(headings: MarkdownHeading[]) {
     },
   };
 }
+
+/** Idempotent lookup so React Strict Mode / hydration can render headings twice. */
+export function createHeadingIdLookup(headings: MarkdownHeading[]) {
+  const firstByKey = new Map<string, string>();
+  for (const heading of headings) {
+    const key = `${heading.level}:${heading.text}`;
+    if (!firstByKey.has(key)) firstByKey.set(key, heading.id);
+  }
+
+  return {
+    idFor(level: 2 | 3, text: string): string | undefined {
+      return firstByKey.get(`${level}:${plainHeadingText(text)}`);
+    },
+  };
+}

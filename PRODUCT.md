@@ -25,7 +25,7 @@ Paridade **humano + agente** na mesma biblioteca (UI e MCP), com **releases imut
 ## Operating Context
 
 - **Workspace autenticado:** dashboard, biblioteca (busca no corpo, filtro por status/template), templates, integrações MCP.
-- **Editor:** título, resumo, Markdown, metadados, prévia lado a lado, autosave, atalhos, export PDF/Markdown, componentes do catálogo.
+- **Editor:** título, resumo, Markdown, metadados, prévia lado a lado, salvar rascunho (botão ou Cmd/Ctrl+S), atalhos, export PDF/Markdown, componentes do catálogo.
 - **Publicação:** snapshot imutável por release; links `/d/{uuid}` (última ativa) e `/p/{id}` (versão fixa); histórico com comparar, restaurar e desativar.
 - **Leitura pública:** `/d` e `/p` sem login; TOC com âncoras; Mermaid; blocos living (checklist local no navegador).
 - **Colaboração:** convite por e-mail (leitor/editor); comentários de revisão só no editor autenticado.
@@ -41,7 +41,7 @@ Modelo de negócio detalhado (entidades, regras `RN-xx`, funcionalidades `F-…`
 - CRUD de documentos e templates; compartilhar; publicar/desativar; duplicar (UI e MCP).
 - Catálogo de componentes Markdown (`:::alert`, gráficos, checklist, etc.) compartilhado entre modal do editor e MCP.
 - Busca na biblioteca e MCP incluindo corpo do documento.
-- Autosave, atalhos Markdown, diff de versões, restaurar release, comentários de revisão.
+- Salvar rascunho sob demanda, atalhos Markdown, diff de versões, restaurar release, comentários de revisão.
 - PDF A4, export `.md`, tokens MCP pessoais.
 
 **Limites de produto (não negociáveis sem mudança de modelo):**

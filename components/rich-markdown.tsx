@@ -1,4 +1,4 @@
-import { type CSSProperties } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import { portulanRemarkPlugins } from "@/lib/markdown-renderer";
 import { InlineMarkdown } from "@/components/inline-markdown";
@@ -14,11 +14,34 @@ import { LivingFileTree } from "@/components/living-filetree";
 import { LivingFigure, LivingFileCard, LivingGallery } from "@/components/living-media";
 import { LivingApi, LivingDiff, LivingEnv, LivingKv, LivingLogs, LivingTerminal, LivingTests } from "@/components/living-tech-blocks";
 import { parseChartDirective } from "@/lib/chart-directive";
-import { createHeadingIdSource, extractMarkdownHeadings } from "@/lib/markdown-headings";
+import { CommentAnchor } from "@/components/comment-anchor";
+import { commentBlockAnchorId } from "@/lib/comment-targets";
+import { createHeadingIdLookup, extractMarkdownHeadings } from "@/lib/markdown-headings";
 import { parseMarkdownBlocks, type MarkdownDirective } from "@/lib/markdown-blocks";
+import { splitMarkdownSections } from "@/lib/markdown-sections";
 import { ReportLinkCard } from "@/components/report-link-card";
 
-type HeadingIdSource = ReturnType<typeof createHeadingIdSource>;
+type HeadingIdLookup = ReturnType<typeof createHeadingIdLookup>;
+
+function headingTextFromChildren(children: ReactNode): string {
+  const parts: string[] = [];
+  const walk = (node: ReactNode) => {
+    if (node == null || typeof node === "boolean") return;
+    if (typeof node === "string" || typeof node === "number") {
+      parts.push(String(node));
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (typeof node === "object" && "props" in node) {
+      walk((node as { props?: { children?: ReactNode } }).props?.children);
+    }
+  };
+  walk(children);
+  return parts.join("");
+}
 
 function riskLevelLabel(level: string) {
   const normalized = level.trim().toLowerCase();
@@ -28,26 +51,7 @@ function riskLevelLabel(level: string) {
 }
 
 function splitSections(source: string) {
-  const sections: Array<{ title?: string; body: string }> = [];
-  let title: string | undefined;
-  let body: string[] = [];
-
-  const flush = () => {
-    if (title || body.some((line) => line.trim())) sections.push({ title, body: body.join("\n").trim() });
-    body = [];
-  };
-
-  for (const line of source.split("\n")) {
-    const match = line.match(/^##\s+(.+)$/);
-    if (match) {
-      flush();
-      title = match[1];
-    } else {
-      body.push(line);
-    }
-  }
-  flush();
-  return sections;
+  return splitMarkdownSections(source);
 }
 
 function parseBlocks(source: string) {
@@ -91,19 +95,21 @@ function Markdown({
 }: {
   children: string;
   interactive?: boolean;
-  headingIds?: HeadingIdSource;
+  headingIds?: HeadingIdLookup;
 }) {
   return (
     <ReactMarkdown
       remarkPlugins={portulanRemarkPlugins}
       components={{
         h2: ({ children }) => {
-          const id = headingIds?.consume(2);
-          return <h2 id={id} className="report-section-title">{children}</h2>;
+          const id = headingIds?.idFor(2, headingTextFromChildren(children));
+          const heading = <h2 id={id} className="report-section-title">{children}</h2>;
+          return id ? <CommentAnchor targetId={id}>{heading}</CommentAnchor> : heading;
         },
         h3: ({ children }) => {
-          const id = headingIds?.consume(3);
-          return <h3 id={id} className="report-subtitle">{children}</h3>;
+          const id = headingIds?.idFor(3, headingTextFromChildren(children));
+          const heading = <h3 id={id} className="report-subtitle">{children}</h3>;
+          return id ? <CommentAnchor targetId={id}>{heading}</CommentAnchor> : heading;
         },
         blockquote: ({ children }) => <blockquote className="fp-callout">{children}</blockquote>,
         ul: ({ children }) => <MarkdownDocListUl>{children}</MarkdownDocListUl>,
@@ -156,7 +162,7 @@ function DirectiveRenderer({
 }: {
   directive: MarkdownDirective;
   living: LivingDocumentOptions;
-  headingIds?: HeadingIdSource;
+  headingIds?: HeadingIdLookup;
 }) {
   const data = rows(directive.body);
   const md = (source: string) => (
@@ -419,16 +425,28 @@ function RenderedSection({
   interactive: boolean;
   documentKey: string;
   blockIndexBase?: number;
-  headingIds?: HeadingIdSource;
+  headingIds?: HeadingIdLookup;
 }) {
   const blocks = parseBlocks(section.body);
-  const sectionId = section.title ? headingIds?.consume(2) : undefined;
+  const sectionId = section.title ? headingIds?.idFor(2, section.title) : undefined;
 
   return (
     <section className="tmpl-section">
-      {section.title ? <SectionLabel title={section.title} id={sectionId} /> : null}
+      {section.title ? (
+        sectionId ? (
+          <CommentAnchor targetId={sectionId}>
+            <SectionLabel title={section.title} id={sectionId} />
+          </CommentAnchor>
+        ) : (
+          <SectionLabel title={section.title} id={sectionId} />
+        )
+      ) : null}
       {blocks.map((block, blockIndex) => (
-        <div className={`tmpl-block tmpl-block-${block.kind}`} key={`${block.kind}-${blockIndex}`}>
+        <CommentAnchor
+          className={`tmpl-block tmpl-block-${block.kind}`}
+          key={`${block.kind}-${blockIndex}`}
+          targetId={commentBlockAnchorId(sectionIndex, blockIndex)}
+        >
           {block.kind === "markdown"
             ? <Markdown interactive={interactive} headingIds={headingIds}>{block.body}</Markdown>
             : (
@@ -443,7 +461,7 @@ function RenderedSection({
                 headingIds={headingIds}
               />
             )}
-        </div>
+        </CommentAnchor>
       ))}
     </section>
   );
@@ -466,9 +484,9 @@ export function RichMarkdown({
   sectionIndexBase?: number;
   blockIndexBase?: number;
   anchorHeadings?: boolean;
-  headingIds?: HeadingIdSource;
+  headingIds?: HeadingIdLookup;
 }) {
-  const resolvedHeadingIds = headingIds ?? (anchorHeadings ? createHeadingIdSource(extractMarkdownHeadings(source)) : undefined);
+  const resolvedHeadingIds = headingIds ?? (anchorHeadings ? createHeadingIdLookup(extractMarkdownHeadings(source)) : undefined);
 
   return splitSections(source).map((section, sectionIndex) => tableRows
     ? (

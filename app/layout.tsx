@@ -47,7 +47,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('portulan-theme')||localStorage.getItem('festpay-docs-theme');if(t&&localStorage.getItem('festpay-docs-theme')){localStorage.setItem('portulan-theme',t);localStorage.removeItem('festpay-docs-theme')}var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d)}catch(e){}})()`,
+            __html: `(function(){try{var papers={carta:1,pergaminho:1,nevoa:1,costa:1,lacre:1,personalizado:1};var t=localStorage.getItem('portulan-theme')||localStorage.getItem('festpay-docs-theme');if(t&&localStorage.getItem('festpay-docs-theme')){localStorage.setItem('portulan-theme',t);localStorage.removeItem('festpay-docs-theme')}var paper='carta';var ink='#1a2847';var dark=matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||t==='light'){dark=t==='dark'}else if(t){var p=t.split(':');if(papers[p[0]])paper=p[0];if(p[1]==='dark'||p[1]==='light')dark=p[1]==='dark';if(p[2]&&/^#[0-9a-fA-F]{6}$/.test(p[2]))ink=p[2].toLowerCase()}var r=parseInt(ink.slice(1,3),16),g=parseInt(ink.slice(3,5),16),b=parseInt(ink.slice(5,7),16);var fg=(0.2126*r+0.7152*g+0.0722*b)/255>=0.45?'#0a0a0a':'#ffffff';var el=document.documentElement;el.classList.toggle('dark',dark);el.setAttribute('data-theme',paper);el.setAttribute('data-user-ink',ink);el.style.setProperty('--user-ink',ink);el.style.setProperty('--user-ink-fg',fg)}catch(e){}})()`,
           }}
         />
       </head>
