@@ -138,7 +138,7 @@ Portulan is a portolan chart for technical writing: rumos, tinta, and paper. The
 
 The system is editorial ink. Hierarchy is typeset, not decorated. Burgundy eyebrows and teal section numbers are the gazette’s running heads; they are rare on purpose. Soft-SaaS (rounded-lg, card shadows, focus rings, glass, marketing gradients) and default shadcn (8px radius, 3px rings, shadow-sm) are anti-references even though the primitives sit on that library. New screens inherit the chart, not the kit.
 
-Two registers, one world. The authenticated workspace is tool chrome: hairlines, stamps, a 48px rail. The report is reading paper on screen (a web sheet, not A4) and print paper in PDF (A4). Do not dress the editor chrome like a magazine, and do not dress the report like an app shell.
+Two registers, one world. The authenticated workspace is tool chrome: hairlines, stamps, a rail that toggles 48px compact / 220px expanded. The report is reading paper on screen (a web sheet, not A4) and print paper in PDF (A4). Do not dress the editor chrome like a magazine, and do not dress the report like an app shell.
 
 **Key Characteristics:**
 
@@ -147,7 +147,7 @@ Two registers, one world. The authenticated workspace is tool chrome: hairlines,
 - Two tokens, two jobs: JetBrains Mono (`--font-mono`) is the product face — titles, labels, badges, tabs, buttons, stats, and code. IBM Plex Sans (`--font-sans`) is running prose only.
 - One action fill per paper stock. Carta uses Chart Ink; Pergaminho umber; Névoa graphite; Costa Sounding Teal Ink; Lacre Seal Wax. Compass Brass stays identity, never a button.
 - A 3px identity rule under the header and editor top bar: the stock’s action ink into its accent. Solid action ink on stat cards and integration panels.
-- Instrument chrome is 28px tall (`--control-height`). Rail icons stay 36×36 inside a 48px rail.
+- Instrument chrome is 28px tall (`--control-height`). Rail icons stay 36×36 in the compact 48px rail; expanded (220px) keeps the same 36px row height and adds JetBrains Mono 12px labels.
 - Light Carta is canonical. Four other stocks remap paper, action ink, accent, and night — they are registers of the same chart, not a second product. The three-bar mark always stays Chart Ink / Seal Wax / Compass Brass.
 
 ## Colors
@@ -226,9 +226,9 @@ The picker is a stamp grid (Claro / Escuro × six chips in one row). The sixth s
 
 The spatial model is a sheet on a desk, not a fluid marketing canvas.
 
-Workspace pages sit in a centered column: 1100px for cartoteca, gabaritos, instrumentos, porto, login; 1380px for the ponte. Cartoteca, Gabaritos, Instrumentos, and Porto share one register: padding `sp-7` / `sp-6` (48px / 32px), Seal Wax eyebrow, Headline `h1` (clamp 26–40px), and 14px lead. The ponte is tighter at the top (52px) and uses `clamp(24px, 4vw, 64px)` on the sides. The editor is full-bleed beside a 48px icon rail; the top chrome is 61px (58px inner + 3px identity rule), solid Paper, no frost. Mobile replaces the rail with a 56px sticky bar and a drawer.
+Workspace pages sit in a centered column: 1100px for cartoteca, gabaritos, instrumentos, porto, login; 1380px for the ponte. Cartoteca, Gabaritos, Instrumentos, and Porto share one register: padding `sp-7` / `sp-6` (48px / 32px), Seal Wax eyebrow, Headline `h1` (clamp 26–40px), and 14px lead. The ponte is tighter at the top (52px) and uses `clamp(24px, 4vw, 64px)` on the sides. The editor is full-bleed beside the workspace rail; the top chrome is 61px (58px inner + 3px identity rule), solid Paper, no frost. Mobile replaces the rail with a 56px sticky bar and a drawer.
 
-The rail starts with the **porto** switcher: a 32px square mark with the porto initials, above the brand rule and the nav icons. It is the only rail item that opens a menu instead of navigating, and it carries the same tooltip register as the icons. In the mobile drawer it becomes a full-width row with the porto name.
+The rail starts with the **porto** switcher: a 32px square mark with the porto initials, above the brand and the nav. Compact mode is icons and tooltips; expanded mode is the same rows with labels. Cartoteca and Gabaritos nest under **Acervo** (a flyout in compact, a labeled section in expanded). The porto switcher is the only top item that opens a menu instead of navigating. In the mobile drawer it becomes a full-width row with the porto name, and Acervo is a labeled group.
 
 Hairline lists (carta rows) stack as a single ruled column — one 1px border around the list, 1px between rows, 16–24px internal padding. Grids are auto-fit: stats from 180px, shortcuts from 240px, gabaritos four columns collapsing to two at 1100px and one at 480px. Breakpoints in use: 1100px, 760px (the mobile gate: rail hides, editor preview hides, page padding 16px), 480px.
 
@@ -288,7 +288,7 @@ Controls are **stamped, not drawn**: filled or voided rectangles on paper. The w
 
 ### Navigation
 
-- **Rail (desktop):** 48px, Rail ground, 36×36 square icon buttons, 18px icons. Default Muted Ink; hover Ink Inverse wash; active Chart Ink on a 12% Chart Ink wash. Tooltips, not labels, on the rail. The compact brand mark in the rail is 24px; the three-bar symbol is 22×22.
+- **Rail (desktop):** Compact 48px or expanded 220px, Rail ground, 36px-tall rows. Icons stay in a 36px column; labels fade in beside them. Compact uses tooltips; expanded uses JetBrains Mono 12px labels. Compact Acervo is one icon with a flyout; expanded Acervo is a 10px uppercase caption with Cartoteca and Gabaritos nested on a hairline. One density motion (ease-out); the choice persists in the browser.
 - **Header:** Sticky Paper; 3px gradient bar Chart Ink 55% → Seal Wax 100% along the bottom. Wordmark ~40px (`2.5rem`). Text nav is JetBrains Mono 11px / 500; hover draws a Hairline box and Chart Ink text.
 - **Mobile:** 56px top bar, Hairline bottom; drawer over a 55% Paper scrim. No floating tab bar.
 - **Editor tabs:** 39px, Hairline between tabs, no radius. Active = inset 2px Chart Ink along the bottom (not a filled pill).

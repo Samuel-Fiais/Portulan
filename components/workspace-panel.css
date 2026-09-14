@@ -1,127 +1,156 @@
-.porto-body {
-  display: grid;
-  gap: 16px;
+/* Porto — alinhado ao registro workspace (Instrumentos) */
+
+.workspace-page--porto .workspace-page-body {
+  gap: var(--sp-5);
 }
 
-.porto-stats {
-  display: flex;
-  gap: 24px;
-  margin: 0;
+.workspace-page--porto .integration-rumos {
+  gap: var(--sp-5);
 }
-.porto-stats dt {
-  color: var(--muted-foreground);
+
+.porto-settings {
+  border: 1px solid var(--border);
+}
+
+.porto-setting {
+  display: grid;
+  grid-template-columns: minmax(120px, 168px) minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.porto-setting + .porto-setting {
+  border-top: 1px solid var(--border);
+}
+
+.porto-setting-label {
+  padding-top: 6px;
+  color: var(--text-3);
   font: 600 10px/1 var(--font-mono);
-  letter-spacing: .1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.porto-stats dd {
-  margin: 4px 0 0;
-  font: 600 20px/1 var(--font-sans);
+
+.porto-setting-control {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
 }
 
-.porto-card {
-  display: grid;
-  gap: 12px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  background: var(--card);
-}
-.porto-card--risk {
-  border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
-}
-.porto-card__title {
+.porto-setting-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin: 0;
-  font: 600 14px/1.2 var(--font-sans);
+  gap: var(--sp-2);
+  max-width: 420px;
 }
-.porto-card__title svg {
-  width: 16px;
-  height: 16px;
-  color: var(--muted-foreground);
+
+.porto-setting-row > [data-slot="input"] {
+  flex: 1 1 200px;
+  min-width: 0;
 }
-.porto-card__lead {
-  margin: 0;
-  max-width: 68ch;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  line-height: 1.5;
+
+.porto-setting--theme .porto-setting-control {
+  max-width: 520px;
+}
+
+.porto-header-stats__grid {
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: var(--sp-3);
+}
+
+.porto-header-stats .fp-stat {
+  padding: var(--sp-4);
+}
+
+.workspace-page--porto .porto-step--risk {
+  border-top-color: color-mix(in srgb, var(--destructive) 55%, var(--primary));
 }
 
 .porto-field {
   display: grid;
-  gap: 8px;
+  gap: var(--sp-2);
 }
+
 .porto-field label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.porto-field label svg { width: 14px; height: 14px; }
+
+.porto-field label svg {
+  width: 14px;
+  height: 14px;
+}
 
 .porto-inline {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
 }
+
 .porto-inline > .porto-input,
-.porto-inline > input { flex: 1 1 240px; }
-.porto-inline--end { justify-content: flex-end; }
-
-.porto-hint {
-  margin: 0;
-  color: var(--muted-foreground);
-  font-size: 12px;
+.porto-inline > input {
+  flex: 1 1 240px;
 }
 
-.porto-crew {
-  display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--border);
-  list-style: none;
+.porto-inline--end {
+  justify-content: flex-end;
 }
-.porto-crew__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
+
+.workspace-page--porto .porto-crew-table tbody tr {
+  transition: background-color 150ms ease;
 }
-.porto-crew__row + .porto-crew__row { border-top: 1px solid var(--border); }
-.porto-crew__person {
+
+.workspace-page--porto .porto-crew-table tbody tr:hover {
+  background: color-mix(in srgb, var(--primary) 4%, var(--background));
+}
+
+.porto-crew-person {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
-.porto-crew__person strong {
+
+.porto-crew-meta {
+  min-width: 0;
+}
+
+.porto-crew-meta strong {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: var(--sp-2);
+  font: 600 13px/1.3 var(--font-mono);
 }
-.porto-crew__person span {
+
+.porto-crew-meta span {
   display: block;
-  color: var(--muted-foreground);
+  overflow: hidden;
+  color: var(--text-3);
   font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.porto-crew__actions {
+
+.porto-crew-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: var(--sp-1);
 }
+
 .porto-tag,
 .porto-role {
   border: 1px solid var(--border);
   padding: 2px 6px;
-  color: var(--muted-foreground);
+  color: var(--text-3);
   font: 600 10px/1.4 var(--font-mono);
-  letter-spacing: .08em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -129,23 +158,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 12px;
+  gap: var(--sp-3);
 }
-.porto-invite-form .porto-field { min-width: 160px; }
 
-.porto-invite-fresh {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px dashed var(--border);
-  background: var(--muted);
-}
-.porto-invite-fresh code {
-  overflow-wrap: anywhere;
-  font-size: 12px;
+.porto-invite-form .porto-field {
+  min-width: 160px;
 }
 
 .porto-invite-list {
@@ -155,28 +172,80 @@
   border: 1px solid var(--border);
   list-style: none;
 }
+
 .porto-invite-list li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  transition: background-color 150ms ease;
 }
-.porto-invite-list li + li { border-top: 1px solid var(--border); }
-.porto-invite-list strong { font-size: 13px; }
+
+.porto-invite-list li:hover {
+  background: color-mix(in srgb, var(--primary) 4%, var(--background));
+}
+
+.porto-invite-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.porto-invite-list strong {
+  font: 600 13px/1.3 var(--font-mono);
+}
+
 .porto-invite-list span {
   display: block;
-  color: var(--muted-foreground);
+  color: var(--text-3);
   font-size: 12px;
+  line-height: 1.4;
 }
 
 .porto-empty {
   margin: 0;
-  padding: 16px;
+  padding: var(--sp-4);
   border: 1px dashed var(--border);
-  color: var(--muted-foreground);
+  color: var(--text-3);
   font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .porto-header-stats__grid {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .porto-invite-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .porto-invite-form .porto-field {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .porto-setting {
+    grid-template-columns: 1fr;
+    gap: var(--sp-2);
+    padding: var(--sp-4);
+  }
+
+  .porto-setting-label {
+    padding-top: 0;
+  }
+
+  .porto-setting-row,
+  .porto-setting--theme .porto-setting-control {
+    max-width: none;
+  }
+
+  .porto-crew-meta span {
+    white-space: normal;
+  }
 }
 
 /* Convite aberto fora do porto */
@@ -184,27 +253,32 @@
   display: grid;
   min-height: 100vh;
   place-items: center;
-  padding: 24px;
+  padding: var(--sp-5);
 }
+
 .invite-card {
   display: grid;
-  gap: 16px;
+  gap: var(--sp-4);
   width: min(440px, 100%);
-  padding: 28px;
+  padding: var(--sp-6);
   border: 1px solid var(--border);
-  background: var(--card);
+  background: var(--background);
   text-align: center;
 }
+
 .invite-card h1 {
   margin: 0;
-  font: 600 20px/1.2 var(--font-sans);
+  font: 600 20px/1.2 var(--font-mono);
+  letter-spacing: -0.015em;
 }
+
 .invite-card p {
   margin: 0;
-  color: var(--muted-foreground);
+  color: var(--text-2);
   font-size: 13px;
   line-height: 1.55;
 }
+
 .invite-card__mark {
   display: grid;
   place-items: center;

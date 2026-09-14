@@ -65,9 +65,7 @@ export function WorkspaceSwitcher({
       }
       setCreateOpen(false);
       setName("");
-      toast.success(`Porto ${result.workspace.name} fundado`, {
-        description: "Você é o capitão. Convide a tripulação na tela do porto.",
-      });
+      toast.success(`Porto ${result.workspace.name} fundado`);
       router.push("/porto");
       router.refresh();
     });
@@ -87,12 +85,10 @@ export function WorkspaceSwitcher({
           <span className="workspace-porto-mark" aria-hidden="true">
             {active ? workspaceInitials(active.name) : <Anchor />}
           </span>
-          {variant === "drawer" ? (
-            <span className="workspace-porto-label">
-              <strong>{active?.name ?? "Sem porto"}</strong>
-              <span>{active ? workspaceRoleMeta[active.role].label : "—"}</span>
-            </span>
-          ) : null}
+          <span className="workspace-porto-label">
+            <strong>{active?.name ?? "Sem porto"}</strong>
+            <span>{active ? workspaceRoleMeta[active.role].label : "—"}</span>
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
@@ -105,6 +101,8 @@ export function WorkspaceSwitcher({
             <DropdownMenuItem
               key={workspace.id}
               className="workspace-porto-item"
+              data-active={workspace.id === active?.id ? "true" : undefined}
+              aria-current={workspace.id === active?.id ? "true" : undefined}
               onSelect={() => switchTo(workspace.id)}
               disabled={pending}
             >
@@ -122,11 +120,11 @@ export function WorkspaceSwitcher({
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
+          <DropdownMenuItem className="workspace-porto-action" onSelect={() => setCreateOpen(true)}>
             <Plus />
             Fundar porto
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => router.push("/porto")}>
+          <DropdownMenuItem className="workspace-porto-action" onSelect={() => router.push("/porto")}>
             <Settings2 />
             Administrar porto
           </DropdownMenuItem>

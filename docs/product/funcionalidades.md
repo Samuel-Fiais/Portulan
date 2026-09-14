@@ -8,7 +8,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 
 | ID | Capacidade | Estado |
 |---|---|---|
-| F-navegacao | Trilho de ícones com tooltips no desktop; drawer com rótulos no viewport estreito | existe |
+| F-navegacao | Trilho desktop com toggle compacto (ícones + tooltips) ou expandido (rótulos); Cartoteca e Gabaritos no menu Acervo; drawer no viewport estreito com o mesmo agrupamento | existe |
 | F-porto-switcher | Seletor de porto no topo do trilho: porto ativo, trocar, criar novo e abrir a tela do porto | existe |
 | F-dashboard | Ponte: resumo da cartoteca do porto ativo, cartas recentes, nova carta e atalhos para as outras telas | existe |
 
@@ -17,7 +17,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | ID | Capacidade | Estado |
 |---|---|---|
 | F-porto | Criar portos, alternar o porto ativo e ganhar o porto inicial na primeira entrada (RN-86) | existe |
-| F-porto-identidade | Renomear o porto e definir o papel do porto (capitão e imediato) na tela `/porto` | existe |
+| F-porto-identidade | Renomear o porto (capitão e imediato) e escolher papel pessoal na tela `/porto` (RN-94) | existe |
 | F-tripulacao | Listar a tripulação, mudar papéis, remover pessoas e transferir a capitania (RN-88) | existe |
 | F-porto-convite | Convite por link com papel, validade e limite de usos; listar, revogar e resgatar em `/convite/{token}` (RN-89) | existe |
 | F-porto-sair | Deixar o porto (com as travas de RN-90) e excluir um porto vazio (RN-91) | existe |
@@ -69,7 +69,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 |---|---|---|
 | F-publico | `/d/{uuid}` última versão; `/p/{id}` versão fixa. Visitante anônimo só entra em mar aberto | existe |
 | F-tema | Escolher um dos cinco papéis claros ou cinco escuros, ou Personalizado com cor livre, no workspace, no acesso e na vista pública (RN-85) | existe |
-| F-tema-porto | Tema do porto aplicado no servidor: mesmo papel em qualquer aparelho, com papel próprio opcional por navegador e volta ao tema do porto (RN-94) | existe |
+| F-tema-porto | Papel por pessoa e por porto: escolha aplica na hora e grava neste navegador (trilho Tema, `/porto`, modal da conta) (RN-94) | existe |
 | F-indice | TOC com âncoras em `##` / `###` na prévia do editor, prévia de rascunho, `/d`, `/p` e PDF | existe |
 | F-mermaid | Renderizar fence ` ```mermaid ` com paleta do gabarito (flowchart, sequência, estado) na prévia, leitura pública e PDF | existe |
 | F-living | Checklist, testcase, gráficos e blocos interativos na leitura | existe |

@@ -119,10 +119,7 @@ export function resolveCustomActionInk(hex: string, mode: ThemeMode) {
   return { ink, foreground: pickContrastInkColor(ink) };
 }
 
-/**
- * O tema vive no porto (serve qualquer dispositivo). Quem quiser um papel
- * diferente guarda uma sobrescrita local, sempre presa ao porto em questão.
- */
+/** Preferência de papel por pessoa e por porto, gravada neste navegador. */
 export function themeOverrideStorageKey(workspaceId?: string | null) {
   return workspaceId ? `${THEME_STORAGE_KEY}:${workspaceId}` : THEME_STORAGE_KEY;
 }

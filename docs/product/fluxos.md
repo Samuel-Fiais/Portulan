@@ -18,7 +18,7 @@ Regras: RN-80 a RN-86.
 1. No topo do trilho, o seletor mostra o porto ativo. Clicar lista os outros portos da pessoa.
 2. Escolher outro porto grava a preferência na sessão e recarrega a Cartoteca, a Ponte e os Gabaritos naquele acervo (RN-87).
 3. **Novo porto** pede só o nome. Quem cria entra como capitão, e o porto novo já vira o ativo.
-4. **Abrir o porto** leva a `/porto`: identidade (nome e tema), tripulação, convites e zona de risco.
+4. **Abrir o porto** leva a `/porto`: identidade (nome do porto e papel pessoal), tripulação, convites e zona de risco.
 
 Regras: RN-86, RN-87, RN-88.
 
@@ -32,12 +32,11 @@ Regras: RN-86, RN-87, RN-88.
 
 Regras: RN-88, RN-89.
 
-## Definir o tema do porto
+## Escolher o papel (tema)
 
-1. Em `/porto`, o seletor de papel mostra o tema atual. Escolher ali só pinta a tela de quem escolheu.
-2. Capitão ou imediato aciona **Definir como tema do porto**: o papel passa a valer para toda a tripulação e em qualquer aparelho, porque o servidor pinta a página com o tema do porto.
-3. Quem prefere outro papel mantém a escolha naquele navegador, por porto; **Usar o tema do porto** descarta a sobrescrita.
-4. Tela de acesso e leitura pública não têm porto: seguem a preferência local do navegador.
+1. No trilho **Tema**, em `/porto` (**Seu papel**) ou no modal da conta, a pessoa escolhe um dos cinco papéis (claro/escuro) ou **Personalizado**.
+2. A escolha pinta a tela **na hora** e fica gravada neste navegador — por porto quando há porto ativo, ou global na tela de acesso e leitura pública.
+3. Cada tripulante pode ter um papel diferente no mesmo porto; ninguém impõe tema para os outros.
 
 Regras: RN-85, RN-94.
 

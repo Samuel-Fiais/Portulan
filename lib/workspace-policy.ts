@@ -19,7 +19,7 @@ export function canManageCrew(role: WorkspaceRole | null | undefined) {
   return role === "owner" || role === "admin";
 }
 
-/** Nome e tema do porto. */
+/** Nome do porto. */
 export function canManageWorkspaceIdentity(role: WorkspaceRole | null | undefined) {
   return role === "owner" || role === "admin";
 }
@@ -73,7 +73,7 @@ export function validateRoleChange(input: {
     return deny("A capitania muda pela transferência, não por troca de papel.");
   }
   if (input.nextRole === "owner") {
-    return deny("Para dar a capitania, use transferir capitania.");
+    return deny("Use Passar a capitania.");
   }
   if (input.actorRole === "admin" && input.targetRole === "admin") {
     return deny("Imediato não altera outro imediato.");
@@ -91,7 +91,7 @@ export function validateCrewRemoval(input: {
     return deny("Só capitão e imediato removem da tripulação.");
   }
   if (input.actorId === input.targetId) {
-    return deny("Para sair do porto use “Deixar o porto”.");
+    return deny("Use Deixar o porto para sair.");
   }
   if (input.targetRole === "owner") {
     return deny("O capitão não pode ser removido. Transfira a capitania antes.");

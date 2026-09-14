@@ -90,11 +90,11 @@ export async function updateWorkspaceAction(workspaceId: string, input: unknown)
   if (!context.ok) return context;
 
   if (!canManageWorkspaceIdentity(context.membership.role)) {
-    return { ok: false as const, error: "Só capitão e imediato mudam nome e tema do porto." };
+    return { ok: false as const, error: "Só capitão e imediato mudam o nome do porto." };
   }
 
   const parsed = workspaceIdentitySchema.safeParse(input);
-  if (!parsed.success) return { ok: false as const, error: "Revise os dados do porto." };
+  if (!parsed.success) return { ok: false as const, error: "Revise o nome do porto." };
 
   if (parsed.data.name !== undefined) {
     const name = validateWorkspaceName(parsed.data.name);

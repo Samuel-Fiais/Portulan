@@ -110,7 +110,14 @@
   color: inherit;
 }
 
-.theme-picker-trigger {
+@media (max-width: 760px) {
+  .theme-picker[data-variant="panel"] .theme-picker-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+}
+
+.theme-picker-trigger:not(.workspace-rail-link) {
   display: grid;
   place-items: center;
 }

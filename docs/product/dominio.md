@@ -4,7 +4,7 @@ Vocabulário estável do Portulan. Se um termo mudar de significado, atualize es
 
 ## O que é
 
-Workspace editorial para criar, revisar, publicar e imprimir **cartas técnicas** (documentos) em Markdown, com a mesma cartoteca operável por pessoas (UI) e por agentes (MCP). O trabalho acontece dentro de um **porto**: um espaço com tripulação, tema e acervo próprios.
+Workspace editorial para criar, revisar, publicar e imprimir **cartas técnicas** (documentos) em Markdown, com a mesma cartoteca operável por pessoas (UI) e por agentes (MCP). O trabalho acontece dentro de um **porto**: um espaço com tripulação e acervo próprios.
 
 ## Léxico
 
@@ -27,8 +27,8 @@ A copy da UI usa o vocabulário náutico; o código e as APIs (MCP, rotas JSON) 
 
 | Ator | Quem é |
 |---|---|
-| Capitão | Dono do porto (`owner`). Comanda nome, tema, tripulação, capitania e exclusão do porto. |
-| Imediato | `admin` do porto. Cuida da tripulação (convida, remove, muda papéis) e da identidade (nome, tema). Não transfere capitania nem exclui o porto. |
+| Capitão | Dono do porto (`owner`). Comanda nome, tripulação, capitania e exclusão do porto. |
+| Imediato | `admin` do porto. Cuida da tripulação (convida, remove, muda papéis) e do nome do porto. Não transfere capitania nem exclui o porto. |
 | Tripulante | `member` do porto. Cria as próprias cartas e lê as que o porto abriu. Não gerencia pessoas. |
 | Cartógrafo | Dono da carta (`userId`). Único que compartilha, muda visibilidade, move de porto, desativa a carta inteira, duplica e exclui. |
 | Editor | Convidado com papel `editor` naquela carta. Edita rascunho e pode publicar. |
@@ -49,7 +49,7 @@ Espaço de trabalho. Toda conta tem pelo menos um. Reúne tripulação, cartas, 
 | `id` | UUID. Identidade estável. |
 | `slug` | Identificador legível derivado do nome, único. |
 | `name` | Nome do porto (2–60). |
-| `themePaper`, `themeMode`, `themeInk` | Tema do porto: papel, modo claro/escuro e tinta de ação. Vale para toda a tripulação e para qualquer aparelho (RN-86). |
+| `themePaper`, `themeMode`, `themeInk` | Partida visual do porto na primeira visita, antes de haver preferência pessoal salva (RN-94). |
 | `isPersonal` | Verdadeiro no porto inicial da conta. Porto inicial não pode ser deixado nem excluído. |
 | `createdBy` | Quem criou. |
 
@@ -59,8 +59,8 @@ Vínculo entre uma conta e um porto, com um papel.
 
 | Papel | Pode |
 |---|---|
-| `owner` (Capitão) | Tudo do porto: nome, tema, tripulação, transferir capitania, excluir o porto. Um por porto. |
-| `admin` (Imediato) | Convidar, remover, mudar papéis de tripulantes; mudar nome e tema. |
+| `owner` (Capitão) | Tudo do porto: nome, tripulação, transferir capitania, excluir o porto. Um por porto. |
+| `admin` (Imediato) | Convidar, remover, mudar papéis de tripulantes; mudar nome do porto. |
 | `member` (Tripulante) | Criar as próprias cartas e ler as abertas ao porto. Só lê a tripulação. |
 
 ### Convite de porto
@@ -159,7 +159,7 @@ Não há verificação de e-mail nem recuperação por mensagem. Quem esqueceu a
 
 ### Tema
 
-Preferência visual do **porto** (RN-86): viaja com a conta e vale em qualquer aparelho. Cada pessoa pode manter um papel próprio naquele navegador (sobrescrita local, por porto); capitão e imediato definem o papel padrão do porto.
+Preferência visual **por pessoa** (RN-94): escolher um swatch pinta na hora e grava neste navegador — por porto quando há porto ativo. Capitão e imediato não impõem papel para a tripulação.
 
 | Papel | Tinta de ação | Acento |
 |---|---|---|
@@ -191,7 +191,7 @@ Bloco do catálogo (alerta, gráfico, checklist, …). A modal **Adicionar compo
 
 ## Workspace autenticado
 
-Chrome com trilho de ícones (tooltips no desktop) e, no topo do trilho, o seletor de porto. Não vale para leitura pública nem para o editor (RN-70).
+Chrome com trilho compacto ou expandido (RN-70) e, no topo, o seletor de porto. Cartoteca e Gabaritos entram pelo menu Acervo. Não vale para leitura pública nem para o editor.
 
 | URL | Significado |
 |---|---|
@@ -199,7 +199,7 @@ Chrome com trilho de ícones (tooltips no desktop) e, no topo do trilho, o selet
 | `/biblioteca` | Cartoteca: lista do porto ativo, busca (título, resumo, tags e corpo), filtro por origem (minhas / compartilhadas), filtro por status e filtro por gabarito. |
 | `/templates` | Gabaritos do porto ativo. |
 | `/integrations` | Instrumentos: rumos de conexão MCP (endpoint, token, skill), catálogo agrupado de ferramentas e tokens pessoais. |
-| `/porto` | Porto: identidade (nome e tema), tripulação, convites por link e zona de risco. |
+| `/porto` | Porto: identidade (nome e papel pessoal), tripulação, convites por link e zona de risco. |
 
 ## Componentes living
 

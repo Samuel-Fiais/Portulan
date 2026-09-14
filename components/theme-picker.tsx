@@ -94,9 +94,9 @@ export function ThemePicker({
 }: {
   className?: string;
   variant?: "panel" | "menu";
-  /** Sobrescrita local fica presa ao porto: cada porto guarda o seu papel. */
+  /** Preferência local fica presa ao porto: cada porto guarda o seu papel. */
   workspaceId?: string | null;
-  /** Falso na tela do porto: lá a escolha só vira tema depois de salva. */
+  /** Falso só para pré-visualização sem gravar (padrão: grava na hora). */
   persist?: boolean;
   onSelect?: (preference: ThemePreference) => void;
 }) {

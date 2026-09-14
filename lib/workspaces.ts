@@ -70,7 +70,7 @@ export function isDocumentVisibility(value: unknown): value is DocumentVisibilit
 
 /** Rótulos de tripulação usados na UI. Papel de código em inglês, copy em português náutico. */
 export const workspaceRoleMeta: Record<WorkspaceRole, { label: string; blurb: string }> = {
-  owner: { label: "Capitão", blurb: "Comanda o porto: tripulação, tema, nome e capitania" },
+  owner: { label: "Capitão", blurb: "Comanda o porto: tripulação, nome e capitania" },
   admin: { label: "Imediato", blurb: "Cuida da tripulação: convida, remove e muda papéis" },
   member: { label: "Tripulante", blurb: "Navega o porto: cria as próprias cartas e lê as do porto" },
 };

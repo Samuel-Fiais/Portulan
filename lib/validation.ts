@@ -7,8 +7,6 @@ import {
   WORKSPACE_NAME_MAX,
   WORKSPACE_NAME_MIN,
 } from "@/lib/workspaces";
-import { THEME_PAPER_IDS } from "@/lib/workspace-themes";
-
 export const documentInputSchema = z.object({
   title: z.string().trim().min(3).max(180),
   summary: z.string().trim().max(500).default(""),
@@ -113,15 +111,9 @@ export const workspaceInputSchema = z.object({
   name: workspaceNameSchema,
 });
 
-export const workspaceThemeSchema = z.object({
-  themePaper: z.enum(THEME_PAPER_IDS),
-  themeMode: z.enum(["light", "dark"]),
-  themeInk: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
+export const workspaceIdentitySchema = z.object({
+  name: workspaceNameSchema.optional(),
 });
-
-export const workspaceIdentitySchema = z
-  .object({ name: workspaceNameSchema.optional() })
-  .merge(workspaceThemeSchema.partial());
 
 export const workspaceRoleSchema = z.enum(workspaceRoles);
 

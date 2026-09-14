@@ -5,16 +5,12 @@ import "./workspace-panel.css";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Anchor,
   Copy,
   Crown,
   LinkIcon,
   LoaderCircle,
   LogOut,
-  Palette,
   Trash2,
-  UserPlus,
-  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -27,7 +23,9 @@ import {
   transferCaptaincyAction,
   updateWorkspaceAction,
 } from "@/app/workspace-actions";
+import { StatCard } from "@/components/stat-card";
 import { ThemePicker } from "@/components/theme-picker";
+import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/user-avatar";
 import {
   AlertDialog,
@@ -55,11 +53,6 @@ import {
   canManageWorkspaceIdentity,
   isCaptain,
 } from "@/lib/workspace-policy";
-import {
-  clearThemeOverride,
-  hasThemeOverride,
-  type ThemePreference,
-} from "@/lib/workspace-themes";
 import { formatRelativeDate } from "@/lib/utils";
 import {
   workspaceRoleMeta,
@@ -103,7 +96,6 @@ export function WorkspacePanel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [name, setName] = useState(workspace.name);
-  const [themeDraft, setThemeDraft] = useState<ThemePreference | null>(null);
   const [inviteRole, setInviteRole] = useState<WorkspaceInviteRole>("member");
   const [inviteExpiration, setInviteExpiration] = useState<InviteExpiration>("7d");
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
@@ -112,12 +104,13 @@ export function WorkspacePanel({
   const manageCrew = canManageCrew(role);
   const manageIdentity = canManageWorkspaceIdentity(role);
   const captain = isCaptain(role);
+  const showCrewActions = manageCrew || captain;
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
-        toast.error(result.error ?? "Não foi possível concluir.");
+        if (result.error) toast.error(result.error);
         return;
       }
       toast.success(success);
@@ -127,36 +120,6 @@ export function WorkspacePanel({
 
   function saveName() {
     run(() => updateWorkspaceAction(workspace.id, { name }), "Nome do porto atualizado");
-  }
-
-  function saveTheme() {
-    const preference = themeDraft ?? {
-      paper: workspace.themePaper,
-      mode: workspace.themeMode,
-      customInk: workspace.themeInk,
-    };
-    startTransition(async () => {
-      const result = await updateWorkspaceAction(workspace.id, {
-        themePaper: preference.paper,
-        themeMode: preference.mode,
-        themeInk: preference.customInk,
-      });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      clearThemeOverride(workspace.id);
-      toast.success("Tema do porto salvo", {
-        description: "Vale para toda a tripulação, em qualquer dispositivo.",
-      });
-      router.refresh();
-    });
-  }
-
-  function restoreWorkspaceTheme() {
-    clearThemeOverride(workspace.id);
-    toast.success("Tema do porto restaurado neste navegador");
-    window.location.reload();
   }
 
   async function copyInvite(url: string) {
@@ -187,6 +150,8 @@ export function WorkspacePanel({
   }
 
   const activeInvites = invites.filter((invite) => !invite.revokedAt);
+  const convitesStep = "03";
+  const zarparStep = manageCrew ? "04" : "03";
 
   return (
     <main className="page-wrap workspace-page workspace-page--porto">
@@ -201,209 +166,232 @@ export function WorkspacePanel({
               {workspaceRoleMeta[role].blurb.toLowerCase()}.
             </p>
           </div>
-          <dl className="porto-stats split-row__actions">
-            <div>
-              <dt>Tripulação</dt>
-              <dd>{members.length}</dd>
+          <div className="split-row__actions porto-header-stats">
+            <div className="fp-stat-grid porto-header-stats__grid" aria-label="Resumo do porto">
+              <StatCard label="Tripulação" value={members.length} note="tripulantes" />
+              <StatCard label="Cartas" value={documentCount} note="no porto" />
             </div>
-            <div>
-              <dt>Cartas</dt>
-              <dd>{documentCount}</dd>
-            </div>
-          </dl>
+          </div>
         </header>
 
-        <div className="workspace-page-body porto-body">
-          <section className="porto-card" aria-labelledby="porto-identidade">
-            <h2 id="porto-identidade" className="porto-card__title">
-              <Anchor aria-hidden="true" />
-              Identidade
-            </h2>
-            <p className="porto-card__lead">
-              Nome e tema valem para toda a tripulação. O tema viaja com a conta: abra em outro
-              aparelho e o papel é o mesmo.
-            </p>
+        <div className="workspace-page-body">
+          <ol className="integration-rumos">
+            <li className="integration-step" id="porto-identidade">
+              <span className="section-number" aria-hidden="true">
+                01
+              </span>
+              <div className="integration-step-body">
+                <h2>Identidade</h2>
 
-            <div className="porto-field">
-              <Label htmlFor="porto-nome">Nome do porto</Label>
-              <div className="porto-inline">
-                <Input
-                  id="porto-nome"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  disabled={!manageIdentity || pending}
-                  maxLength={60}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={saveName}
-                  disabled={!manageIdentity || pending || name.trim() === workspace.name}
-                >
-                  Salvar
-                </Button>
-              </div>
-              {manageIdentity ? null : (
-                <p className="porto-hint">Só capitão e imediato mudam o nome.</p>
-              )}
-            </div>
-
-            <div className="porto-field">
-              <Label>
-                <Palette aria-hidden="true" /> Papel do porto
-              </Label>
-              <ThemePicker workspaceId={workspace.id} persist={!manageIdentity} onSelect={setThemeDraft} />
-              <div className="porto-inline porto-inline--end">
-                <Button type="button" variant="ghost" onClick={restoreWorkspaceTheme} disabled={pending}>
-                  Usar o tema do porto
-                </Button>
-                {manageIdentity ? (
-                  <Button type="button" onClick={saveTheme} disabled={pending}>
-                    {pending ? <LoaderCircle className="animate-spin" /> : <Palette />}
-                    Definir como tema do porto
-                  </Button>
-                ) : null}
-              </div>
-              <p className="porto-hint">
-                {manageIdentity
-                  ? "Escolher aqui só pinta a sua tela até você salvar para o porto."
-                  : hasThemeOverride(workspace.id)
-                    ? "Você está com um papel próprio neste navegador."
-                    : "Você vê o papel definido pelo capitão."}
-              </p>
-            </div>
-          </section>
-
-          <section className="porto-card" aria-labelledby="porto-tripulacao">
-            <h2 id="porto-tripulacao" className="porto-card__title">
-              <Users aria-hidden="true" />
-              Tripulação
-            </h2>
-            <p className="porto-card__lead">
-              Capitão e imediato cuidam das pessoas. Tripulante cria as próprias cartas e lê o que o
-              porto abriu.
-            </p>
-
-            <ul className="porto-crew">
-              {members.map((member) => {
-                const isSelf = member.userId === currentUserId;
-                return (
-                  <li key={member.id} className="porto-crew__row">
-                    <div className="porto-crew__person">
-                      <UserAvatar
-                        name={member.name}
-                        login={member.login}
-                        email={member.email}
-                        imageUrl={member.avatarUrl}
-                        size="md"
-                      />
-                      <div>
-                        <strong>
-                          {memberLabel(member)}
-                          {isSelf ? <span className="porto-tag">você</span> : null}
-                        </strong>
-                        <span>{member.email ?? member.login}</span>
-                      </div>
-                    </div>
-                    <div className="porto-crew__actions">
-                      {manageCrew && member.role !== "owner" && !isSelf ? (
-                        <Select
-                          value={member.role}
-                          onValueChange={(value: WorkspaceRole) =>
-                            run(
-                              () => setWorkspaceMemberRoleAction(workspace.id, member.userId, value),
-                              "Papel atualizado",
-                            )
-                          }
-                          disabled={pending}
-                        >
-                          <SelectTrigger
-                            className="w-[140px]"
-                            aria-label={`Papel de ${memberLabel(member)}`}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">{workspaceRoleMeta.admin.label}</SelectItem>
-                            <SelectItem value="member">{workspaceRoleMeta.member.label}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <span className="porto-role">{workspaceRoleMeta[member.role].label}</span>
-                      )}
-
-                      {captain && !isSelf ? (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`Passar a capitania para ${memberLabel(member)}`}
-                              disabled={pending}
-                            >
-                              <Crown />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Passar a capitania?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {memberLabel(member)} assume o comando do porto e você continua como
-                                imediato.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  run(
-                                    () => transferCaptaincyAction(workspace.id, member.userId),
-                                    "Capitania transferida",
-                                  )
-                                }
-                              >
-                                Passar a capitania
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      ) : null}
-
-                      {manageCrew && member.role !== "owner" && !isSelf ? (
+                <div className="porto-settings">
+                  <div className="porto-setting">
+                    <Label htmlFor="porto-nome" className="porto-setting-label">
+                      Nome do porto
+                    </Label>
+                    <div className="porto-setting-control">
+                      <div className="porto-setting-row">
+                        <Input
+                          id="porto-nome"
+                          value={name}
+                          onChange={(event) => setName(event.target.value)}
+                          disabled={!manageIdentity || pending}
+                          maxLength={60}
+                        />
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Desembarcar ${memberLabel(member)}`}
-                          onClick={() =>
-                            run(
-                              () => removeWorkspaceMemberAction(workspace.id, member.userId),
-                              "Tripulante desembarcado",
-                            )
-                          }
-                          disabled={pending}
+                          variant="outline"
+                          onClick={saveName}
+                          disabled={!manageIdentity || pending || name.trim() === workspace.name}
                         >
-                          <Trash2 />
+                          Salvar
                         </Button>
-                      ) : null}
+                      </div>
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+                  </div>
+
+                  <div className="porto-setting porto-setting--theme">
+                    <span className="porto-setting-label">Tema</span>
+                    <div className="porto-setting-control">
+                      <ThemePicker workspaceId={workspace.id} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li className="integration-step" id="porto-tripulacao">
+              <span className="section-number" aria-hidden="true">
+                02
+              </span>
+              <div className="integration-step-body">
+                <h2>Tripulação</h2>
+                <p>
+                  Capitão e imediato cuidam das pessoas. Tripulante cria as próprias cartas e lê o
+                  que o porto abriu.
+                </p>
+
+                <div className="mcp-token-table-wrap">
+                  <table className="mcp-token-table porto-crew-table">
+                        <thead>
+                          <tr>
+                            <th scope="col">Tripulante</th>
+                            <th scope="col">Papel</th>
+                            {showCrewActions ? (
+                              <th scope="col">
+                                <span className="sr-only">Ações</span>
+                              </th>
+                            ) : null}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {members.map((member) => {
+                            const isSelf = member.userId === currentUserId;
+                            return (
+                              <tr key={member.id}>
+                                <td>
+                                  <div className="porto-crew-person">
+                                    <UserAvatar
+                                      name={member.name}
+                                      login={member.login}
+                                      email={member.email}
+                                      imageUrl={member.avatarUrl}
+                                      size="md"
+                                    />
+                                    <div className="porto-crew-meta">
+                                      <strong>
+                                        {memberLabel(member)}
+                                        {isSelf ? <span className="porto-tag">você</span> : null}
+                                      </strong>
+                                      <span>{member.email ?? member.login}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  {manageCrew && member.role !== "owner" && !isSelf ? (
+                                    <Select
+                                      value={member.role}
+                                      onValueChange={(value: WorkspaceRole) =>
+                                        run(
+                                          () =>
+                                            setWorkspaceMemberRoleAction(
+                                              workspace.id,
+                                              member.userId,
+                                              value,
+                                            ),
+                                          "Papel atualizado",
+                                        )
+                                      }
+                                      disabled={pending}
+                                    >
+                                      <SelectTrigger
+                                        className="w-[140px]"
+                                        aria-label={`Papel de ${memberLabel(member)}`}
+                                      >
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="admin">
+                                          {workspaceRoleMeta.admin.label}
+                                        </SelectItem>
+                                        <SelectItem value="member">
+                                          {workspaceRoleMeta.member.label}
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <span className="porto-role">
+                                      {workspaceRoleMeta[member.role].label}
+                                    </span>
+                                  )}
+                                </td>
+                                {showCrewActions ? (
+                                  <td className="mcp-token-table-actions">
+                                    <div className="porto-crew-actions">
+                                      {captain && !isSelf ? (
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              aria-label={`Passar a capitania para ${memberLabel(member)}`}
+                                              disabled={pending}
+                                            >
+                                              <Crown />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Passar a capitania?</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                {memberLabel(member)} vira capitão. Você passa a ser
+                                                imediato.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() =>
+                                                  run(
+                                                    () =>
+                                                      transferCaptaincyAction(
+                                                        workspace.id,
+                                                        member.userId,
+                                                      ),
+                                                    "Capitania transferida",
+                                                  )
+                                                }
+                                              >
+                                                Passar a capitania
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      ) : null}
+                                      {manageCrew && member.role !== "owner" && !isSelf ? (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          aria-label={`Desembarcar ${memberLabel(member)}`}
+                                          onClick={() =>
+                                            run(
+                                              () =>
+                                                removeWorkspaceMemberAction(
+                                                  workspace.id,
+                                                  member.userId,
+                                                ),
+                                              "Tripulante desembarcado",
+                                            )
+                                          }
+                                          disabled={pending}
+                                        >
+                                          <Trash2 />
+                                        </Button>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                ) : null}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                  </table>
+                </div>
+              </div>
+            </li>
 
           {manageCrew ? (
-            <section className="porto-card" aria-labelledby="porto-convites">
-              <h2 id="porto-convites" className="porto-card__title">
-                <UserPlus aria-hidden="true" />
-                Convites
-              </h2>
-              <p className="porto-card__lead">
-                O convite é um link. Quem abrir com uma conta Portulan entra direto no porto com o
-                papel escolhido.
-              </p>
+            <li className="integration-step" id="porto-convites">
+              <span className="section-number" aria-hidden="true">
+                {convitesStep}
+              </span>
+              <div className="integration-step-body">
+                <h2>Convites</h2>
+                <p>
+                  O convite é um link. Quem abrir com uma conta Portulan entra direto no porto com o
+                  papel escolhido.
+                </p>
 
               <div className="porto-invite-form">
                 <div className="porto-field">
@@ -446,12 +434,15 @@ export function WorkspacePanel({
               </div>
 
               {lastInviteUrl ? (
-                <div className="porto-invite-fresh">
-                  <code>{lastInviteUrl}</code>
-                  <Button type="button" variant="outline" size="sm" onClick={() => copyInvite(lastInviteUrl)}>
-                    <Copy />
-                    Copiar
-                  </Button>
+                <div className="integration-copy-block">
+                  <span className="integration-copy-label">Link gerado</span>
+                  <div className="integration-copy-row">
+                    <code>{lastInviteUrl}</code>
+                    <Button type="button" variant="outline" size="sm" onClick={() => copyInvite(lastInviteUrl)}>
+                      <Copy />
+                      Copiar
+                    </Button>
+                  </div>
                 </div>
               ) : null}
 
@@ -490,18 +481,20 @@ export function WorkspacePanel({
               ) : (
                 <p className="porto-empty">Nenhum convite aberto.</p>
               )}
-            </section>
+              </div>
+            </li>
           ) : null}
 
-          <section className="porto-card porto-card--risk" aria-labelledby="porto-saida">
-            <h2 id="porto-saida" className="porto-card__title">
-              <LogOut aria-hidden="true" />
-              Zarpar
-            </h2>
-            <p className="porto-card__lead">
-              O porto inicial de cada conta não pode ser deixado nem excluído. Um porto só é
-              excluído quando não tem mais cartas.
-            </p>
+            <li className={cn("integration-step", "porto-step--risk")} id="porto-saida">
+              <span className="section-number" aria-hidden="true">
+                {zarparStep}
+              </span>
+              <div className="integration-step-body">
+                <h2>Zarpar</h2>
+                <p>
+                  O porto inicial de cada conta não pode ser deixado nem excluído. Um porto só é
+                  excluído quando não tem mais cartas.
+                </p>
             <div className="porto-inline porto-inline--end">
               <Button
                 type="button"
@@ -524,7 +517,7 @@ export function WorkspacePanel({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Excluir {workspace.name}?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        A tripulação perde o acesso ao porto. Esta ação não tem volta.
+                        O porto some para toda a tripulação. Não dá para desfazer.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -539,7 +532,9 @@ export function WorkspacePanel({
                 </AlertDialog>
               ) : null}
             </div>
-          </section>
+              </div>
+            </li>
+          </ol>
         </div>
       </section>
     </main>

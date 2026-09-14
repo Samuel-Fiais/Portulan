@@ -12,6 +12,15 @@
         ],
         "createdAt": "2026-09-09T18:25:27.905Z",
         "reason": "DESIGN.md: 3px Chart Ink bar on square stamps (radius 0); inline code 4px is the documented exception, not a rounded card"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "app/globals.css"
+        ],
+        "createdAt": "2026-09-14T17:22:46.438Z",
+        "reason": "user confirmed: compact/expanded rail toggle interpolates width and main offset instead of snapping"
       }
     ]
   }
