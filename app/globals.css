@@ -248,6 +248,73 @@
   height: 36px;
   flex-shrink: 0;
 }
+.workspace-rail-porto {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.workspace-porto-trigger {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.workspace-porto-trigger:hover { border-color: var(--primary); }
+.workspace-porto-trigger--drawer {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  margin-bottom: 16px;
+  padding: 8px 10px;
+  text-align: start;
+}
+.workspace-porto-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: .04em;
+}
+.workspace-porto-mark svg { width: 14px; height: 14px; }
+.workspace-porto-label { display: grid; min-width: 0; }
+.workspace-porto-label strong {
+  overflow: hidden;
+  font: 600 12px/1.3 var(--font-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-porto-label span {
+  color: var(--muted-foreground);
+  font: 500 10px/1.3 var(--font-mono);
+  text-transform: uppercase;
+}
+.workspace-porto-menu { min-width: 260px; }
+.workspace-porto-item { gap: 10px; }
+.workspace-porto-item-text { display: grid; min-width: 0; flex: 1; }
+.workspace-porto-item-text strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-porto-item-text span {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.workspace-porto-check { width: 14px; height: 14px; color: var(--primary); }
 .workspace-rail-nav {
   display: flex;
   flex: 1;
@@ -505,7 +572,19 @@
 .status-published { color: #168348; border-color: color-mix(in srgb, #16a34a 45%, var(--border)); }
 .status-disabled { color: #b42318; border-color: color-mix(in srgb, #dc2626 45%, var(--border)); }
 .status-private { color: var(--muted-foreground); }
+.status-workspace { color: #0a5c52; border-color: color-mix(in srgb, #0a5c52 45%, var(--border)); }
 .status-public { color: var(--primary); }
+.status-external { color: #b56700; border-color: color-mix(in srgb, #d97706 45%, var(--border)); }
+.share-external-badge {
+  margin-left: 6px;
+  border: 1px solid color-mix(in srgb, #d97706 45%, var(--border));
+  padding: 1px 5px;
+  color: #b56700;
+  font: 600 9px/1.4 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.metadata-visibility-choices { flex-wrap: wrap; gap: 6px; }
 .ownership-mine { color: var(--primary); }
 .ownership-shared { color: var(--muted-foreground); }
 .empty-state { display: grid; place-items: center; padding: 64px 20px; border-bottom: 1px solid var(--border); text-align: center; }

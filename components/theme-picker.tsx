@@ -8,6 +8,7 @@ import { ColorPicker } from "@/components/color-picker";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   applyThemePreference,
+  applyThemeToDocument,
   CUSTOM_PAPER_ID,
   readDocumentThemePreference,
   WORKSPACE_PAPERS,
@@ -87,10 +88,16 @@ function ThemeControl({
 export function ThemePicker({
   className,
   variant = "panel",
+  workspaceId,
+  persist = true,
   onSelect,
 }: {
   className?: string;
   variant?: "panel" | "menu";
+  /** Sobrescrita local fica presa ao porto: cada porto guarda o seu papel. */
+  workspaceId?: string | null;
+  /** Falso na tela do porto: lá a escolha só vira tema depois de salva. */
+  persist?: boolean;
   onSelect?: (preference: ThemePreference) => void;
 }) {
   const [preference, setPreference] = useState<ThemePreference>(readDocumentThemePreference);
@@ -111,7 +118,8 @@ export function ThemePicker({
   }, []);
 
   function choose(next: ThemePreference) {
-    applyThemePreference(next);
+    if (persist) applyThemePreference(next, workspaceId);
+    else applyThemeToDocument(next);
     setPreference(next);
     onSelect?.(next);
   }

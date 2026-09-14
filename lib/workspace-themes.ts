@@ -119,8 +119,16 @@ export function resolveCustomActionInk(hex: string, mode: ThemeMode) {
   return { ink, foreground: pickContrastInkColor(ink) };
 }
 
-export function applyThemePreference(preference: ThemePreference) {
-  if (typeof document === "undefined") return;
+/**
+ * O tema vive no porto (serve qualquer dispositivo). Quem quiser um papel
+ * diferente guarda uma sobrescrita local, sempre presa ao porto em questão.
+ */
+export function themeOverrideStorageKey(workspaceId?: string | null) {
+  return workspaceId ? `${THEME_STORAGE_KEY}:${workspaceId}` : THEME_STORAGE_KEY;
+}
+
+export function applyThemeToDocument(preference: ThemePreference) {
+  if (typeof document === "undefined") return preference.customInk;
   const ink = parseCustomInk(preference.customInk);
   document.documentElement.classList.toggle("dark", preference.mode === "dark");
   document.documentElement.setAttribute("data-theme", preference.paper);
@@ -128,8 +136,29 @@ export function applyThemePreference(preference: ThemePreference) {
   document.documentElement.setAttribute("data-user-ink", ink);
   document.documentElement.style.setProperty("--user-ink", ink);
   document.documentElement.style.setProperty("--user-ink-fg", pickContrastInkColor(ink));
-  localStorage.setItem(THEME_STORAGE_KEY, serializeThemePreference({ ...preference, customInk: ink }));
+  return ink;
+}
+
+export function applyThemePreference(preference: ThemePreference, workspaceId?: string | null) {
+  if (typeof document === "undefined") return;
+  const ink = applyThemeToDocument(preference);
+  localStorage.setItem(
+    themeOverrideStorageKey(workspaceId),
+    serializeThemePreference({ ...preference, customInk: ink }),
+  );
   localStorage.removeItem(THEME_LEGACY_STORAGE_KEY);
+}
+
+/** Volta ao tema definido pelo porto neste navegador. */
+export function clearThemeOverride(workspaceId?: string | null) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(themeOverrideStorageKey(workspaceId));
+  if (!workspaceId) localStorage.removeItem(THEME_LEGACY_STORAGE_KEY);
+}
+
+export function hasThemeOverride(workspaceId?: string | null) {
+  if (typeof localStorage === "undefined") return false;
+  return localStorage.getItem(themeOverrideStorageKey(workspaceId)) != null;
 }
 
 export function readDocumentThemePreference(): ThemePreference {

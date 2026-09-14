@@ -10,6 +10,7 @@ import {
   listTemplates,
 } from "@/lib/db";
 import { documentAccessContext, templateAccessContext } from "@/lib/access-context";
+import { resolveWorkspaceContext } from "@/lib/active-workspace";
 import { documentHasAnyShares, isPrivateOwnedDocument } from "@/lib/db/document-shares";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -47,6 +48,7 @@ export default async function DocumentPage({ params }: Props) {
   const isOwner = isDocumentOwner(document, ctx);
   const collaborators = await listDocumentCollaborators(document.id, document.userId);
   const templates = canEdit && ctx.userId ? await listTemplates(await templateAccessContext(ctx.userId)) : [];
+  const { workspaces } = await resolveWorkspaceContext(ctx.userId);
 
   return (
     <DocumentEditor
@@ -57,6 +59,7 @@ export default async function DocumentPage({ params }: Props) {
       isOwner={isOwner}
       collaborators={collaborators}
       currentUserId={session?.user?.id ?? null}
+      workspaces={workspaces.map((workspace) => ({ id: workspace.id, name: workspace.name }))}
     />
   );
 }

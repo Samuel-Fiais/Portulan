@@ -39,8 +39,14 @@ export async function POST(request: Request) {
     return Response.json({ error: "Documento inválido", issues: parsed.error.issues }, { status: 400 });
   }
 
+  const ctx = await documentAccessContext(session.user.id);
   return Response.json(
-    { document: await createDocument(parsed.data, { userId: session.user.id }) },
+    {
+      document: await createDocument(parsed.data, {
+        userId: session.user.id,
+        workspaceId: ctx.activeWorkspaceId ?? null,
+      }),
+    },
     { status: 201 },
   );
 }

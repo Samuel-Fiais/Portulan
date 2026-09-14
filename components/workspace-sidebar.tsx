@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, LayoutDashboard, Library, Menu, Palette, X } from "lucide-react";
+import { Anchor, Compass, Map, Menu, Ruler, Telescope, X } from "lucide-react";
 import type { Session } from "next-auth";
 import { AuthControls } from "@/components/auth-controls";
 import type { PublicAccount } from "@/lib/account-types";
@@ -15,12 +15,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import type { WorkspaceMembership } from "@/lib/workspaces";
 
 const NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/biblioteca", label: "Biblioteca", icon: Library },
-  { href: "/templates", label: "Templates", icon: Palette },
-  { href: "/integrations", label: "Integrações", icon: Bot },
+  { href: "/", label: "Ponte", icon: Compass },
+  { href: "/biblioteca", label: "Cartoteca", icon: Map },
+  { href: "/templates", label: "Gabaritos", icon: Ruler },
+  { href: "/integrations", label: "Instrumentos", icon: Telescope },
+  { href: "/porto", label: "Porto", icon: Anchor },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -80,10 +83,14 @@ function MobileNavLinks({ pathname }: { pathname: string }) {
 export function WorkspaceSidebar({
   session,
   account,
+  workspaces = [],
+  activeWorkspaceId = null,
   children,
 }: {
   session: Session | null;
   account?: PublicAccount | null;
+  workspaces?: WorkspaceMembership[];
+  activeWorkspaceId?: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -122,12 +129,12 @@ export function WorkspaceSidebar({
         <Link href="/" aria-label="Portulan" className="workspace-mobile-brand">
           <BrandMark compact />
         </Link>
-        <ThemeToggle className="workspace-rail-link" side="bottom" />
+        <ThemeToggle className="workspace-rail-link" side="bottom" workspaceId={activeWorkspaceId} />
       </header>
 
       <nav
         className="workspace-desktop-nav no-print"
-        aria-label="Navegação do workspace"
+        aria-label="Navegação do porto"
       >
         <div className="workspace-rail">
           <Tooltip>
@@ -140,6 +147,11 @@ export function WorkspaceSidebar({
               Portulan
             </TooltipContent>
           </Tooltip>
+          {workspaces.length ? (
+            <div className="workspace-rail-porto">
+              <WorkspaceSwitcher workspaces={workspaces} activeWorkspaceId={activeWorkspaceId} />
+            </div>
+          ) : null}
           <div className="workspace-rail-nav">
             <RailNavLinks pathname={pathname} />
           </div>
@@ -147,7 +159,7 @@ export function WorkspaceSidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="workspace-rail-tooltip-wrap">
-                  <ThemeToggle className="workspace-rail-link" />
+                  <ThemeToggle className="workspace-rail-link" workspaceId={activeWorkspaceId} />
                 </span>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={10}>
@@ -170,14 +182,21 @@ export function WorkspaceSidebar({
       <aside
         id="workspace-mobile-drawer"
         className="workspace-mobile-drawer no-print"
-        aria-label="Navegação do workspace"
+        aria-label="Navegação do porto"
       >
         <div className="workspace-mobile-drawer-header">
           <Link href="/" className="workspace-mobile-brand" aria-label="Portulan">
             <BrandMark compact />
           </Link>
         </div>
-        <p className="workspace-mobile-section">Workspace</p>
+        {workspaces.length ? (
+          <WorkspaceSwitcher
+            workspaces={workspaces}
+            activeWorkspaceId={activeWorkspaceId}
+            variant="drawer"
+          />
+        ) : null}
+        <p className="workspace-mobile-section">Navegação</p>
         <nav className="workspace-mobile-nav">
           <MobileNavLinks pathname={pathname} />
         </nav>
