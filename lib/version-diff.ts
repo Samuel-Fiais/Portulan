@@ -44,9 +44,9 @@ const METADATA_FIELDS: Array<{
 }> = [
   { key: "title", label: "Título" },
   { key: "summary", label: "Resumo" },
-  { key: "templateName", label: "Template" },
-  { key: "author", label: "Autor" },
-  { key: "team", label: "Time" },
+  { key: "templateName", label: "Gabarito" },
+  { key: "author", label: "Cartógrafo" },
+  { key: "team", label: "Frota" },
   { key: "tags", label: "Tags", format: (value) => ((value as string[]).length ? (value as string[]).join(", ") : "—") },
 ];
 

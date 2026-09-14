@@ -34,8 +34,8 @@ export function HomeDashboard({
               O que está em <span>andamento.</span>
             </h1>
             <p className="fp-lead">
-              Resumo da biblioteca, documentos recentes e atalhos para
-              templates e agentes.
+              Resumo da cartoteca, cartas recentes e atalhos para
+              gabaritos e agentes.
             </p>
           </div>
           <NewDocumentDialog templates={templates} />
@@ -43,13 +43,13 @@ export function HomeDashboard({
 
         <div
           className="fp-stat-grid dashboard-stats"
-          aria-label="Resumo da biblioteca"
+          aria-label="Resumo da cartoteca"
         >
           <Link href={bibliotecaUrl()} className="stat-link">
             <StatCard
-              label="Documentos"
+              label="Cartas"
               value={stats.total}
-              note="na biblioteca"
+              note="na cartoteca"
             />
           </Link>
           <Link href={bibliotecaUrl("published")} className="stat-link">
@@ -87,15 +87,15 @@ export function HomeDashboard({
         <div className="section-header split-row">
           <h2 className="section-title">Recentes</h2>
           <Link href="/biblioteca" className="section-desc section-link">
-            Ver biblioteca
+            Ver cartoteca
             <ArrowRight />
           </Link>
         </div>
         <DocumentSummaryList
           documents={recent}
           currentUserId={currentUserId}
-          emptyTitle="Nenhum documento ainda"
-          emptyDescription="Crie o primeiro relatório para começar a biblioteca."
+          emptyTitle="Nenhuma carta ainda"
+          emptyDescription="Crie o primeiro relatório para começar a cartoteca."
         />
       </section>
 
@@ -107,7 +107,7 @@ export function HomeDashboard({
           <Link href="/templates" className="fp-card dashboard-shortcut">
             <Palette />
             <div>
-              <h3>Templates</h3>
+              <h3>Gabaritos</h3>
               <p>Paleta, logo e identidade editorial dos relatórios.</p>
             </div>
             <ArrowRight />
@@ -115,8 +115,8 @@ export function HomeDashboard({
           <Link href="/integrations" className="fp-card dashboard-shortcut">
             <Bot />
             <div>
-              <h3>Integrações</h3>
-              <p>Tokens MCP e skill para agentes manterem a biblioteca.</p>
+              <h3>Instrumentos</h3>
+              <p>Tokens MCP e skill para agentes manterem a cartoteca.</p>
             </div>
             <ArrowRight />
           </Link>

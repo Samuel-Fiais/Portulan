@@ -551,7 +551,7 @@ export function DocumentEditor({
         toast.error(result.error);
         return;
       }
-      toast.success("Documento excluído");
+      toast.success("Carta excluída");
       router.push("/");
     });
   }
@@ -593,9 +593,9 @@ export function DocumentEditor({
       }
       setDocument(result.document);
       setSavedDocument(result.document);
-      toast.success(disabled ? "Documento desativado" : "Documento reativado", {
+      toast.success(disabled ? "Carta desativada" : "Carta reativada", {
         description: disabled
-          ? "Todos os links deste documento exibem uma mensagem de indisponibilidade."
+          ? "Todos os links desta carta exibem uma mensagem de indisponibilidade."
           : "O acesso foi restaurado conforme as versões ativas.",
       });
     });
@@ -722,7 +722,7 @@ export function DocumentEditor({
       <header className="editor-topbar no-print">
         <div className="editor-topbar-inner">
         <div className="editor-context flex min-w-0 items-center gap-2">
-          <Button variant="ghost" size="icon-sm" asChild><Link href="/biblioteca" aria-label="Voltar à biblioteca"><ArrowLeft /></Link></Button>
+          <Button variant="ghost" size="icon-sm" asChild><Link href="/biblioteca" aria-label="Voltar à cartoteca"><ArrowLeft /></Link></Button>
           <div className="min-w-0">
             <strong className="block truncate text-sm">{document.title}</strong>
             <small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small>
@@ -809,18 +809,18 @@ export function DocumentEditor({
                   </DropdownMenuItem>
                   {isOwner ? <DropdownMenuItem onClick={() => setShareDialogOpen(true)}><Share2 />Compartilhar</DropdownMenuItem> : null}
                   <DropdownMenuSeparator />
-                  {isOwner ? <DropdownMenuItem onClick={duplicate}><Copy />Duplicar documento</DropdownMenuItem> : null}
+                  {isOwner ? <DropdownMenuItem onClick={duplicate}><Copy />Duplicar carta</DropdownMenuItem> : null}
                   {isOwner ? (
                     document.disabled ? (
-                      <DropdownMenuItem onClick={() => toggleDocumentDisabled(false)}><RotateCcw />Reativar documento</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => toggleDocumentDisabled(false)}><RotateCcw />Reativar carta</DropdownMenuItem>
                     ) : (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <DropdownMenuItem variant="destructive" onSelect={(event) => event.preventDefault()}><Ban />Desativar documento</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" onSelect={(event) => event.preventDefault()}><Ban />Desativar carta</DropdownMenuItem>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Desativar este documento?</AlertDialogTitle>
+                            <AlertDialogTitle>Desativar esta carta?</AlertDialogTitle>
                             <AlertDialogDescription>
                               Todos os links públicos (/d/{document.slug} e /p/…) deixarão de exibir o conteúdo. Você poderá reativar depois.
                             </AlertDialogDescription>
@@ -837,9 +837,9 @@ export function DocumentEditor({
                     <>
                       <DropdownMenuSeparator />
                       <AlertDialog>
-                        <AlertDialogTrigger asChild><DropdownMenuItem variant="destructive" onSelect={(event) => event.preventDefault()}><Trash2 />Excluir documento</DropdownMenuItem></AlertDialogTrigger>
+                        <AlertDialogTrigger asChild><DropdownMenuItem variant="destructive" onSelect={(event) => event.preventDefault()}><Trash2 />Excluir carta</DropdownMenuItem></AlertDialogTrigger>
                         <AlertDialogContent>
-                          <AlertDialogHeader><AlertDialogTitle>Excluir este documento?</AlertDialogTitle><AlertDialogDescription>“{document.title}” será removido permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogHeader><AlertDialogTitle>Excluir esta carta?</AlertDialogTitle><AlertDialogDescription>“{document.title}” será removida permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
                           <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove}>Excluir definitivamente</AlertDialogAction></AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -902,8 +902,8 @@ export function DocumentEditor({
               <VisibilityBadge visibility={document.visibility} />
               {document.disabled ? <DisabledBadge /> : null}
             </div>
-            <Textarea className="editor-title-input" value={document.title} onChange={(event) => patch("title", event.target.value)} aria-label="Título do documento" readOnly={!canEdit} />
-            <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo do documento…" aria-label="Resumo do documento" readOnly={!canEdit} />
+            <Textarea className="editor-title-input" value={document.title} onChange={(event) => patch("title", event.target.value)} aria-label="Título da carta" readOnly={!canEdit} />
+            <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo da carta…" aria-label="Resumo da carta" readOnly={!canEdit} />
           </div>
           <Tabs defaultValue="content" className="editor-tabs">
             <TabsList variant="line" className="editor-tabs-list"><TabsTrigger value="content"><FileText />Conteúdo</TabsTrigger>{currentUserId ? <TabsTrigger value="review"><EditorReviewTabLabel /></TabsTrigger> : null}<TabsTrigger value="metadata"><Tags />Metadados</TabsTrigger><TabsTrigger value="history"><History />Histórico</TabsTrigger></TabsList>
@@ -928,7 +928,7 @@ export function DocumentEditor({
             ) : null}
             <TabsContent value="metadata" className="editor-tab-content metadata-form">
               <section className="metadata-properties" aria-label="Propriedades">
-                <Field label="Template">
+                <Field label="Gabarito">
                   <Select value={document.templateId} onValueChange={changeTemplate} disabled={!canEdit}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -939,12 +939,12 @@ export function DocumentEditor({
                   </Select>
                 </Field>
                 <Field label="Status"><Select value={document.status} onValueChange={(value: DocumentRecord["status"]) => patch("status", value)} disabled={!canEdit}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentStatuses.map((status) => <SelectItem key={status} value={status}>{statusMeta[status].label}</SelectItem>)}</SelectContent></Select></Field>
-                <Field label="Responsável"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} readOnly={!canEdit} /></Field>
-                <Field label="Time"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
+                <Field label="Cartógrafo"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} readOnly={!canEdit} /></Field>
+                <Field label="Frota"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
                 <Field label="Tags" className="metadata-field--full"><Input value={document.tags.join(", ")} onChange={(event) => patch("tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean))} placeholder="pagamentos, api, arquitetura" readOnly={!canEdit} aria-describedby="metadata-tags-hint" /><p id="metadata-tags-hint">Separe as tags por vírgula.</p></Field>
               </section>
               {isOwner ? (
-                <section className="metadata-actions" aria-label="Ações do documento">
+                <section className="metadata-actions" aria-label="Ações da carta">
                   <div className="metadata-action-panel">
                     <h3 className="metadata-action-panel__title">Visibilidade</h3>
                     <p>{documentVisibilityMeta[document.visibility].blurb}.</p>
@@ -980,22 +980,22 @@ export function DocumentEditor({
                     <h3 className="metadata-action-panel__title">Interromper links</h3>
                     <p>
                       {document.disabled
-                        ? "Este documento está desativado. Links /d/ e /p/ exibem mensagem de indisponibilidade."
-                        : "Desative para interromper /d e /p sem excluir o documento, inclusive para convidados nessas URLs."}
+                        ? "Esta carta está desativada. Links /d/ e /p/ exibem mensagem de indisponibilidade."
+                        : "Desative para interromper /d e /p sem excluir a carta, inclusive para convidados nessas URLs."}
                     </p>
                     <div className="metadata-action-panel__footer">
                       {document.disabled ? (
-                        <Button type="button" variant="outline" size="sm" onClick={() => toggleDocumentDisabled(false)} disabled={pending}><RotateCcw />Reativar documento</Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => toggleDocumentDisabled(false)} disabled={pending}><RotateCcw />Reativar carta</Button>
                       ) : (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button type="button" variant="destructive" size="sm" disabled={pending}><Ban />Desativar documento</Button>
+                            <Button type="button" variant="destructive" size="sm" disabled={pending}><Ban />Desativar carta</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Desativar este documento?</AlertDialogTitle>
+                              <AlertDialogTitle>Desativar esta carta?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Todos os links públicos deixarão de exibir o conteúdo até você reativar o documento.
+                                Todos os links públicos deixarão de exibir o conteúdo até você reativar a carta.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

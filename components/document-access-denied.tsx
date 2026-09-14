@@ -5,16 +5,16 @@ import { BrandMark } from "@/components/brand-mark";
 
 const messages = {
   unauthenticated: {
-    title: "Este documento é privado.",
+    title: "Esta carta é privada.",
     description:
-      "Faça login para acessar documentos compartilhados com você. Convites por e-mail são vinculados automaticamente ao entrar com o mesmo e-mail.",
+      "Faça login para acessar cartas compartilhadas com você. Convites por e-mail são vinculados automaticamente ao entrar com o mesmo e-mail.",
     action: { href: "/login", label: "Entrar", icon: LogIn },
   },
   forbidden: {
-    title: "Você não tem acesso a este documento.",
+    title: "Você não tem acesso a esta carta.",
     description:
-      "Peça ao responsável para compartilhar o documento com o e-mail da sua conta. Convites pendentes só funcionam após login com o mesmo e-mail.",
-    action: { href: "/biblioteca", label: "Voltar à biblioteca", icon: ArrowLeft },
+      "Peça ao cartógrafo para compartilhar a carta com o e-mail da sua conta. Convites pendentes só funcionam após login com o mesmo e-mail.",
+    action: { href: "/biblioteca", label: "Voltar à cartoteca", icon: ArrowLeft },
   },
 } as const;
 

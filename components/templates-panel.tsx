@@ -40,8 +40,8 @@ export function TemplatesPanel({ templates }: { templates: TemplateRecord[] }) {
       <section className="doc-section">
         <header className="page-heading split-row">
           <div className="split-row__main workspace-heading">
-            <span className="eyebrow">Templates</span>
-            <h1 className="fp-h1">Templates</h1>
+            <span className="eyebrow">Gabaritos</span>
+            <h1 className="fp-h1">Gabaritos</h1>
             <p className="workspace-lead">
               Paleta, logo e conteúdo-base dos relatórios. O Default interno
               não pode ser excluído.
@@ -53,7 +53,7 @@ export function TemplatesPanel({ templates }: { templates: TemplateRecord[] }) {
         </header>
         <div className="workspace-page-body">
         <div className="section-header split-row">
-          <h2 className="section-title">Templates</h2>
+          <h2 className="section-title">Gabaritos</h2>
           <span className="section-desc">
             {templates.length} template{templates.length === 1 ? "" : "s"}
           </span>
@@ -86,7 +86,7 @@ function TemplateCard({
         toast.error(result.error);
         return;
       }
-      toast.success("Template duplicado");
+      toast.success("Gabarito duplicado");
     });
   }
 
@@ -98,7 +98,7 @@ function TemplateCard({
         toast.error(result.error);
         return;
       }
-      toast.success("Template excluído");
+      toast.success("Gabarito excluído");
     });
   }
 
@@ -121,8 +121,8 @@ function TemplateCard({
           <h3>{template.name}</h3>
           <p>
             {template.isBuiltin
-              ? "Template padrão Portulan (navy + burgundy)."
-              : "Template personalizado com cores próprias."}
+              ? "Gabarito padrão Portulan (navy + burgundy)."
+              : "Gabarito personalizado com cores próprias."}
           </p>
           <div className="template-color-row">
             <span
@@ -220,7 +220,7 @@ function TemplateFormDialog({
       title: name.trim() || "Título do relatório",
       summary: "Resumo de exemplo para visualizar cabeçalho, cores e logo.",
       templateId: template?.id ?? "template-preview",
-      templateName: name.trim() || "Template",
+      templateName: name.trim() || "Gabarito",
       primaryColor,
       secondaryColor,
       logoUrl: logoUrl.trim() || null,
@@ -278,7 +278,7 @@ function TemplateFormDialog({
         setSecondaryColor(DEFAULT_TEMPLATE_COLORS.secondary);
         setLogoUrl("");
       }
-      toast.success(isEdit ? "Template atualizado" : "Template criado");
+      toast.success(isEdit ? "Gabarito atualizado" : "Gabarito criado");
     });
   }
 

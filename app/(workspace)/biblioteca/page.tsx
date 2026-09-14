@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Biblioteca" };
+export const metadata: Metadata = { title: "Cartoteca" };
 
 export default async function BibliotecaPage({
   searchParams,

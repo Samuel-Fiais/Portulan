@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Templates" };
+export const metadata: Metadata = { title: "Gabaritos" };
 
 export default async function TemplatesPage() {
   const session = await auth();

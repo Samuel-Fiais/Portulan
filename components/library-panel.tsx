@@ -102,10 +102,10 @@ export function LibraryPanel({
       <section className="doc-section">
         <header className="page-heading split-row">
           <div className="split-row__main workspace-heading">
-            <span className="eyebrow">Biblioteca</span>
-            <h1 className="fp-h1">Biblioteca</h1>
+            <span className="eyebrow">Cartoteca</span>
+            <h1 className="fp-h1">Cartoteca</h1>
             <p className="workspace-lead">
-              Documentos seus e compartilhados com você. Busque por título,
+              Suas cartas e as compartilhadas com você. Busque por título,
               tema, tag ou conteúdo.
             </p>
           </div>
@@ -129,7 +129,7 @@ export function LibraryPanel({
               className="template-filter-select"
               aria-label="Filtrar por origem"
             >
-              <SelectValue placeholder="Todos os documentos" />
+              <SelectValue placeholder="Todas as cartas" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
@@ -156,12 +156,12 @@ export function LibraryPanel({
           <Select value={templateFilter} onValueChange={setTemplateFilter}>
             <SelectTrigger
               className="template-filter-select"
-              aria-label="Filtrar por template"
+              aria-label="Filtrar por gabarito"
             >
-              <SelectValue placeholder="Todos os templates" />
+              <SelectValue placeholder="Todos os gabaritos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os templates</SelectItem>
+              <SelectItem value="all">Todos os gabaritos</SelectItem>
               {templates.map((template) => (
                 <SelectItem key={template.id} value={template.id}>
                   {template.name}
@@ -171,9 +171,9 @@ export function LibraryPanel({
           </Select>
         </div>
         <div className="section-header split-row">
-          <h2 className="section-title">Documentos</h2>
+          <h2 className="section-title">Cartas</h2>
           <span className="section-desc">
-            {filtered.length} documento{filtered.length === 1 ? "" : "s"}
+            {filtered.length} carta{filtered.length === 1 ? "" : "s"}
           </span>
         </div>
         <DocumentSummaryList documents={filtered} currentUserId={currentUserId} />

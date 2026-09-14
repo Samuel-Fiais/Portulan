@@ -15,8 +15,8 @@ import { formatRelativeDate } from "@/lib/utils";
 export function DocumentSummaryList({
   documents,
   currentUserId,
-  emptyTitle = "Nenhum documento encontrado",
-  emptyDescription = "Ajuste a busca ou crie um novo documento.",
+  emptyTitle = "Nenhuma carta encontrado",
+  emptyDescription = "Ajuste a busca ou crie uma nova carta.",
 }: {
   documents: DocumentSummary[];
   currentUserId?: string;

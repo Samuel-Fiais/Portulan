@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const document = await getDocument(id, { bypassOwnership: true });
-  return { title: document?.title ?? "Documento" };
+  return { title: document?.title ?? "Carta" };
 }
 
 export default async function DocumentPage({ params }: Props) {

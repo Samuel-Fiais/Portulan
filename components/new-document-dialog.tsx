@@ -41,7 +41,7 @@ export function NewDocumentDialog({
     startTransition(async () => {
       const result = await createDocumentAction({
         title,
-        summary: summary || "Resumo do documento.",
+        summary: summary || "Resumo da carta.",
         templateId: selectedTemplate.id,
         status: "draft",
         tags: [],
@@ -54,18 +54,18 @@ export function NewDocumentDialog({
         return;
       }
       setOpen(false);
-      toast.success("Documento criado");
+      toast.success("Carta criada");
       router.push(`/documents/${result.document.id}`);
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger ?? <Button><FilePlus2 />Novo documento</Button>}</DialogTrigger>
+      <DialogTrigger asChild>{trigger ?? <Button><FilePlus2 />Nova carta</Button>}</DialogTrigger>
       <DialogContent className="workspace-dialog new-document-dialog sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Novo documento</DialogTitle>
-          <DialogDescription>Escolha um template com as cores editoriais do documento.</DialogDescription>
+          <DialogTitle>Nova carta</DialogTitle>
+          <DialogDescription>Escolha um gabarito com as cores editoriais da carta.</DialogDescription>
         </DialogHeader>
         <div className="template-choice-grid">
           {templates.map((item) => (
@@ -81,7 +81,7 @@ export function NewDocumentDialog({
                 style={{ background: `linear-gradient(90deg, ${item.primaryColor}, ${item.secondaryColor})` }}
               />
               <strong>{item.name}</strong>
-              <small>{item.isBuiltin ? "Padrão Portulan" : "Template personalizado"}</small>
+              <small>{item.isBuiltin ? "Padrão Portulan" : "Gabarito personalizado"}</small>
             </button>
           ))}
         </div>
@@ -92,7 +92,7 @@ export function NewDocumentDialog({
           </div>
           <div>
             <Label htmlFor="new-summary">Resumo <span className="normal-case tracking-normal">(opcional)</span></Label>
-            <Textarea id="new-summary" value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Resumo executivo do documento…" rows={3} />
+            <Textarea id="new-summary" value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Resumo executivo da carta…" rows={3} />
           </div>
         </div>
         <DialogFooter>

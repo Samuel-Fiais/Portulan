@@ -132,7 +132,7 @@ export function CommentThreadCard({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
   const resolved = isThreadResolved(thread);
-  const label = comments.targetLabel(thread.root.sectionAnchor) ?? "Documento";
+  const label = comments.targetLabel(thread.root.sectionAnchor) ?? "Carta";
 
   async function remove(commentId: string) {
     setDeletingId(commentId);

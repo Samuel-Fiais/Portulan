@@ -368,7 +368,7 @@ export function AccountSettingsDialog({
           <div className="account-dialog-footer-actions">
             <Button asChild variant="outline">
               <Link href="/integrations" onClick={() => onOpenChange(false)}>
-                Integrações
+                Instrumentos
               </Link>
             </Button>
             <Button type="button" variant="ghost" className="account-sign-out" onClick={() => signOut()}>

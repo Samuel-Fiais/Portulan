@@ -132,7 +132,7 @@ export function PreviewCommentRail() {
       </div>
       {composer.mode === "create" ? (
         <div className="preview-comment-rail-body">
-          {createLabel ? <span className="review-comment-section">§ {createLabel}</span> : <p>Comentário no documento inteiro.</p>}
+          {createLabel ? <span className="review-comment-section">§ {createLabel}</span> : <p>Comentário na carta inteira.</p>}
           <CommentComposeForm
             id="preview-comment-create"
             placeholder="Escreva o comentário…"

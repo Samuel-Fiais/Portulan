@@ -28,7 +28,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: { default: "Portulan", template: "%s · Portulan" },
-  description: "Workspace para documentos e relatórios técnicos navegáveis.",
+  description: "Workspace para cartas e relatórios técnicos navegáveis.",
   icons: {
     icon: "/portulan-mark.png",
     apple: "/portulan-mark.png",
