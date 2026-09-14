@@ -68,7 +68,7 @@ Authorization: Bearer <MCP_API_KEY>
 
 No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
 
-## Ferramentas (29)
+## Ferramentas (30)
 
 | Ferramenta | Quando usar |
 |---|---|
@@ -76,11 +76,12 @@ No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quan
 | `upload_image` | Enviar imagem (base64) para um documento; usar a `url` retornada em `:::figure{src=...}` |
 | `upload_file` | Enviar anexo (base64) para um documento; usar `url` e `name` em `:::file{url=... name=...}` |
 | `list_workspaces` | Portos (workspaces) da pessoa e qual deles este token opera (RN-55) |
+| `create_workspace` | Abrir um porto novo, com a pessoa como capitão (RN-86); o token continua no porto de origem |
 | `list_documents` | Descobrir o que existe no porto do token (mais os compartilhados nominalmente); buscar por título, tag, conteúdo, template ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente. Nasce privado, no porto do token |
 | `duplicate_document` | Clonar documento como rascunho novo (apenas responsável; releases não copiadas) |
-| `update_document` | Editar rascunho/revisão; não cria versão publicada |
+| `update_document` | Editar rascunho/revisão; não cria versão publicada; `workspace_id` move a carta de porto (RN-19) |
 | `publish_document` | Gerar versão imutável; a visibilidade não muda |
 | `restore_document` | Copiar uma release publicada para o rascunho; não publica nem apaga versões (RN-09) |
 | `list_document_releases` | Recuperar links `/d/{slug}` (estável) e `/p/{id}` (versão fixa) já publicados |
@@ -132,6 +133,8 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 ### Porto (workspace) e visibilidade
 
 O token MCP opera em **um** porto, fixado quando foi gerado (RN-55). Documentos e templates criados pelo agente nascem nesse porto; `list_documents` e `list_templates` enxergam o acervo dele (mais os documentos compartilhados nominalmente com a pessoa). Para operar em outro porto, o usuário troca de porto na UI e gera um token novo. `list_workspaces` mostra os portos disponíveis e marca qual deles é o do token.
+
+O agente abre porto novo com `create_workspace` e reorganiza o acervo com `workspace_id` em `update_document` (só o cartógrafo move a carta, e só para porto onde ele é tripulante — RN-19) e em `update_template` (exige capitania nos dois portos — RN-95). Nada disso muda o porto do token: depois de mover cartas para um porto novo, gerar um token nele para continuar enxergando-as em `list_documents`.
 
 `update_document` aceita `visibility` com três níveis (RN-17, RN-18). Só o responsável muda:
 
@@ -384,7 +387,7 @@ curl -sS -X POST http://localhost:3000/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 29 ferramentas.
+Deve listar 30 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

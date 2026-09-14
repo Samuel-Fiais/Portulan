@@ -5,6 +5,7 @@ import {
   addDocumentShare,
   createDocument,
   createTemplate,
+  createWorkspace,
   duplicateDocument,
   deleteDocument,
   deleteTemplate,
@@ -25,17 +26,20 @@ import {
   setDocumentDisabled,
   setDocumentReleaseDisabled,
   setDocumentVisibility,
+  setDocumentWorkspace,
+  setTemplateWorkspace,
   updateDocument,
   updateTemplate,
   validateMcpToken,
 } from "@/lib/db";
 import { templateAccessContext, workspaceScopedAccessContext } from "@/lib/access-context";
+import { validateWorkspaceName } from "@/lib/workspace-policy";
 import {
   createDocumentCommentForAccess,
   deleteDocumentCommentForAccess,
   listDocumentCommentThreadsForAccess,
 } from "@/lib/document-comment-ops";
-import { documentShareInputSchema, documentVisibilitySchema } from "@/lib/validation";
+import { documentShareInputSchema, documentVisibilitySchema, workspaceNameSchema } from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
 import { buildSystemGuide, getMcpServerVersion } from "@/lib/system-guide";
@@ -108,6 +112,21 @@ const mcpHandler = createMcpHandler((server) => {
     },
   );
 
+  server.registerTool(
+    "create_workspace",
+    {
+      title: "Criar porto",
+      description:
+        "Cria um porto novo com a pessoa autenticada como capitão (RN-86). O token continua operando o porto em que foi gerado (RN-55): para o agente trabalhar dentro do porto novo, gerar um token nele. Use o id devolvido como destino ao mover cartas e gabaritos.",
+      inputSchema: z.object({ name: workspaceNameSchema }),
+    },
+    async ({ name }) => {
+      const check = validateWorkspaceName(name);
+      if (!check.ok) return { ...textResult({ error: check.error }), isError: true };
+      return textResult({ workspace: await createWorkspace(requireUserId(), name) });
+    },
+  );
+
   const templateFields = {
     name: z.string().trim().min(1).max(80),
     primary_color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
@@ -138,7 +157,7 @@ const mcpHandler = createMcpHandler((server) => {
     "update_template",
     {
       title: "Editar template",
-      description: "Atualiza parcialmente nome, cores, logo ou conteúdo-base de um template. Não cria versão de documentos.",
+      description: "Atualiza parcialmente nome, cores, logo ou conteúdo-base de um template. Não cria versão de documentos. Com workspace_id, move o gabarito para outro porto (RN-95).",
       inputSchema: z.object({
         id: z.string().min(1),
         name: templateFields.name.optional(),
@@ -146,10 +165,25 @@ const mcpHandler = createMcpHandler((server) => {
         secondary_color: templateFields.secondary_color.optional(),
         logo_url: templateFields.logo_url,
         content: z.string().max(250_000).optional(),
-      }).refine((input) => input.name !== undefined || input.primary_color !== undefined || input.secondary_color !== undefined || input.logo_url !== undefined || input.content !== undefined, { message: "Informe ao menos um campo para atualizar." }),
+        workspace_id: z.string().uuid().optional().describe("Porto de destino: exige capitania (capitão ou imediato) no porto atual e no novo"),
+      }).refine((input) => input.name !== undefined || input.primary_color !== undefined || input.secondary_color !== undefined || input.logo_url !== undefined || input.content !== undefined || input.workspace_id !== undefined, { message: "Informe ao menos um campo para atualizar." }),
     },
-    async ({ id, primary_color, secondary_color, logo_url, ...input }) => {
-      const template = await updateTemplate(await requireTemplateContext(), id, {
+    async ({ id, primary_color, secondary_color, logo_url, workspace_id, ...input }) => {
+      const ctx = await requireTemplateContext();
+      if (workspace_id !== undefined) {
+        const moved = await setTemplateWorkspace(ctx, id, workspace_id);
+        if (!moved) return { ...textResult({ error: "Template não encontrado, interno ou sem capitania nos dois portos." }), isError: true };
+      }
+      const hasOtherChanges =
+        input.name !== undefined ||
+        primary_color !== undefined ||
+        secondary_color !== undefined ||
+        logo_url !== undefined ||
+        input.content !== undefined;
+      if (!hasOtherChanges) {
+        return textResult({ template: await getTemplateForUser(id, ctx) });
+      }
+      const template = await updateTemplate(ctx, id, {
         ...input,
         primaryColor: primary_color,
         secondaryColor: secondary_color,
@@ -401,7 +435,7 @@ const mcpHandler = createMcpHandler((server) => {
     "update_document",
     {
       title: "Editar documento",
-      description: "Atualiza parcialmente o rascunho de um documento, sem criar uma nova versão publicada. Renomear o título não altera o UUID do link /d/{uuid}.",
+      description: "Atualiza parcialmente o rascunho de um documento, sem criar uma nova versão publicada. Renomear o título não altera o UUID do link /d/{uuid}. Com workspace_id, move a carta para outro porto do cartógrafo (RN-19).",
       inputSchema: z.object({
         id: z.string().min(1),
         title: z.string().min(3).max(180).optional(),
@@ -415,9 +449,14 @@ const mcpHandler = createMcpHandler((server) => {
         disabled: z.boolean().optional().describe("Desativa ou reativa os links /d e /p do documento"),
         is_public: z.boolean().optional().describe("Atalho legado de visibility: true = public, false = private"),
         visibility: documentVisibilitySchema.optional().describe("private: só responsável e convidados; workspace: toda a tripulação do porto; public: qualquer pessoa com o link"),
+        workspace_id: z.string().uuid().optional().describe("Porto de destino: só o cartógrafo move, e só para porto em que ele é tripulante (use list_workspaces)"),
       }),
     },
-    async ({ id, template_id, disabled, is_public, visibility, ...changes }) => {
+    async ({ id, template_id, disabled, is_public, visibility, workspace_id, ...changes }) => {
+      if (workspace_id !== undefined) {
+        const moved = await setDocumentWorkspace(id, workspace_id, await requireAccessContext());
+        if (!moved) return { ...textResult({ error: "Documento não encontrado, ou porto de destino fora dos seus portos, ou você não é o cartógrafo." }), isError: true };
+      }
       if (disabled !== undefined) {
         const toggled = await setDocumentDisabled(id, disabled, await requireAccessContext());
         if (!toggled) return { ...textResult({ error: "Documento não encontrado" }), isError: true };

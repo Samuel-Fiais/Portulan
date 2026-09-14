@@ -38,6 +38,12 @@ Sem input. Retorna os portos (workspaces) da pessoa autenticada e marca qual del
 
 Documentos e templates criados pelo agente nascem em `activeWorkspaceId`. Para operar em outro porto, o usuário troca de porto na UI e gera um token novo.
 
+### `create_workspace`
+
+Recebe `{ "name": "Festpay" }` e cria um porto com a pessoa autenticada como capitão (RN-86). Retorna `{ "workspace": { "id": "...", "name": "...", "role": "owner", "memberCount": 1 } }`.
+
+O token **não** passa a operar o porto novo (RN-55). Use o `id` retornado como destino em `update_document` / `update_template` e, para o agente trabalhar dentro dele depois, gere um token nesse porto na tela Instrumentos.
+
 ### `list_templates`, `get_template`, `create_template`, `update_template`, `duplicate_template`, `preview_template`, `delete_template`
 
 `list_templates` retorna templates internos e os templates do porto deste token (mais os particulares legados do usuário), incluindo `id`, `name`, `workspaceId`, `primaryColor`, `secondaryColor` e `content`.
@@ -58,6 +64,8 @@ Documentos e templates criados pelo agente nascem em `activeWorkspaceId`. Para o
 ```
 
 Use esse corpo com `create_template`. Para `update_template`, acrescente o `id` e envie apenas os campos a mudar. `delete_template` recebe `{ "id": "..." }` e só exclui templates particulares; modelos internos podem ser editados, mas não excluídos.
+
+`update_template` também aceita `workspace_id` para mover o template para outro porto (`{ "id": "...", "workspace_id": "uuid-do-porto" }`). Exige capitania (capitão ou imediato) no porto atual e no de destino, e não se aplica a modelos internos (RN-95).
 
 ### `get_system_guide`
 
@@ -218,6 +226,8 @@ Salva o rascunho sem criar uma nova versão publicada.
 `visibility` (opcional, só o responsável — RN-17, RN-18): `"private"` restringe a responsável e convidados nominais; `"workspace"` deixa toda a tripulação do porto do documento **ler** (exige documento com porto); `"public"` permite que qualquer pessoa com `/d` ou `/p` veja a versão publicada. Documentos nascem `private`.
 
 `is_public` (opcional): atalho legado — `true` equivale a `visibility: "public"`, `false` a `"private"`.
+
+`workspace_id` (opcional, só o responsável — RN-19): move o documento para outro porto da pessoa. Convites nominais e releases já publicadas não mudam; um documento em `visibility: "workspace"` passa a ser lido pela tripulação do porto novo. Mover para fora do porto do token tira o documento do `list_documents` daquele token.
 
 Quando `content` é enviado, o servidor faz merge do estado living (RN-54): `status` de `:::testcase` e checkboxes de `:::checklist` já salvos no rascunho prevalecem sobre os valores do payload para o mesmo `id` ou título de item. Itens novos no payload mantêm o estado enviado pelo agente.
 
