@@ -2,30 +2,37 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { allowsAnonymousPublishedRead } from "./documents.ts";
 
-test("documento privado com dono não é legível sem login", () => {
+test("carta em camarote não é legível sem login", () => {
   assert.equal(
-    allowsAnonymousPublishedRead({ disabled: false, isPublic: false, userId: "user-1" }),
+    allowsAnonymousPublishedRead({ disabled: false, visibility: "private", userId: "user-1" }),
     false,
   );
 });
 
-test("acesso público ligado permite leitura anônima", () => {
+test("carta aberta só ao porto não vale para visitante anônimo", () => {
   assert.equal(
-    allowsAnonymousPublishedRead({ disabled: false, isPublic: true, userId: "user-1" }),
+    allowsAnonymousPublishedRead({ disabled: false, visibility: "workspace", userId: "user-1" }),
+    false,
+  );
+});
+
+test("mar aberto permite leitura anônima", () => {
+  assert.equal(
+    allowsAnonymousPublishedRead({ disabled: false, visibility: "public", userId: "user-1" }),
     true,
   );
 });
 
-test("documento desativado nunca é legível anonimamente", () => {
+test("carta desativada nunca é legível anonimamente", () => {
   assert.equal(
-    allowsAnonymousPublishedRead({ disabled: true, isPublic: true, userId: "user-1" }),
+    allowsAnonymousPublishedRead({ disabled: true, visibility: "public", userId: "user-1" }),
     false,
   );
 });
 
-test("documento legado sem responsável permanece legível no link", () => {
+test("carta legada sem cartógrafo permanece legível no link", () => {
   assert.equal(
-    allowsAnonymousPublishedRead({ disabled: false, isPublic: false, userId: null }),
+    allowsAnonymousPublishedRead({ disabled: false, visibility: "private", userId: null }),
     true,
   );
 });

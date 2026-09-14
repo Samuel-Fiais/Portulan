@@ -22,7 +22,7 @@ function customSwatchStyle(ink: string, mode: ThemeMode): CSSProperties {
     "--theme-swatch-paper": `color-mix(in srgb, ${ink} ${mode === "dark" ? 16 : 8}%, ${wash})`,
     "--theme-swatch-bar": ink,
     "--theme-swatch-muted": `color-mix(in srgb, ${ink} ${mode === "dark" ? 28 : 20}%, ${edge})`,
-  };
+  } as CSSProperties;
 }
 
 function ThemeControl({

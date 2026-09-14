@@ -9,7 +9,7 @@ import {
   listDocumentReleases,
   listTemplates,
 } from "@/lib/db";
-import { documentAccessContext } from "@/lib/access-context";
+import { documentAccessContext, templateAccessContext } from "@/lib/access-context";
 import { documentHasAnyShares, isPrivateOwnedDocument } from "@/lib/db/document-shares";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -46,7 +46,7 @@ export default async function DocumentPage({ params }: Props) {
   const canEdit = await canEditDocument(document, ctx);
   const isOwner = isDocumentOwner(document, ctx);
   const collaborators = await listDocumentCollaborators(document.id, document.userId);
-  const templates = canEdit && ctx.userId ? await listTemplates(ctx.userId) : [];
+  const templates = canEdit && ctx.userId ? await listTemplates(await templateAccessContext(ctx.userId)) : [];
 
   return (
     <DocumentEditor

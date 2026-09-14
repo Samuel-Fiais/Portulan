@@ -21,6 +21,67 @@ ALTER TABLE portulan.users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS users_login_lower_uidx ON portulan.users (LOWER(login));
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_uidx ON portulan.users (LOWER(email)) WHERE email IS NOT NULL;
 
+CREATE TABLE IF NOT EXISTS portulan.workspaces (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  theme_paper TEXT NOT NULL DEFAULT 'carta',
+  theme_mode TEXT NOT NULL DEFAULT 'light',
+  theme_ink TEXT NOT NULL DEFAULT '#1a2847',
+  is_personal BOOLEAN NOT NULL DEFAULT FALSE,
+  created_by UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspaces_created_by ON portulan.workspaces (created_by);
+
+CREATE TABLE IF NOT EXISTS portulan.workspace_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES portulan.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (workspace_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_members_workspace_id ON portulan.workspace_members (workspace_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_members_user_id ON portulan.workspace_members (user_id);
+
+CREATE TABLE IF NOT EXISTS portulan.workspace_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  token_prefix TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('admin', 'member')),
+  created_by UUID NOT NULL REFERENCES portulan.users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ,
+  max_uses INTEGER,
+  uses INTEGER NOT NULL DEFAULT 0,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_invites_workspace_id ON portulan.workspace_invites (workspace_id);
+
+-- Porto inicial de cada conta: um workspace pessoal com o dono como capitão.
+INSERT INTO portulan.workspaces (slug, name, is_personal, created_by)
+SELECT
+  'porto-' || SUBSTRING(u.id::text FROM 1 FOR 8),
+  'Porto de ' || SPLIT_PART(COALESCE(NULLIF(TRIM(u.name), ''), u.login), ' ', 1),
+  TRUE,
+  u.id
+FROM portulan.users AS u
+WHERE NOT EXISTS (
+  SELECT 1 FROM portulan.workspaces AS w WHERE w.created_by = u.id AND w.is_personal
+)
+ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO portulan.workspace_members (workspace_id, user_id, role)
+SELECT w.id, w.created_by, 'owner'
+FROM portulan.workspaces AS w
+WHERE w.created_by IS NOT NULL
+ON CONFLICT (workspace_id, user_id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS portulan.templates (
   id TEXT PRIMARY KEY,
   user_id UUID REFERENCES portulan.users(id) ON DELETE CASCADE,
@@ -34,8 +95,18 @@ CREATE TABLE IF NOT EXISTS portulan.templates (
 );
 
 ALTER TABLE portulan.templates ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE portulan.templates ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES portulan.workspaces(id) ON DELETE CASCADE;
+
+UPDATE portulan.templates AS t
+SET workspace_id = w.id
+FROM portulan.workspaces AS w
+WHERE t.workspace_id IS NULL
+  AND t.user_id IS NOT NULL
+  AND w.created_by = t.user_id
+  AND w.is_personal;
 
 CREATE INDEX IF NOT EXISTS idx_templates_user_id ON portulan.templates (user_id);
+CREATE INDEX IF NOT EXISTS idx_templates_workspace_id ON portulan.templates (workspace_id);
 
 CREATE TABLE IF NOT EXISTS portulan.mcp_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -44,8 +115,19 @@ CREATE TABLE IF NOT EXISTS portulan.mcp_tokens (
   token_hash TEXT NOT NULL UNIQUE,
   token_prefix TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  last_used_at TIMESTAMPTZ
+  last_used_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ
 );
+
+ALTER TABLE portulan.mcp_tokens ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE portulan.mcp_tokens ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES portulan.workspaces(id) ON DELETE SET NULL;
+
+UPDATE portulan.mcp_tokens AS t
+SET workspace_id = w.id
+FROM portulan.workspaces AS w
+WHERE t.workspace_id IS NULL
+  AND w.created_by = t.user_id
+  AND w.is_personal;
 
 CREATE INDEX IF NOT EXISTS idx_mcp_tokens_user_id ON portulan.mcp_tokens (user_id);
 
@@ -88,8 +170,23 @@ DROP INDEX IF EXISTS portulan.idx_documents_type;
 ALTER TABLE portulan.documents DROP COLUMN IF EXISTS type;
 ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES portulan.workspaces(id) ON DELETE SET NULL;
+ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private';
+
+UPDATE portulan.documents AS d
+SET workspace_id = w.id
+FROM portulan.workspaces AS w
+WHERE d.workspace_id IS NULL
+  AND d.user_id IS NOT NULL
+  AND w.created_by = d.user_id
+  AND w.is_personal;
+
+UPDATE portulan.documents SET visibility = 'public' WHERE is_public AND visibility <> 'public';
+ALTER TABLE portulan.documents DROP CONSTRAINT IF EXISTS documents_visibility_check;
+ALTER TABLE portulan.documents ADD CONSTRAINT documents_visibility_check CHECK (visibility IN ('private', 'workspace', 'public'));
 
 CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON portulan.documents (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_documents_workspace_id ON portulan.documents (workspace_id);
 CREATE INDEX IF NOT EXISTS idx_documents_template_id ON portulan.documents (template_id);
 CREATE INDEX IF NOT EXISTS idx_documents_status ON portulan.documents (status);
 CREATE INDEX IF NOT EXISTS idx_documents_user_id ON portulan.documents (user_id);

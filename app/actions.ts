@@ -23,15 +23,17 @@ import {
   restoreDocumentRelease,
   revokeDocumentShare,
   revokeMcpToken,
+  listWorkspaceMemberIds,
   setDocumentDisabled,
-  setDocumentPublic,
   setDocumentReleaseDisabled,
+  setDocumentVisibility,
+  setDocumentWorkspace,
   updateDocument,
   updateDocumentLivingContent,
   updateDocumentShareRole,
   updateTemplate,
 } from "@/lib/db";
-import { documentAccessContext } from "@/lib/access-context";
+import { documentAccessContext, templateAccessContext } from "@/lib/access-context";
 import {
   createDocumentCommentForAccess,
   deleteDocumentCommentForAccess,
@@ -47,6 +49,7 @@ import {
 } from "@/lib/account-ops";
 import { setGitHubLinkCookie } from "@/lib/github-link-cookie";
 import { getUserById, toPublicAccount } from "@/lib/users";
+import { isExternalCollaborator } from "@/lib/workspace-policy";
 import {
   documentCommentInputSchema,
   documentCommentResolveInputSchema,
@@ -54,6 +57,7 @@ import {
   documentShareInputSchema,
   documentShareUpdateSchema,
   documentUpdateSchema,
+  documentVisibilitySchema,
   mcpTokenInputSchema,
   templateInputSchema,
 } from "@/lib/validation";
@@ -71,12 +75,13 @@ export async function createDocumentAction(input: unknown) {
   const parsed = documentInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Revise os campos obrigatórios." };
 
+  const ctx = await accessContext(session.user.id);
   const document = await createDocument(
     {
       ...parsed.data,
       author: parsed.data.author || session.user.login || session.user.name || "",
     },
-    { userId: session.user.id },
+    { userId: session.user.id, workspaceId: ctx.activeWorkspaceId ?? null },
   );
   revalidatePath("/");
   return { ok: true as const, document };
@@ -174,19 +179,38 @@ export async function setDocumentDisabledAction(id: string, disabled: boolean) {
   return { ok: true as const, document };
 }
 
-export async function setDocumentPublicAction(id: string, isPublic: boolean) {
+export async function setDocumentVisibilityAction(id: string, input: unknown) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para alterar o acesso público." };
+    return { ok: false as const, error: "Faça login para alterar a visibilidade." };
   }
 
-  const document = await setDocumentPublic(id, isPublic, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  const parsed = documentVisibilitySchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Nível de visibilidade inválido." };
+
+  const document = await setDocumentVisibility(id, parsed.data, await accessContext(session.user.id));
+  if (!document) {
+    return { ok: false as const, error: "Carta não encontrada, sem porto ou sem permissão." };
+  }
 
   revalidatePath("/");
   revalidatePath(`/documents/${id}`);
   revalidatePath(`/documents/${document.slug}`);
   revalidatePath(`/d/${document.slug}`);
+  return { ok: true as const, document };
+}
+
+export async function setDocumentWorkspaceAction(id: string, workspaceId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para mover cartas de porto." };
+  }
+
+  const document = await setDocumentWorkspace(id, workspaceId, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
+
+  revalidatePath("/", "layout");
+  revalidatePath(`/documents/${id}`);
   return { ok: true as const, document };
 }
 
@@ -245,7 +269,7 @@ export async function createTemplateAction(input: unknown) {
   const parsed = templateInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Revise nome e cores do template." };
 
-  const template = await createTemplate(session.user.id, {
+  const template = await createTemplate(await templateAccessContext(session.user.id), {
     ...parsed.data,
     logoUrl: parsed.data.logoUrl ?? null,
   });
@@ -262,7 +286,7 @@ export async function updateTemplateAction(id: string, input: unknown) {
   const parsed = templateInputSchema.partial().safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Não foi possível validar o template." };
 
-  const template = await updateTemplate(session.user.id, id, parsed.data);
+  const template = await updateTemplate(await templateAccessContext(session.user.id), id, parsed.data);
   if (!template) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const, template };
@@ -274,7 +298,7 @@ export async function deleteTemplateAction(id: string) {
     return { ok: false as const, error: "Faça login para excluir templates." };
   }
 
-  const deleted = await deleteTemplate(session.user.id, id);
+  const deleted = await deleteTemplate(await templateAccessContext(session.user.id), id);
   if (!deleted) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const };
@@ -286,7 +310,7 @@ export async function duplicateTemplateAction(id: string) {
     return { ok: false as const, error: "Faça login para duplicar templates." };
   }
 
-  const template = await duplicateTemplate(session.user.id, id);
+  const template = await duplicateTemplate(await templateAccessContext(session.user.id), id);
   if (!template) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const, template };
@@ -301,7 +325,13 @@ export async function createMcpTokenAction(input: unknown) {
   const parsed = mcpTokenInputSchema.safeParse(input ?? {});
   if (!parsed.success) return { ok: false as const, error: "Dados do token inválidos." };
 
-  const result = await createMcpToken(session.user.id, parsed.data.name, parsed.data.expiration);
+  const ctx = await accessContext(session.user.id);
+  const result = await createMcpToken(
+    session.user.id,
+    parsed.data.name,
+    parsed.data.expiration,
+    ctx.activeWorkspaceId ?? null,
+  );
   revalidatePath("/");
   return { ok: true as const, token: result.token, record: result.record };
 }
@@ -339,11 +369,25 @@ export async function listDocumentSharesAction(documentId: string) {
     return { ok: false as const, error: "Apenas o responsável pode gerenciar compartilhamentos." };
   }
 
-  const [shares, collaborators] = await Promise.all([
+  const [shares, collaborators, crewIds] = await Promise.all([
     listDocumentShares(documentId),
     listDocumentCollaborators(documentId, document.userId),
+    listWorkspaceMemberIds(document.workspaceId),
   ]);
-  return { ok: true as const, shares, collaborators };
+
+  return {
+    ok: true as const,
+    shares: shares.map((share) => ({
+      ...share,
+      external: isExternalCollaborator({ workspaceMemberIds: crewIds, userId: share.userId }),
+    })),
+    collaborators: collaborators.map((collaborator) => ({
+      ...collaborator,
+      external:
+        collaborator.role !== "owner" &&
+        isExternalCollaborator({ workspaceMemberIds: crewIds, userId: collaborator.id }),
+    })),
+  };
 }
 
 export async function addDocumentShareAction(documentId: string, input: unknown) {

@@ -10,6 +10,7 @@ export type McpTokenRecord = {
   id: string;
   name: string;
   tokenPrefix: string;
+  workspaceId: string | null;
   createdAt: string;
   lastUsedAt: string | null;
   expiresAt: string | null;
@@ -26,6 +27,7 @@ function mapRow(row: typeof mcpTokens.$inferSelect): McpTokenRecord {
     id: row.id,
     name: row.name?.trim() || LEGACY_MCP_TOKEN_NAME,
     tokenPrefix: row.tokenPrefix,
+    workspaceId: row.workspaceId ?? null,
     createdAt: row.createdAt,
     lastUsedAt: row.lastUsedAt,
     expiresAt: row.expiresAt ?? null,
@@ -51,6 +53,7 @@ export async function createMcpToken(
   userId: string,
   name: string,
   expiration: McpTokenExpirationPreset,
+  workspaceId: string | null = null,
 ) {
   const db = await getDb();
   const raw = randomBytes(32).toString("base64url");
@@ -63,6 +66,7 @@ export async function createMcpToken(
     .insert(mcpTokens)
     .values({
       userId,
+      workspaceId,
       name,
       tokenHash,
       tokenPrefix,
@@ -98,5 +102,5 @@ export async function validateMcpToken(token: string) {
     .set({ lastUsedAt: new Date().toISOString() })
     .where(eq(mcpTokens.id, row.id));
 
-  return row.userId;
+  return { userId: row.userId, workspaceId: row.workspaceId ?? null };
 }

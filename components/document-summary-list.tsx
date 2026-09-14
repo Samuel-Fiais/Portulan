@@ -45,7 +45,7 @@ export function DocumentSummaryList({
                 secondaryColor={document.secondaryColor}
               />
               <StatusBadge status={document.status} />
-              <VisibilityBadge isPublic={document.isPublic} />
+              <VisibilityBadge visibility={document.visibility} />
               {currentUserId ? (
                 <OwnershipBadge isOwner={document.userId === currentUserId} />
               ) : null}

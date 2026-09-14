@@ -235,6 +235,8 @@ function TemplateFormDialog({
       updatedAt: new Date().toISOString(),
       publishedAt: null,
       disabled: false,
+      workspaceId: null,
+      visibility: "private" as const,
       isPublic: false,
     }),
     [name, primaryColor, secondaryColor, logoUrl, template?.id],

@@ -15,11 +15,70 @@ export const users = portulanSchema.table("users", {
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });
 
+export const workspaces = portulanSchema.table(
+  "workspaces",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    themePaper: text("theme_paper").notNull().default("carta"),
+    themeMode: text("theme_mode").notNull().default("light"),
+    themeInk: text("theme_ink").notNull().default("#1a2847"),
+    isPersonal: boolean("is_personal").notNull().default(false),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [index("idx_workspaces_created_by").on(table.createdBy)],
+);
+
+export const workspaceMembers = portulanSchema.table(
+  "workspace_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("workspace_members_workspace_user").on(table.workspaceId, table.userId),
+    index("idx_workspace_members_workspace_id").on(table.workspaceId),
+    index("idx_workspace_members_user_id").on(table.userId),
+  ],
+);
+
+export const workspaceInvites = portulanSchema.table(
+  "workspace_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    tokenPrefix: text("token_prefix").notNull(),
+    role: text("role").notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }),
+    maxUses: integer("max_uses"),
+    uses: integer("uses").notNull().default(0),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [index("idx_workspace_invites_workspace_id").on(table.workspaceId)],
+);
+
 export const templates = portulanSchema.table(
   "templates",
   {
     id: text("id").primaryKey(),
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     primaryColor: text("primary_color").notNull(),
     secondaryColor: text("secondary_color").notNull(),
@@ -28,7 +87,10 @@ export const templates = portulanSchema.table(
     isBuiltin: boolean("is_builtin").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
-  (table) => [index("idx_templates_user_id").on(table.userId)],
+  (table) => [
+    index("idx_templates_user_id").on(table.userId),
+    index("idx_templates_workspace_id").on(table.workspaceId),
+  ],
 );
 
 export const mcpTokens = portulanSchema.table(
@@ -38,6 +100,7 @@ export const mcpTokens = portulanSchema.table(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
     name: text("name").notNull().default("Token MCP"),
     tokenHash: text("token_hash").notNull().unique(),
     tokenPrefix: text("token_prefix").notNull(),
@@ -65,17 +128,20 @@ export const documents = portulanSchema.table(
     content: text("content").notNull().default(""),
     version: integer("version").notNull().default(1),
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true, mode: "string" }),
     disabled: boolean("disabled").notNull().default(false),
     isPublic: boolean("is_public").notNull().default(false),
+    visibility: text("visibility").notNull().default("private"),
   },
   (table) => [
     index("idx_documents_updated_at").on(table.updatedAt),
     index("idx_documents_template_id").on(table.templateId),
     index("idx_documents_status").on(table.status),
     index("idx_documents_user_id").on(table.userId),
+    index("idx_documents_workspace_id").on(table.workspaceId),
   ],
 );
 

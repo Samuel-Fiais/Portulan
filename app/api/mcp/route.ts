@@ -21,20 +21,21 @@ import {
   publishDocument,
   restoreDocumentRelease,
   revokeDocumentShare,
+  listUserWorkspaces,
   setDocumentDisabled,
-  setDocumentPublic,
   setDocumentReleaseDisabled,
+  setDocumentVisibility,
   updateDocument,
   updateTemplate,
   validateMcpToken,
 } from "@/lib/db";
-import { documentAccessContext } from "@/lib/access-context";
+import { templateAccessContext, workspaceScopedAccessContext } from "@/lib/access-context";
 import {
   createDocumentCommentForAccess,
   deleteDocumentCommentForAccess,
   listDocumentCommentThreadsForAccess,
 } from "@/lib/document-comment-ops";
-import { documentShareInputSchema } from "@/lib/validation";
+import { documentShareInputSchema, documentVisibilitySchema } from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
 import { buildSystemGuide, getMcpServerVersion } from "@/lib/system-guide";
@@ -47,7 +48,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const mcpUserStore = new AsyncLocalStorage<{ userId: string }>();
+const mcpUserStore = new AsyncLocalStorage<{ userId: string; workspaceId: string | null }>();
 
 const textResult = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
@@ -59,8 +60,17 @@ function requireUserId() {
   return userId;
 }
 
+/** O token MCP fica preso a um porto: o agente opera no mesmo recorte que a pessoa vê lá. */
+function tokenWorkspaceId() {
+  return mcpUserStore.getStore()?.workspaceId ?? null;
+}
+
 async function requireAccessContext() {
-  return documentAccessContext(requireUserId());
+  return workspaceScopedAccessContext(requireUserId(), tokenWorkspaceId());
+}
+
+async function requireTemplateContext() {
+  return templateAccessContext(requireUserId(), tokenWorkspaceId());
 }
 
 const mcpHandler = createMcpHandler((server) => {
@@ -71,7 +81,31 @@ const mcpHandler = createMcpHandler((server) => {
       description: "Lista os templates disponíveis para o usuário autenticado (inclui o template Default).",
       inputSchema: z.object({}),
     },
-    async () => textResult({ templates: await listTemplates(requireUserId()) }),
+    async () => textResult({ templates: await listTemplates(await requireTemplateContext()) }),
+  );
+
+  server.registerTool(
+    "list_workspaces",
+    {
+      title: "Listar portos",
+      description:
+        "Lista os portos (workspaces) da pessoa autenticada e indica qual deles este token opera. Cartas criadas pelo agente nascem no porto do token.",
+      inputSchema: z.object({}),
+    },
+    async () => {
+      const workspaces = await listUserWorkspaces(requireUserId());
+      const activeId = tokenWorkspaceId() ?? workspaces[0]?.id ?? null;
+      return textResult({
+        activeWorkspaceId: activeId,
+        workspaces: workspaces.map((workspace) => ({
+          id: workspace.id,
+          name: workspace.name,
+          role: workspace.role,
+          memberCount: workspace.memberCount,
+          active: workspace.id === activeId,
+        })),
+      });
+    },
   );
 
   const templateFields = {
@@ -91,7 +125,7 @@ const mcpHandler = createMcpHandler((server) => {
     },
     async ({ primary_color, secondary_color, logo_url, ...input }) =>
       textResult({
-        template: await createTemplate(requireUserId(), {
+        template: await createTemplate(await requireTemplateContext(), {
           ...input,
           primaryColor: primary_color,
           secondaryColor: secondary_color,
@@ -115,7 +149,7 @@ const mcpHandler = createMcpHandler((server) => {
       }).refine((input) => input.name !== undefined || input.primary_color !== undefined || input.secondary_color !== undefined || input.logo_url !== undefined || input.content !== undefined, { message: "Informe ao menos um campo para atualizar." }),
     },
     async ({ id, primary_color, secondary_color, logo_url, ...input }) => {
-      const template = await updateTemplate(requireUserId(), id, {
+      const template = await updateTemplate(await requireTemplateContext(), id, {
         ...input,
         primaryColor: primary_color,
         secondaryColor: secondary_color,
@@ -133,7 +167,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1) }),
     },
     async ({ id }) => {
-      const deleted = await deleteTemplate(requireUserId(), id);
+      const deleted = await deleteTemplate(await requireTemplateContext(), id);
       return deleted ? textResult({ deleted: true, id }) : { ...textResult({ error: "Template não encontrado, interno ou sem permissão." }), isError: true };
     },
   );
@@ -146,7 +180,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1) }),
     },
     async ({ id }) => {
-      const template = await getTemplateForUser(id, requireUserId());
+      const template = await getTemplateForUser(id, await requireTemplateContext());
       return template ? textResult({ template }) : { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
     },
   );
@@ -162,7 +196,7 @@ const mcpHandler = createMcpHandler((server) => {
       }),
     },
     async ({ id, name }) => {
-      const template = await duplicateTemplate(requireUserId(), id, { name });
+      const template = await duplicateTemplate(await requireTemplateContext(), id, { name });
       return template ? textResult({ template }) : { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
     },
   );
@@ -178,7 +212,7 @@ const mcpHandler = createMcpHandler((server) => {
       }),
     },
     async ({ id, max_chars }) => {
-      const template = await getTemplateForUser(id, requireUserId());
+      const template = await getTemplateForUser(id, await requireTemplateContext());
       if (!template) return { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
       const preview = previewTemplateContent(template.content, max_chars);
       return textResult({
@@ -357,7 +391,7 @@ const mcpHandler = createMcpHandler((server) => {
           tags: input.tags,
           content: input.content,
         },
-        { userId: ctx.userId },
+        { userId: ctx.userId, workspaceId: ctx.activeWorkspaceId ?? null },
       );
       return textResult({ document });
     },
@@ -379,17 +413,19 @@ const mcpHandler = createMcpHandler((server) => {
         tags: z.array(z.string().min(1).max(40)).max(12).optional(),
         content: z.string().max(250_000).optional(),
         disabled: z.boolean().optional().describe("Desativa ou reativa os links /d e /p do documento"),
-        is_public: z.boolean().optional().describe("true: qualquer pessoa com o link vê a versão publicada; false: só responsável e convidados (padrão na criação)"),
+        is_public: z.boolean().optional().describe("Atalho de visibility: true = public, false = private"),
+        visibility: documentVisibilitySchema.optional().describe("private: só responsável e convidados; workspace: toda a tripulação do porto; public: qualquer pessoa com o link"),
       }),
     },
-    async ({ id, template_id, disabled, is_public, ...changes }) => {
+    async ({ id, template_id, disabled, is_public, visibility, ...changes }) => {
       if (disabled !== undefined) {
         const toggled = await setDocumentDisabled(id, disabled, await requireAccessContext());
         if (!toggled) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
       }
-      if (is_public !== undefined) {
-        const toggled = await setDocumentPublic(id, is_public, await requireAccessContext());
-        if (!toggled) return { ...textResult({ error: "Documento não encontrado ou sem permissão para alterar o acesso público." }), isError: true };
+      const nextVisibility = visibility ?? (is_public === undefined ? undefined : is_public ? "public" : "private");
+      if (nextVisibility !== undefined) {
+        const toggled = await setDocumentVisibility(id, nextVisibility, await requireAccessContext());
+        if (!toggled) return { ...textResult({ error: "Documento não encontrado, sem porto ou sem permissão para alterar a visibilidade." }), isError: true };
       }
       const document = await updateDocument(id, { ...changes, templateId: template_id }, await requireAccessContext());
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
@@ -722,18 +758,21 @@ async function authenticateMcpRequest(request: Request) {
   }
 
   const token = authHeader.slice("Bearer ".length).trim();
-  const userId = await validateMcpToken(token);
-  if (!userId) {
+  const identity = await validateMcpToken(token);
+  if (!identity) {
     return Response.json({ error: "Token MCP inválido ou revogado." }, { status: 401 });
   }
 
-  return { userId };
+  return identity;
 }
 
 async function handler(request: Request) {
   const authResult = await authenticateMcpRequest(request);
   if (authResult instanceof Response) return authResult;
-  return mcpUserStore.run({ userId: authResult.userId }, () => mcpHandler(request));
+  return mcpUserStore.run(
+    { userId: authResult.userId, workspaceId: authResult.workspaceId },
+    () => mcpHandler(request),
+  );
 }
 
 export { handler as GET, handler as POST, handler as DELETE };
