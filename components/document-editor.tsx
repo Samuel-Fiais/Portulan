@@ -964,7 +964,8 @@ export function DocumentEditor({
                       ))}
                     </div>
                     {workspaces.length > 1 ? (
-                      <div className="metadata-action-panel__footer">
+                      <div className="metadata-action-panel__footer metadata-action-panel__footer--stack">
+                        <p className="metadata-action-panel__caption">Porto da carta</p>
                         <Select value={document.workspaceId ?? ""} onValueChange={moveDocumentToWorkspace} disabled={pending}>
                           <SelectTrigger aria-label="Porto da carta"><SelectValue placeholder="Sem porto" /></SelectTrigger>
                           <SelectContent>

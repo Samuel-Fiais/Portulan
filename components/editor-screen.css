@@ -147,6 +147,16 @@
   width: 100%;
 }
 
+.metadata-action-panel__footer--stack {
+  gap: var(--sp-1);
+}
+
+.metadata-action-panel__caption {
+  font: 600 10px/1.2 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .metadata-action-panel--destructive {
   border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
   background: color-mix(in srgb, var(--destructive) 4%, var(--background));
