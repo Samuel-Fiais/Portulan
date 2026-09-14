@@ -32,13 +32,14 @@ Critério: só entra o que o código hoje não faz e que cabe no produto. Não i
 | Superfície | Arquivos |
 |---|---|
 | Workspace | `components/workspace-sidebar.tsx`, `app/(workspace)/` |
-| Biblioteca | `components/library-panel.tsx`, `lib/db/documents.ts` (`listDocuments`) |
+| Porto (workspaces) | `lib/workspaces.ts`, `lib/workspace-policy.ts`, `lib/db/workspaces.ts`, `lib/active-workspace.ts`, `app/workspace-actions.ts`, `components/workspace-panel.tsx`, `components/workspace-switcher.tsx` |
+| Cartoteca | `components/library-panel.tsx`, `lib/db/documents.ts` (`listDocuments`) |
 | Editor | `components/document-editor.tsx`, `app/actions.ts` |
 | Markdown / blocos | `lib/markdown-components.ts`, `components/rich-markdown.tsx` |
 | Publicação / versões | `lib/db/documents.ts` (`publishDocument`, `documentReleases`), aba Histórico no editor |
 | Leitura pública | `components/public-document-view.tsx`, `components/report-preview.tsx`, `app/d/`, `app/p/` |
-| Compartilhar | `lib/document-share-policy.ts`, `components/document-share-dialog.tsx` |
-| Templates | `components/templates-panel.tsx` |
+| Compartilhar / visibilidade | `lib/document-share-policy.ts`, `lib/workspace-policy.ts`, `components/document-share-dialog.tsx` |
+| Gabaritos | `components/templates-panel.tsx`, `lib/db/templates.ts` |
 | MCP | `app/api/mcp/route.ts`, `.cursor/skills/portulan-mcp/SKILL.md`, `components/integrations-panel.tsx` |
 | Checklist living | `components/living-checklist.tsx`, `lib/living-document-storage.ts` (hoje: localStorage) |
 

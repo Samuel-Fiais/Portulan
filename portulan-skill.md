@@ -5,7 +5,7 @@ description: Operates the Portulan MCP server to list, read, create, update, pub
 
 # Portulan MCP
 
-Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable HTTP.
+Guia para agentes operarem a cartoteca técnica **Portulan** via MCP Streamable HTTP. Na UI o produto chama documento de **carta**, template de **gabarito** e workspace de **porto**; as ferramentas MCP mantêm os nomes técnicos.
 
 ## Pré-requisitos
 
@@ -20,8 +20,8 @@ Sem o app rodando ou sem token válido, conexões falham (timeout ou 401).
 
 O MCP opera **como o usuário Portulan**, não como chave global compartilhada.
 
-1. Faça login no Portulan com GitHub
-2. Abra **Integrações → MCP** no dashboard
+1. Faça login no Portulan com GitHub ou com handle/e-mail e senha
+2. Abra **Instrumentos → MCP** (confira antes em que porto você está — o token fica preso a ele)
 3. Clique em **Gerar token MCP**
 4. Copie o token (`ptl_…`) — ele só é exibido uma vez
 5. Envie em **toda** requisição MCP:
@@ -58,7 +58,23 @@ Se o cliente só suporta stdio, use um proxy HTTP como `mcp-remote`:
 }
 ```
 
-Revogue tokens comprometidos no dashboard a qualquer momento.
+Revogue tokens comprometidos na tela Instrumentos a qualquer momento.
+
+## Porto (workspace) e visibilidade
+
+O Portulan organiza o acervo em **portos** (workspaces), cada um com tripulação própria. O token MCP opera em **um** porto, fixado quando foi gerado: documentos e templates criados pelo agente nascem nele, e as listagens mostram o acervo desse porto mais os documentos compartilhados nominalmente com a pessoa. Use `list_workspaces` para ver os portos e qual deles é o do token; para operar em outro porto, troque de porto na UI e gere um token novo.
+
+Cada documento tem um de três níveis de visibilidade, alterável só pelo responsável via `update_document` com `visibility`:
+
+| Valor | Quem lê |
+|---|---|
+| `private` | Só o responsável e quem foi convidado por e-mail. Padrão de todo documento novo. |
+| `workspace` | Toda a tripulação do porto do documento, **em leitura**. Exige documento com porto. |
+| `public` | Qualquer pessoa com `/d` ou `/p` vê a versão publicada habilitada. |
+
+`is_public: true` / `false` continua funcionando como atalho legado para `public` / `private`. Publicar **não** muda a visibilidade.
+
+A lista de ferramentas abaixo pode estar atrás do servidor: chame `get_system_guide` para o inventário e as regras vigentes.
 
 ## Ferramentas (19)
 
@@ -69,11 +85,12 @@ Revogue tokens comprometidos no dashboard a qualquer momento.
 | `upload_file` | Enviar anexo (base64) para um documento; usar `url` e `name` em `:::file{url=... name=...}` |
 | `list_templates` | Descobrir templates disponíveis (cores editoriais) |
 | `get_template` | Ler template completo (cores + conteúdo-base) |
-| `duplicate_template` | Clonar template acessível como template particular |
+| `duplicate_template` | Clonar template acessível para o porto do token |
 | `preview_template` | Resumo leve do conteúdo-base de um template |
 | `list_markdown_components` | Catálogo de diretivas `:::` e Markdown |
 | `explain_markdown_component` | Sintaxe e exemplos de um componente |
-| `list_documents` | Descobrir o que existe; buscar por título, tag, template ou status |
+| `list_workspaces` | Portos da pessoa e qual deles este token opera |
+| `list_documents` | Descobrir o que existe no porto do token; buscar por título, tag, template ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |
 | `update_document` | Editar rascunho/revisão; **incrementa versão** |
@@ -95,7 +112,7 @@ Cada documento usa um **template** com `id`, `name`, `primaryColor` e `secondary
 |---|---|
 | `draft` | Rascunho |
 | `review` | Em revisão |
-| `published` | Publicado na biblioteca |
+| `published` | Publicado na cartoteca |
 | `archived` | Arquivado |
 
 ### Versão e publicação

@@ -153,22 +153,27 @@ export function buildSystemGuide() {
     generatedAt: new Date().toISOString(),
     mcpServer: { name: "portulan", version: MCP_SERVER_VERSION },
     overview: {
-      product: "Portulan — biblioteca técnica de documentos Markdown com templates, publicação e MCP.",
-      documents: "Rascunhos editáveis; publicação cria snapshot imutável (release).",
+      product: "Portulan — biblioteca técnica de documentos Markdown com templates, publicação e MCP, organizada em portos (workspaces) com tripulação própria.",
+      documents: "Rascunhos editáveis; publicação cria snapshot imutável (release). Todo documento pertence a um porto e nasce privado.",
+      workspaces:
+        "Este token opera em um único porto (RN-55): documentos e templates criados pelo agente nascem nele, e as listagens mostram o acervo desse porto mais os documentos compartilhados nominalmente. Use list_workspaces para ver os portos da pessoa e qual deles é o do token.",
+      visibility:
+        "Três níveis em update_document (RN-17, RN-18), só o responsável muda: private (responsável e convidados nominais), workspace (toda a tripulação do porto lê, sem editar) e public (qualquer pessoa com o link vê a versão publicada). is_public é atalho legado para public/private.",
       links: {
-        stable: "/d/{uuid} — identificador fixo (UUID); aponta para a release habilitada mais recente. Visitante anônimo só entra se isPublic for verdadeiro",
+        stable: "/d/{uuid} — identificador fixo (UUID); aponta para a release habilitada mais recente. Visitante anônimo só entra com visibility public",
         fixed: "/p/{releaseId} — versão fixa; conteúdo não muda após publicada. Mesma regra de visibilidade",
       },
       templates: "Paleta, logo e conteúdo-base via list_templates / get_template.",
-      auth: "MCP exige Authorization: Bearer com token pessoal (Integrações → MCP no dashboard).",
+      auth: "MCP exige Authorization: Bearer com token pessoal (Instrumentos → MCP). O token fica preso ao porto ativo no momento em que foi gerado.",
       preferredTools: [
         "get_system_guide — visão completa e atualizada (este guia)",
         "list_markdown_components — catálogo resumido",
         "explain_markdown_component — detalhe de um componente",
         "get_document / update_document — ler e persistir conteúdo",
-        "publish_document — gerar versão imutável (documento continua privado)",
+        "publish_document — gerar versão imutável (a visibilidade não muda)",
         "restore_document — copiar uma release publicada para o rascunho sem publicar (RN-09)",
-        "update_document is_public — ligar ou desligar acesso de visitantes ao link",
+        "update_document visibility — private, workspace ou public (RN-17, RN-18)",
+        "list_workspaces — portos da pessoa e qual deles este token opera (RN-55)",
         "upload_image / upload_file — enviar mídia e anexos antes de inserir no Markdown",
         "list_document_comments / create_document_comment / delete_document_comment — revisão com fios (RN-61, RN-65); só rascunho autenticado",
       ],

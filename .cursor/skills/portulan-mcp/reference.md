@@ -5,8 +5,9 @@
 | Item | Caminho |
 |---|---|
 | Handler MCP | `app/api/mcp/route.ts` |
-| Banco SQLite | `lib/db.ts` → `data/portulan.sqlite` |
+| Banco (PostgreSQL / Drizzle) | `lib/db/` (`schema.ts`, `documents.ts`, `templates.ts`, `workspaces.ts`) |
 | Tipos e templates | `lib/documents.ts` |
+| Portos (workspaces) | `lib/workspaces.ts`, `lib/workspace-policy.ts`, `lib/active-workspace.ts` |
 | Validação Zod | `lib/validation.ts` |
 | Config Cursor | `.cursor/mcp.json` |
 | Página pública | `app/p/[releaseId]/page.tsx` |
@@ -22,13 +23,28 @@ MCP_API_KEY=
 
 ## Ferramentas — schemas e exemplos
 
+### `list_workspaces`
+
+Sem input. Retorna os portos (workspaces) da pessoa autenticada e marca qual deles este token opera (RN-55).
+
+```json
+{
+  "activeWorkspaceId": "uuid-do-porto-do-token",
+  "workspaces": [
+    { "id": "uuid-do-porto-do-token", "name": "Porto de Marina", "role": "owner", "isPersonal": true, "memberCount": 1 }
+  ]
+}
+```
+
+Documentos e templates criados pelo agente nascem em `activeWorkspaceId`. Para operar em outro porto, o usuário troca de porto na UI e gera um token novo.
+
 ### `list_templates`, `get_template`, `create_template`, `update_template`, `duplicate_template`, `preview_template`, `delete_template`
 
-`list_templates` retorna templates internos e os templates particulares do usuário, incluindo `id`, `name`, `primaryColor`, `secondaryColor` e `content`.
+`list_templates` retorna templates internos e os templates do porto deste token (mais os particulares legados do usuário), incluindo `id`, `name`, `workspaceId`, `primaryColor`, `secondaryColor` e `content`.
 
 `get_template` recebe `{ "id": "..." }` e retorna o template completo quando o usuário tem acesso.
 
-`duplicate_template` recebe `{ "id": "...", "name": "opcional" }` e cria um clone particular com novo id.
+`duplicate_template` recebe `{ "id": "...", "name": "opcional" }` e cria um clone no porto deste token, com novo id.
 
 `preview_template` recebe `{ "id": "...", "max_chars": 400 }` e retorna nome, cores, `headings` (`##`/`###`) e `contentPreview`.
 
@@ -199,7 +215,9 @@ Clona o rascunho atual em um documento novo (`draft`, `version: 1`, novo slug UU
 
 Salva o rascunho sem criar uma nova versão publicada.
 
-`is_public` (opcional, só o responsável): `true` permite que qualquer pessoa com `/d` ou `/p` veja a versão publicada; `false` restringe a responsável e convidados. Documentos nascem privados.
+`visibility` (opcional, só o responsável — RN-17, RN-18): `"private"` restringe a responsável e convidados nominais; `"workspace"` deixa toda a tripulação do porto do documento **ler** (exige documento com porto); `"public"` permite que qualquer pessoa com `/d` ou `/p` veja a versão publicada. Documentos nascem `private`.
+
+`is_public` (opcional): atalho legado — `true` equivale a `visibility: "public"`, `false` a `"private"`.
 
 Quando `content` é enviado, o servidor faz merge do estado living (RN-54): `status` de `:::testcase` e checkboxes de `:::checklist` já salvos no rascunho prevalecem sobre os valores do payload para o mesmo `id` ou título de item. Itens novos no payload mantêm o estado enviado pelo agente.
 
@@ -214,7 +232,7 @@ Quando `content` é enviado, o servidor faz merge do estado living (RN-54): `sta
 }
 ```
 
-Cria uma nova versão e um snapshot imutável. **Não** torna o documento visível a visitantes; use `update_document` com `is_public: true` para isso.
+Cria uma nova versão e um snapshot imutável. **Não** muda a visibilidade; use `update_document` com `visibility` para isso.
 
 Se `content` for enviado, aplica RN-54 (mesmo merge de estado living do rascunho que `update_document`) antes de publicar.
 
@@ -614,7 +632,7 @@ Formato: `rótulo | atual | meta`.
 - Transporte: Streamable HTTP (POST/GET/DELETE em `/api/mcp`)
 - Spec: MCP SDK v2 via `mcp-handler`
 - Initialize retorna `serverInfo.name: "portulan"`
-- Instruções do servidor: preferir atualizar documentos existentes; publish_document gera versão; is_public controla visitantes
+- Instruções do servidor: token preso a um porto (RN-55); preferir atualizar documentos existentes; publish_document gera versão; `visibility` controla quem lê
 
 ---
 

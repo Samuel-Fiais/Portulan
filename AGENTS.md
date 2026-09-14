@@ -25,9 +25,27 @@ Quando a tarefa envolver documentos da biblioteca, MCP, publicação com link `/
 
 Requisito: `npm run dev` rodando para o MCP responder.
 
+## Léxico da UI
+
+A copy em pt-BR usa o vocabulário náutico; o código mantém os nomes técnicos. Não renomeie identificadores, rotas ou ferramentas MCP para acompanhar a copy.
+
+| UI | Código |
+|---|---|
+| Carta | `document` |
+| Cartoteca | `/biblioteca` |
+| Gabarito | `template` |
+| Instrumentos | `/integrations` |
+| Porto · Tripulação | `workspace` · `workspaceMembers` |
+| Cartógrafo · Frota | `author` · `team` |
+| Camarote · Porto · Mar aberto | `visibility`: `private` · `workspace` · `public` |
+
+## Portos (workspaces)
+
+Todo acervo é do porto ativo. Antes de mexer em tripulação, papéis, convites, visibilidade de carta ou exclusão de porto, valide com `lib/workspace-policy.ts` — ele é a fonte das travas (capitão único, imediato não mexe em imediato, porto inicial não sai, porto com cartas não é excluído, só o cartógrafo muda visibilidade). O porto ativo da sessão vem de `lib/active-workspace.ts`; contextos de acesso saem de `lib/access-context.ts`.
+
 ## Compartilhamento
 
-Nada pode ser compartilhado se não fizer sentido. Antes de convidar ou alterar acesso, valide com `lib/document-share-policy.ts` (ou a lógica equivalente no servidor): não compartilhe com o responsável, não duplique convites e não aplique mudanças de papel idênticas.
+Nada pode ser compartilhado se não fizer sentido. Antes de convidar ou alterar acesso, valide com `lib/document-share-policy.ts` (ou a lógica equivalente no servidor): não compartilhe com o cartógrafo, não duplique convites e não aplique mudanças de papel idênticas. Convidado fora da tripulação do porto da carta é sinalizado como **externo** (RN-93).
 
 ## Componentes de relatório
 

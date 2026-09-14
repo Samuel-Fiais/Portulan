@@ -1,8 +1,13 @@
-/** Ferramentas MCP registradas em `app/api/mcp/route.ts`, agrupadas para a UI de Integrações. */
+/** Ferramentas MCP registradas em `app/api/mcp/route.ts`, agrupadas para a UI de Instrumentos. */
 export const MCP_TOOL_GROUPS = [
   {
+    id: "porto",
+    label: "Porto",
+    tools: ["list_workspaces"],
+  },
+  {
     id: "docs",
-    label: "Documentos",
+    label: "Cartas",
     tools: [
       "list_documents",
       "get_document",
@@ -18,7 +23,7 @@ export const MCP_TOOL_GROUPS = [
   },
   {
     id: "templates",
-    label: "Templates",
+    label: "Gabaritos",
     tools: [
       "list_templates",
       "create_template",
