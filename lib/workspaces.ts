@@ -96,12 +96,13 @@ export const documentVisibilityMeta: Record<
   },
 };
 
+/** Conectores ignorados para “Porto de Rafael” virar PR, não PD. */
+const INITIALS_STOPWORDS = new Set(["de", "da", "do", "das", "dos", "e", "em", "no", "na"]);
+
 export function workspaceInitials(name: string) {
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const meaningful = words.filter((word) => !INITIALS_STOPWORDS.has(word.toLowerCase()));
+  const parts = (meaningful.length > 0 ? meaningful : words).slice(0, 2);
   if (parts.length === 0) return "??";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return parts.map((part) => part[0]).join("").toUpperCase();
