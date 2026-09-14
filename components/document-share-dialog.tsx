@@ -7,7 +7,7 @@ import {
   addDocumentShareAction,
   listDocumentSharesAction,
   revokeDocumentShareAction,
-  setDocumentPublicAction,
+  setDocumentVisibilityAction,
   updateDocumentShareAction,
 } from "@/app/actions";
 import { UserAvatar } from "@/components/user-avatar";
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DocumentCollaborator, DocumentShareRecord, DocumentShareRole } from "@/lib/documents";
 import { normalizeShareEmail, validateShareInvite, validateShareRoleUpdate } from "@/lib/document-share-policy";
+import { documentVisibilityMeta, type DocumentVisibility } from "@/lib/workspaces";
 
 const roleLabels: Record<DocumentShareRole, string> = {
   viewer: "Leitor",
@@ -30,7 +31,8 @@ function personLabel(person: Pick<DocumentCollaborator, "name" | "login" | "emai
 
 export function DocumentShareDialog({
   documentId,
-  isPublic,
+  visibility,
+  workspaceName,
   onVisibilityChange,
   initialCollaborators = [],
   open: controlledOpen,
@@ -39,8 +41,9 @@ export function DocumentShareDialog({
   hideTrigger = false,
 }: {
   documentId: string;
-  isPublic: boolean;
-  onVisibilityChange?: (isPublic: boolean) => void;
+  visibility: DocumentVisibility;
+  workspaceName?: string | null;
+  onVisibilityChange?: (visibility: DocumentVisibility) => void;
   initialCollaborators?: DocumentCollaborator[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -152,21 +155,18 @@ export function DocumentShareDialog({
     }
   }
 
-  async function changeVisibility(next: "private" | "public") {
-    const nextPublic = next === "public";
-    if (nextPublic === isPublic) return;
+  async function changeVisibility(next: DocumentVisibility) {
+    if (next === visibility) return;
     setUpdatingVisibility(true);
     try {
-      const result = await setDocumentPublicAction(documentId, nextPublic);
+      const result = await setDocumentVisibilityAction(documentId, next);
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
-      onVisibilityChange?.(result.document.isPublic);
-      toast.success(result.document.isPublic ? "Documento público" : "Documento privado", {
-        description: result.document.isPublic
-          ? "Qualquer pessoa com o link da versão publicada pode abrir."
-          : "Só você e as pessoas convidadas têm acesso.",
+      onVisibilityChange?.(result.document.visibility);
+      toast.success(`Carta em ${documentVisibilityMeta[result.document.visibility].label.toLowerCase()}`, {
+        description: documentVisibilityMeta[result.document.visibility].blurb,
       });
     } finally {
       setUpdatingVisibility(false);
@@ -188,32 +188,31 @@ export function DocumentShareDialog({
       )}
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Compartilhar documento</DialogTitle>
+          <DialogTitle>Compartilhar carta</DialogTitle>
           <DialogDescription>
-            O documento nasce privado. Convide pessoas por e-mail ou, se quiser, libere o link para qualquer pessoa.
+            A carta nasce em camarote. Abra para a tripulação do porto, convide pessoas por e-mail ou solte o link em mar aberto.
           </DialogDescription>
         </DialogHeader>
 
         <div className="share-visibility">
-          <Label htmlFor="share-visibility">Quem pode abrir o link</Label>
+          <Label htmlFor="share-visibility">Quem pode abrir</Label>
           <Select
-            value={isPublic ? "public" : "private"}
-            onValueChange={(value: "private" | "public") => void changeVisibility(value)}
+            value={visibility}
+            onValueChange={(value: DocumentVisibility) => void changeVisibility(value)}
             disabled={updatingVisibility}
           >
             <SelectTrigger id="share-visibility">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="private">Privado — só pessoas convidadas</SelectItem>
-              <SelectItem value="public">Público — qualquer pessoa com o link</SelectItem>
+              <SelectItem value="private">Camarote — só o cartógrafo e convidados</SelectItem>
+              <SelectItem value="workspace">
+                {workspaceName ? `Porto — toda a tripulação de ${workspaceName}` : "Porto — toda a tripulação"}
+              </SelectItem>
+              <SelectItem value="public">Mar aberto — qualquer pessoa com o link</SelectItem>
             </SelectContent>
           </Select>
-          <p>
-            {isPublic
-              ? "Visitantes com /d ou /p veem a versão publicada, sem precisar de convite."
-              : "Responsável e convidados autenticados acessam o documento. Visitantes não entram."}
-          </p>
+          <p>{documentVisibilityMeta[visibility].blurb}.</p>
         </div>
 
         <div className="share-invite-controls">
@@ -283,7 +282,7 @@ export function DocumentShareDialog({
                     </div>
                   </div>
                   <span className="rounded-none border border-border px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Responsável
+                    Cartógrafo
                   </span>
                 </li>
               ) : null}
@@ -298,7 +297,10 @@ export function DocumentShareDialog({
                       size="md"
                     />
                     <div className="min-w-0">
-                      <strong className="block truncate text-sm">{share.userLogin ?? share.userName ?? share.email}</strong>
+                      <strong className="block truncate text-sm">
+                        {share.userLogin ?? share.userName ?? share.email}
+                        {share.external ? <span className="share-external-badge">Externo</span> : null}
+                      </strong>
                       <span className="text-xs text-muted-foreground">
                         {share.userId ? share.email : `${share.email} · convite pendente`}
                       </span>
@@ -338,7 +340,7 @@ export function DocumentShareDialog({
             </p>
           ) : (
             <p className="rounded-none border border-dashed border-border p-4 text-sm text-muted-foreground">
-              Nenhum convite ainda. Adicione e-mails acima para compartilhar acesso privado.
+              Nenhum convite ainda. Pessoas de fora do porto entram por aqui e aparecem marcadas como externas.
             </p>
           )}
         </div>

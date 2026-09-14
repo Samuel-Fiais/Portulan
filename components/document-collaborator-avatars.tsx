@@ -6,7 +6,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const roleLabels: Record<DocumentCollaborator["role"], string> = {
-  owner: "Responsável",
+  owner: "Cartógrafo",
   editor: "Editor",
   viewer: "Leitor",
 };

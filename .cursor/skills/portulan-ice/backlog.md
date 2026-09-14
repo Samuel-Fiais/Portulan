@@ -1,6 +1,6 @@
 # Backlog ICE — Portulan
 
-Fonte: leva 2, 11 set. 2026. Score = (I × C × E) / 10.
+Fonte: leva 2, 11 set. 2026; pedidos avulsos depois disso. Score = (I × C × E) / 10.
 
 Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para recriar esta tabela.
 
@@ -11,14 +11,26 @@ Pedido avulso (11 set. 2026), fora da leva 2.
 | # | ID | Melhoria | Superfície | I | C | E | Score | Estado |
 |---|---|---|---|---|---|---|---|---|
 | — | auth-password | Cadastro com senha, mescla GitHub e modal da conta | Conta | 8 | 9 | 5 | 36.0 | entregue |
+| — | portos | Portos (workspaces) com tripulação, convite por link, visibilidade em três níveis, tema do porto e léxico náutico | Workspace | 9 | 9 | 4 | 32.4 | entregue |
 
 ## Escopo (auth-password)
 
 - Cadastro com handle, e-mail, nome e senha; login aceita handle ou e-mail.
 - Mescla: mesma conta com GitHub e/ou senha; ligar no modal ou no login GitHub com e-mail de conta sem GitHub.
-- Clique na foto abre modal (dados, métodos, tema, Integrações, sair).
+- Clique na foto abre modal (dados, métodos, tema, Instrumentos, sair).
 
-Fora: verificação de e-mail, “esqueci a senha”, upload de avatar, segundo provedor OAuth, tema no servidor.
+Fora: verificação de e-mail, “esqueci a senha”, upload de avatar, segundo provedor OAuth.
+
+## Escopo (portos)
+
+- Porto inicial automático por conta; criar outros portos; porto ativo na sessão; seletor no topo do trilho.
+- Tripulação com capitão / imediato / tripulante (RN-88); convite por link com papel, validade e limite de usos (RN-89); sair, transferir capitania e excluir porto vazio (RN-90, RN-91).
+- Visibilidade da carta em três níveis — camarote, porto, mar aberto (RN-17, RN-18) — e mover carta entre portos (RN-19). Selo de colaborador externo (RN-93).
+- Gabaritos e tokens MCP presos ao porto (RN-92, RN-55); `list_workspaces` no MCP.
+- Tema do porto aplicado no servidor, com sobrescrita local por navegador (RN-94).
+- Léxico náutico na UI: carta, cartoteca, gabarito, instrumentos, porto, tripulação, cartógrafo, frota, ponte.
+
+Fora: e-mail de convite, cobrança/plano por porto, domínio verificado, papéis por carta herdados do porto, tema por pessoa no servidor.
 
 ## Escopo (leva 2)
 
@@ -36,14 +48,14 @@ Fora: verificação de e-mail, “esqueci a senha”, upload de avatar, segundo 
 | Item | Por quê |
 |---|---|
 | Checklist living no servidor | `:::checklist` já existe; estado só em localStorage. Não pedido nesta leva. |
-| E-mail de convite | Exige provedor; não desbloqueia revisão. |
+| E-mail de convite | Exige provedor; o convite de porto por link e o convite nominal por e-mail já cobrem a entrada. |
 | Colaboração simultânea / CRDT | Custo alto demais para o desenho atual. |
 | PDF anônimo em `/d` e `/p` | Puppeteer em rota pública: custo e abuso. Quem tem acesso baixa a versão no Histórico. |
 | Menções @ e notificação de comentário | Precisa de canal novo; o fio no editor já é o lugar da conversa. |
 
 ## Já existe (não listar de novo)
 
-Editor Markdown + prévia, catálogo de diretivas `:::`, templates com paleta/logo, duplicar template na UI, publicar com `/d/{slug}` e `/p/{id}`, documento privado por padrão com opção de acesso público, compartilhar leitor/editor, MCP (docs/templates/componentes/shares/upload), PDF do rascunho, PDF de versão publicada no Histórico, download do Markdown fonte (`.md`), duplicar documento na UI e no MCP, desativar documento/versão, upload de imagem (Blob), checklist living em localStorage, card `:::report`, diagramas Mermaid (` ```mermaid `), workspace autenticado com sidebar (Dashboard, Biblioteca, Templates, Integrações), salvar rascunho (botão ou Cmd/Ctrl+S), slug UUID estável, filtro de status, busca no corpo, atalhos B/I/K, Tab/Shift+Tab para indentar, índice com âncoras, diff de versões, restaurar release no rascunho, comentários na prévia com respostas, login GitHub ou handle/e-mail + senha, cadastro com senha, mescla de métodos na mesma conta, modal da conta.
+Editor Markdown + prévia, catálogo de diretivas `:::`, gabaritos com paleta/logo, duplicar gabarito na UI, publicar com `/d/{slug}` e `/p/{id}`, visibilidade em três níveis (camarote / porto / mar aberto), compartilhar leitor/editor com selo de externo, MCP (cartas/gabaritos/componentes/shares/upload/portos), PDF do rascunho, PDF de versão publicada no Histórico, download do Markdown fonte (`.md`), duplicar carta na UI e no MCP, desativar carta/versão, upload de imagem (Blob), checklist living em localStorage, card `:::report`, diagramas Mermaid (` ```mermaid `), workspace autenticado com trilho (Ponte, Cartoteca, Gabaritos, Instrumentos, Porto) e seletor de porto, portos com tripulação e convite por link, tema do porto no servidor com sobrescrita local, mover carta entre portos, salvar rascunho (botão ou Cmd/Ctrl+S), slug UUID estável, filtro de status, busca no corpo, atalhos B/I/K, Tab/Shift+Tab para indentar, índice com âncoras, diff de versões, restaurar release no rascunho, comentários na prévia com respostas, login GitHub ou handle/e-mail + senha, cadastro com senha, mescla de métodos na mesma conta, modal da conta.
 
 ## Leva 1 — entregue (4 set. 2026)
 
@@ -74,7 +86,7 @@ Não re-pontuar. Mantido só como memória.
 | 5 | paste-image | Colar imagem no editor → `:::figure` | Editor | 7 | 9 | 7 | 44.1 | entregue |
 | 6 | comment-resolve | Resolver e reabrir fios de revisão | Colaboração | 7 | 10 | 6 | 42.0 | entregue |
 | 7 | pdf-release | PDF de uma versão publicada (Histórico) | Publicação | 7 | 10 | 6 | 42.0 | entregue |
-| 8 | template-duplicate-ui | Duplicar template na tela Templates | Templates | 4 | 10 | 9 | 36.0 | entregue |
+| 8 | template-duplicate-ui | Duplicar gabarito na tela Gabaritos | Gabaritos | 4 | 10 | 9 | 36.0 | entregue |
 
 ### Entregue fora do ranking da leva 1
 
@@ -83,4 +95,4 @@ Não re-pontuar. Mantido só como memória.
 | workspace-nav | Dashboard, telas separadas e sidebar | Workspace | 7 | 10 | 7 | 49.0 | entregue |
 | mermaid | Diagramas Mermaid na prévia, público e PDF | Leitura | 8 | 8 | 6 | 38.4 | entregue |
 | restore-release | Restaurar versão publicada no rascunho | Publicação | 8 | 9 | 8 | 57.6 | entregue |
-| visibilidade | Documento nasce privado; responsável liga acesso público | Publicação | 9 | 10 | 8 | 72.0 | entregue |
+| visibilidade | Carta nasce em camarote; cartógrafo escolhe o nível | Publicação | 9 | 10 | 8 | 72.0 | entregue |

@@ -21,20 +21,21 @@ import {
   publishDocument,
   restoreDocumentRelease,
   revokeDocumentShare,
+  listUserWorkspaces,
   setDocumentDisabled,
-  setDocumentPublic,
   setDocumentReleaseDisabled,
+  setDocumentVisibility,
   updateDocument,
   updateTemplate,
   validateMcpToken,
 } from "@/lib/db";
-import { documentAccessContext } from "@/lib/access-context";
+import { templateAccessContext, workspaceScopedAccessContext } from "@/lib/access-context";
 import {
   createDocumentCommentForAccess,
   deleteDocumentCommentForAccess,
   listDocumentCommentThreadsForAccess,
 } from "@/lib/document-comment-ops";
-import { documentShareInputSchema } from "@/lib/validation";
+import { documentShareInputSchema, documentVisibilitySchema } from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
 import { buildSystemGuide, getMcpServerVersion } from "@/lib/system-guide";
@@ -47,7 +48,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const mcpUserStore = new AsyncLocalStorage<{ userId: string }>();
+const mcpUserStore = new AsyncLocalStorage<{ userId: string; workspaceId: string | null }>();
 
 const textResult = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
@@ -59,8 +60,17 @@ function requireUserId() {
   return userId;
 }
 
+/** O token MCP fica preso a um porto: o agente opera no mesmo recorte que a pessoa vê lá. */
+function tokenWorkspaceId() {
+  return mcpUserStore.getStore()?.workspaceId ?? null;
+}
+
 async function requireAccessContext() {
-  return documentAccessContext(requireUserId());
+  return workspaceScopedAccessContext(requireUserId(), tokenWorkspaceId());
+}
+
+async function requireTemplateContext() {
+  return templateAccessContext(requireUserId(), tokenWorkspaceId());
 }
 
 const mcpHandler = createMcpHandler((server) => {
@@ -68,10 +78,34 @@ const mcpHandler = createMcpHandler((server) => {
     "list_templates",
     {
       title: "Listar templates",
-      description: "Lista os templates disponíveis para o usuário autenticado (inclui o template Default).",
+      description: "Lista os templates disponíveis no porto deste token (inclui o template Default interno).",
       inputSchema: z.object({}),
     },
-    async () => textResult({ templates: await listTemplates(requireUserId()) }),
+    async () => textResult({ templates: await listTemplates(await requireTemplateContext()) }),
+  );
+
+  server.registerTool(
+    "list_workspaces",
+    {
+      title: "Listar portos",
+      description:
+        "Lista os portos (workspaces) da pessoa autenticada e indica qual deles este token opera. Cartas criadas pelo agente nascem no porto do token.",
+      inputSchema: z.object({}),
+    },
+    async () => {
+      const workspaces = await listUserWorkspaces(requireUserId());
+      const activeId = tokenWorkspaceId() ?? workspaces[0]?.id ?? null;
+      return textResult({
+        activeWorkspaceId: activeId,
+        workspaces: workspaces.map((workspace) => ({
+          id: workspace.id,
+          name: workspace.name,
+          role: workspace.role,
+          memberCount: workspace.memberCount,
+          active: workspace.id === activeId,
+        })),
+      });
+    },
   );
 
   const templateFields = {
@@ -86,12 +120,12 @@ const mcpHandler = createMcpHandler((server) => {
     "create_template",
     {
       title: "Criar template",
-      description: "Cria um template particular de documento, com paleta, logo opcional e conteúdo Markdown inicial.",
+      description: "Cria um template de documento no porto deste token, com paleta, logo opcional e conteúdo Markdown inicial. Toda a tripulação do porto pode usá-lo (RN-92).",
       inputSchema: z.object(templateFields),
     },
     async ({ primary_color, secondary_color, logo_url, ...input }) =>
       textResult({
-        template: await createTemplate(requireUserId(), {
+        template: await createTemplate(await requireTemplateContext(), {
           ...input,
           primaryColor: primary_color,
           secondaryColor: secondary_color,
@@ -115,7 +149,7 @@ const mcpHandler = createMcpHandler((server) => {
       }).refine((input) => input.name !== undefined || input.primary_color !== undefined || input.secondary_color !== undefined || input.logo_url !== undefined || input.content !== undefined, { message: "Informe ao menos um campo para atualizar." }),
     },
     async ({ id, primary_color, secondary_color, logo_url, ...input }) => {
-      const template = await updateTemplate(requireUserId(), id, {
+      const template = await updateTemplate(await requireTemplateContext(), id, {
         ...input,
         primaryColor: primary_color,
         secondaryColor: secondary_color,
@@ -129,11 +163,11 @@ const mcpHandler = createMcpHandler((server) => {
     "delete_template",
     {
       title: "Excluir template",
-      description: "Exclui definitivamente um template particular. Templates internos não podem ser excluídos.",
+      description: "Exclui definitivamente um template do porto (autor, capitão ou imediato). Templates internos não podem ser excluídos.",
       inputSchema: z.object({ id: z.string().min(1) }),
     },
     async ({ id }) => {
-      const deleted = await deleteTemplate(requireUserId(), id);
+      const deleted = await deleteTemplate(await requireTemplateContext(), id);
       return deleted ? textResult({ deleted: true, id }) : { ...textResult({ error: "Template não encontrado, interno ou sem permissão." }), isError: true };
     },
   );
@@ -146,7 +180,7 @@ const mcpHandler = createMcpHandler((server) => {
       inputSchema: z.object({ id: z.string().min(1) }),
     },
     async ({ id }) => {
-      const template = await getTemplateForUser(id, requireUserId());
+      const template = await getTemplateForUser(id, await requireTemplateContext());
       return template ? textResult({ template }) : { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
     },
   );
@@ -155,14 +189,14 @@ const mcpHandler = createMcpHandler((server) => {
     "duplicate_template",
     {
       title: "Duplicar template",
-      description: "Clona um template acessível em um novo template particular do usuário autenticado.",
+      description: "Clona um template acessível em um novo template no porto deste token.",
       inputSchema: z.object({
         id: z.string().min(1),
         name: z.string().trim().min(1).max(80).optional().describe("Nome do clone; padrão: Cópia de {nome original}"),
       }),
     },
     async ({ id, name }) => {
-      const template = await duplicateTemplate(requireUserId(), id, { name });
+      const template = await duplicateTemplate(await requireTemplateContext(), id, { name });
       return template ? textResult({ template }) : { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
     },
   );
@@ -178,7 +212,7 @@ const mcpHandler = createMcpHandler((server) => {
       }),
     },
     async ({ id, max_chars }) => {
-      const template = await getTemplateForUser(id, requireUserId());
+      const template = await getTemplateForUser(id, await requireTemplateContext());
       if (!template) return { ...textResult({ error: "Template não encontrado ou sem permissão." }), isError: true };
       const preview = previewTemplateContent(template.content, max_chars);
       return textResult({
@@ -299,7 +333,7 @@ const mcpHandler = createMcpHandler((server) => {
     "list_documents",
     {
       title: "Listar documentos",
-      description: "Lista e pesquisa documentos técnicos do usuário autenticado.",
+      description: "Lista e pesquisa documentos técnicos do porto deste token, mais os compartilhados nominalmente com o usuário autenticado (RN-55).",
       inputSchema: z.object({
         query: z.string().optional().describe("Busca por título, resumo, tag ou conteúdo"),
         template_id: z.string().optional(),
@@ -332,7 +366,7 @@ const mcpHandler = createMcpHandler((server) => {
     "create_document",
     {
       title: "Criar documento",
-      description: "Cria um documento Markdown associado ao usuário autenticado, sempre privado. O link estável /d/{uuid} recebe um UUID fixo na criação; o título pode ser renomeado depois sem alterar o link. Publicar uma versão não abre o documento a visitantes — use is_public em update_document.",
+      description: "Cria um documento Markdown associado ao usuário autenticado, no porto deste token, sempre privado. O link estável /d/{uuid} recebe um UUID fixo na criação; o título pode ser renomeado depois sem alterar o link. Publicar uma versão não abre o documento a visitantes — use visibility em update_document.",
       inputSchema: z.object({
         title: z.string().min(3).max(180),
         summary: z.string().max(500).default(""),
@@ -357,7 +391,7 @@ const mcpHandler = createMcpHandler((server) => {
           tags: input.tags,
           content: input.content,
         },
-        { userId: ctx.userId },
+        { userId: ctx.userId, workspaceId: ctx.activeWorkspaceId ?? null },
       );
       return textResult({ document });
     },
@@ -379,17 +413,19 @@ const mcpHandler = createMcpHandler((server) => {
         tags: z.array(z.string().min(1).max(40)).max(12).optional(),
         content: z.string().max(250_000).optional(),
         disabled: z.boolean().optional().describe("Desativa ou reativa os links /d e /p do documento"),
-        is_public: z.boolean().optional().describe("true: qualquer pessoa com o link vê a versão publicada; false: só responsável e convidados (padrão na criação)"),
+        is_public: z.boolean().optional().describe("Atalho legado de visibility: true = public, false = private"),
+        visibility: documentVisibilitySchema.optional().describe("private: só responsável e convidados; workspace: toda a tripulação do porto; public: qualquer pessoa com o link"),
       }),
     },
-    async ({ id, template_id, disabled, is_public, ...changes }) => {
+    async ({ id, template_id, disabled, is_public, visibility, ...changes }) => {
       if (disabled !== undefined) {
         const toggled = await setDocumentDisabled(id, disabled, await requireAccessContext());
         if (!toggled) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
       }
-      if (is_public !== undefined) {
-        const toggled = await setDocumentPublic(id, is_public, await requireAccessContext());
-        if (!toggled) return { ...textResult({ error: "Documento não encontrado ou sem permissão para alterar o acesso público." }), isError: true };
+      const nextVisibility = visibility ?? (is_public === undefined ? undefined : is_public ? "public" : "private");
+      if (nextVisibility !== undefined) {
+        const toggled = await setDocumentVisibility(id, nextVisibility, await requireAccessContext());
+        if (!toggled) return { ...textResult({ error: "Documento não encontrado, sem porto ou sem permissão para alterar a visibilidade." }), isError: true };
       }
       const document = await updateDocument(id, { ...changes, templateId: template_id }, await requireAccessContext());
       return document ? textResult({ document }) : { ...textResult({ error: "Documento não encontrado" }), isError: true };
@@ -431,7 +467,7 @@ const mcpHandler = createMcpHandler((server) => {
     "publish_document",
     {
       title: "Publicar documento",
-      description: "Cria uma nova versão imutável a partir do rascunho. O documento permanece privado até is_public=true em update_document.",
+      description: "Cria uma nova versão imutável a partir do rascunho. A visibilidade não muda: o documento continua no nível atual até update_document mudar visibility.",
       inputSchema: z.object({
         id: z.string().min(1),
         title: z.string().min(3).max(180).optional(),
@@ -709,31 +745,34 @@ const mcpHandler = createMcpHandler((server) => {
 }, {
   serverInfo: { name: "portulan", version: getMcpServerVersion() },
   instructions:
-    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. Prefira atualizar documentos existentes quando o assunto já estiver representado. Documentos nascem privados. Use publish_document para gerar uma versão imutável (stablePublicPath /d/{uuid} e publicPath /p/{releaseId}); isso não abre o link a visitantes. Use restore_document para copiar uma release publicada de volta ao rascunho sem publicar (RN-09). Comentários de revisão (list/create/delete) seguem RN-61 e RN-65: só no rascunho autenticado, para quem tem acesso; sem comentário em /d ou /p. Para qualquer pessoa com o link ver a versão publicada, o responsável define is_public=true em update_document. Slugs legados derivados do título ainda resolvem via alias. Para imagens e anexos em relatórios, chame upload_image ou upload_file (base64 + filename + content_type + document_id) antes de inserir a URL retornada em :::figure{src=...} ou :::file{url=... name=...}. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
+    "Use estas ferramentas para consultar e manter a biblioteca técnica Portulan como o usuário autenticado. Envie Authorization: Bearer <token MCP pessoal> em toda requisição. O token opera em um único porto (workspace), fixado quando foi gerado: documentos e templates criados pelo agente nascem nesse porto, e list_documents enxerga o acervo dele mais os documentos compartilhados nominalmente (RN-55). Use list_workspaces para saber quais portos a pessoa tem e qual deles este token opera. Prefira atualizar documentos existentes quando o assunto já estiver representado. Documentos nascem privados. Use publish_document para gerar uma versão imutável (stablePublicPath /d/{uuid} e publicPath /p/{releaseId}); isso não abre o link a visitantes. Use restore_document para copiar uma release publicada de volta ao rascunho sem publicar (RN-09). Comentários de revisão (list/create/delete) seguem RN-61 e RN-65: só no rascunho autenticado, para quem tem acesso; sem comentário em /d ou /p. Visibilidade tem três níveis em update_document (RN-17, RN-18): private (só responsável e convidados), workspace (toda a tripulação do porto lê) e public (qualquer pessoa com o link vê a versão publicada); is_public=true continua como atalho para public. Só o responsável muda a visibilidade. Slugs legados derivados do título ainda resolvem via alias. Para imagens e anexos em relatórios, chame upload_image ou upload_file (base64 + filename + content_type + document_id) antes de inserir a URL retornada em :::figure{src=...} ou :::file{url=... name=...}. Quando não souber como escrever Markdown ou componentes, chame get_system_guide primeiro — leia a seção avoidErrors (Como evitar erros); use list_markdown_components e explain_markdown_component (campo avoidErrors) para detalhes pontuais. Checklist e testcase persistem estado no Markdown quando o usuário pode editar o documento. Use create_template, update_template, get_template e duplicate_template para manter conteúdo-base e paleta dos templates.",
 });
 
 async function authenticateMcpRequest(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return Response.json(
-      { error: "Token MCP ausente. Gere um token pessoal na tela Integrações do Portulan." },
+      { error: "Token MCP ausente. Gere um token pessoal na tela Instrumentos do Portulan." },
       { status: 401 },
     );
   }
 
   const token = authHeader.slice("Bearer ".length).trim();
-  const userId = await validateMcpToken(token);
-  if (!userId) {
+  const identity = await validateMcpToken(token);
+  if (!identity) {
     return Response.json({ error: "Token MCP inválido ou revogado." }, { status: 401 });
   }
 
-  return { userId };
+  return identity;
 }
 
 async function handler(request: Request) {
   const authResult = await authenticateMcpRequest(request);
   if (authResult instanceof Response) return authResult;
-  return mcpUserStore.run({ userId: authResult.userId }, () => mcpHandler(request));
+  return mcpUserStore.run(
+    { userId: authResult.userId, workspaceId: authResult.workspaceId },
+    () => mcpHandler(request),
+  );
 }
 
 export { handler as GET, handler as POST, handler as DELETE };

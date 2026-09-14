@@ -23,15 +23,17 @@ import {
   restoreDocumentRelease,
   revokeDocumentShare,
   revokeMcpToken,
+  listWorkspaceMemberIds,
   setDocumentDisabled,
-  setDocumentPublic,
   setDocumentReleaseDisabled,
+  setDocumentVisibility,
+  setDocumentWorkspace,
   updateDocument,
   updateDocumentLivingContent,
   updateDocumentShareRole,
   updateTemplate,
 } from "@/lib/db";
-import { documentAccessContext } from "@/lib/access-context";
+import { documentAccessContext, templateAccessContext } from "@/lib/access-context";
 import {
   createDocumentCommentForAccess,
   deleteDocumentCommentForAccess,
@@ -47,6 +49,7 @@ import {
 } from "@/lib/account-ops";
 import { setGitHubLinkCookie } from "@/lib/github-link-cookie";
 import { getUserById, toPublicAccount } from "@/lib/users";
+import { isExternalCollaborator } from "@/lib/workspace-policy";
 import {
   documentCommentInputSchema,
   documentCommentResolveInputSchema,
@@ -54,6 +57,7 @@ import {
   documentShareInputSchema,
   documentShareUpdateSchema,
   documentUpdateSchema,
+  documentVisibilitySchema,
   mcpTokenInputSchema,
   templateInputSchema,
 } from "@/lib/validation";
@@ -65,18 +69,19 @@ async function accessContext(userId?: string) {
 export async function createDocumentAction(input: unknown) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para criar documentos." };
+    return { ok: false as const, error: "Faça login para criar cartas." };
   }
 
   const parsed = documentInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Revise os campos obrigatórios." };
 
+  const ctx = await accessContext(session.user.id);
   const document = await createDocument(
     {
       ...parsed.data,
       author: parsed.data.author || session.user.login || session.user.name || "",
     },
-    { userId: session.user.id },
+    { userId: session.user.id, workspaceId: ctx.activeWorkspaceId ?? null },
   );
   revalidatePath("/");
   return { ok: true as const, document };
@@ -85,14 +90,14 @@ export async function createDocumentAction(input: unknown) {
 export async function updateDocumentAction(id: string, input: unknown) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para editar documentos." };
+    return { ok: false as const, error: "Faça login para editar cartas." };
   }
 
   const parsed = documentUpdateSchema.safeParse(input);
-  if (!parsed.success) return { ok: false as const, error: "Não foi possível validar o documento." };
+  if (!parsed.success) return { ok: false as const, error: "Não foi possível validar a carta." };
 
   const document = await updateDocument(id, parsed.data, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   revalidatePath("/");
   revalidatePath(`/documents/${id}`);
   revalidatePath(`/documents/${document.slug}`);
@@ -106,7 +111,7 @@ export async function updateDocumentContentAction(
 ) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para editar documentos." };
+    return { ok: false as const, error: "Faça login para editar cartas." };
   }
 
   const parsed = documentUpdateSchema.safeParse({ content });
@@ -114,7 +119,7 @@ export async function updateDocumentContentAction(
 
   const ctx = await accessContext(session.user.id);
   const document = await updateDocumentLivingContent(documentId, parsed.data.content!, ctx, releaseId);
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   revalidatePath("/");
   revalidatePath(`/documents/${documentId}`);
   revalidatePath(`/documents/${document.slug}`);
@@ -127,11 +132,11 @@ export async function updateDocumentContentAction(
 export async function deleteDocumentAction(id: string) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para excluir documentos." };
+    return { ok: false as const, error: "Faça login para excluir cartas." };
   }
 
   const deleted = await deleteDocument(id, await accessContext(session.user.id));
-  if (!deleted) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!deleted) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const };
 }
@@ -139,14 +144,14 @@ export async function deleteDocumentAction(id: string) {
 export async function publishDocumentAction(id: string, input: unknown) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para publicar documentos." };
+    return { ok: false as const, error: "Faça login para publicar cartas." };
   }
 
   const parsed = documentUpdateSchema.safeParse(input);
-  if (!parsed.success) return { ok: false as const, error: "Não foi possível validar o documento." };
+  if (!parsed.success) return { ok: false as const, error: "Não foi possível validar a carta." };
 
   const result = await publishDocument(id, parsed.data, await accessContext(session.user.id));
-  if (!result) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!result) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   if ("noChanges" in result) {
     return { ok: false as const, error: "Não há alterações em relação à última versão publicada." };
   }
@@ -165,7 +170,7 @@ export async function setDocumentDisabledAction(id: string, disabled: boolean) {
   }
 
   const document = await setDocumentDisabled(id, disabled, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
 
   revalidatePath("/");
   revalidatePath(`/documents/${id}`);
@@ -174,19 +179,38 @@ export async function setDocumentDisabledAction(id: string, disabled: boolean) {
   return { ok: true as const, document };
 }
 
-export async function setDocumentPublicAction(id: string, isPublic: boolean) {
+export async function setDocumentVisibilityAction(id: string, input: unknown) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para alterar o acesso público." };
+    return { ok: false as const, error: "Faça login para alterar a visibilidade." };
   }
 
-  const document = await setDocumentPublic(id, isPublic, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  const parsed = documentVisibilitySchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Nível de visibilidade inválido." };
+
+  const document = await setDocumentVisibility(id, parsed.data, await accessContext(session.user.id));
+  if (!document) {
+    return { ok: false as const, error: "Carta não encontrada, sem porto ou sem permissão." };
+  }
 
   revalidatePath("/");
   revalidatePath(`/documents/${id}`);
   revalidatePath(`/documents/${document.slug}`);
   revalidatePath(`/d/${document.slug}`);
+  return { ok: true as const, document };
+}
+
+export async function setDocumentWorkspaceAction(id: string, workspaceId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para mover cartas de porto." };
+  }
+
+  const document = await setDocumentWorkspace(id, workspaceId, await accessContext(session.user.id));
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
+
+  revalidatePath("/", "layout");
+  revalidatePath(`/documents/${id}`);
   return { ok: true as const, document };
 }
 
@@ -214,7 +238,7 @@ export async function setDocumentReleaseDisabledAction(documentId: string, relea
   }
 
   const document = await getDocument(documentId, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
 
   const release = await setDocumentReleaseDisabled(documentId, releaseId, disabled, await accessContext(session.user.id));
   if (!release) return { ok: false as const, error: "Versão não encontrada ou sem permissão." };
@@ -229,7 +253,7 @@ export async function setDocumentReleaseDisabledAction(documentId: string, relea
 export async function listLinkableDocumentsAction(excludeDocumentId?: string) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para listar documentos." };
+    return { ok: false as const, error: "Faça login para listar cartas." };
   }
 
   const documents = await listLinkableDocuments(await accessContext(session.user.id), { excludeDocumentId });
@@ -245,7 +269,7 @@ export async function createTemplateAction(input: unknown) {
   const parsed = templateInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Revise nome e cores do template." };
 
-  const template = await createTemplate(session.user.id, {
+  const template = await createTemplate(await templateAccessContext(session.user.id), {
     ...parsed.data,
     logoUrl: parsed.data.logoUrl ?? null,
   });
@@ -262,8 +286,8 @@ export async function updateTemplateAction(id: string, input: unknown) {
   const parsed = templateInputSchema.partial().safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Não foi possível validar o template." };
 
-  const template = await updateTemplate(session.user.id, id, parsed.data);
-  if (!template) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
+  const template = await updateTemplate(await templateAccessContext(session.user.id), id, parsed.data);
+  if (!template) return { ok: false as const, error: "Gabarito não encontrado ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const, template };
 }
@@ -274,8 +298,8 @@ export async function deleteTemplateAction(id: string) {
     return { ok: false as const, error: "Faça login para excluir templates." };
   }
 
-  const deleted = await deleteTemplate(session.user.id, id);
-  if (!deleted) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
+  const deleted = await deleteTemplate(await templateAccessContext(session.user.id), id);
+  if (!deleted) return { ok: false as const, error: "Gabarito não encontrado ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const };
 }
@@ -286,8 +310,8 @@ export async function duplicateTemplateAction(id: string) {
     return { ok: false as const, error: "Faça login para duplicar templates." };
   }
 
-  const template = await duplicateTemplate(session.user.id, id);
-  if (!template) return { ok: false as const, error: "Template não encontrado ou sem permissão." };
+  const template = await duplicateTemplate(await templateAccessContext(session.user.id), id);
+  if (!template) return { ok: false as const, error: "Gabarito não encontrado ou sem permissão." };
   revalidatePath("/");
   return { ok: true as const, template };
 }
@@ -301,7 +325,13 @@ export async function createMcpTokenAction(input: unknown) {
   const parsed = mcpTokenInputSchema.safeParse(input ?? {});
   if (!parsed.success) return { ok: false as const, error: "Dados do token inválidos." };
 
-  const result = await createMcpToken(session.user.id, parsed.data.name, parsed.data.expiration);
+  const ctx = await accessContext(session.user.id);
+  const result = await createMcpToken(
+    session.user.id,
+    parsed.data.name,
+    parsed.data.expiration,
+    ctx.activeWorkspaceId ?? null,
+  );
   revalidatePath("/");
   return { ok: true as const, token: result.token, record: result.record };
 }
@@ -334,31 +364,45 @@ export async function listDocumentSharesAction(documentId: string) {
   }
 
   const document = await getDocument(documentId, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   if (!isDocumentOwner(document, { userId: session.user.id })) {
-    return { ok: false as const, error: "Apenas o responsável pode gerenciar compartilhamentos." };
+    return { ok: false as const, error: "Apenas o cartógrafo pode gerenciar compartilhamentos." };
   }
 
-  const [shares, collaborators] = await Promise.all([
+  const [shares, collaborators, crewIds] = await Promise.all([
     listDocumentShares(documentId),
     listDocumentCollaborators(documentId, document.userId),
+    listWorkspaceMemberIds(document.workspaceId),
   ]);
-  return { ok: true as const, shares, collaborators };
+
+  return {
+    ok: true as const,
+    shares: shares.map((share) => ({
+      ...share,
+      external: isExternalCollaborator({ workspaceMemberIds: crewIds, userId: share.userId }),
+    })),
+    collaborators: collaborators.map((collaborator) => ({
+      ...collaborator,
+      external:
+        collaborator.role !== "owner" &&
+        isExternalCollaborator({ workspaceMemberIds: crewIds, userId: collaborator.id }),
+    })),
+  };
 }
 
 export async function addDocumentShareAction(documentId: string, input: unknown) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para compartilhar documentos." };
+    return { ok: false as const, error: "Faça login para compartilhar cartas." };
   }
 
   const parsed = documentShareInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Informe um e-mail válido." };
 
   const document = await getDocument(documentId, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   if (!isDocumentOwner(document, { userId: session.user.id })) {
-    return { ok: false as const, error: "Apenas o responsável pode compartilhar este documento." };
+    return { ok: false as const, error: "Apenas o cartógrafo pode compartilhar esta carta." };
   }
 
   const result = await addDocumentShare(documentId, parsed.data.email, parsed.data.role, session.user.id);
@@ -379,9 +423,9 @@ export async function updateDocumentShareAction(documentId: string, shareId: str
   if (!parsed.success) return { ok: false as const, error: "Papel inválido." };
 
   const document = await getDocument(documentId, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   if (!isDocumentOwner(document, { userId: session.user.id })) {
-    return { ok: false as const, error: "Apenas o responsável pode alterar compartilhamentos." };
+    return { ok: false as const, error: "Apenas o cartógrafo pode alterar compartilhamentos." };
   }
 
   const share = await updateDocumentShareRole(shareId, documentId, parsed.data.role);
@@ -399,9 +443,9 @@ export async function revokeDocumentShareAction(documentId: string, shareId: str
   }
 
   const document = await getDocument(documentId, await accessContext(session.user.id));
-  if (!document) return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+  if (!document) return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   if (!isDocumentOwner(document, { userId: session.user.id })) {
-    return { ok: false as const, error: "Apenas o responsável pode revogar compartilhamentos." };
+    return { ok: false as const, error: "Apenas o cartógrafo pode revogar compartilhamentos." };
   }
 
   const revoked = await revokeDocumentShare(shareId, documentId);
@@ -475,7 +519,7 @@ export async function setDocumentCommentResolvedAction(
   const ctx = await accessContext(session.user.id);
   const document = await getDocument(documentId, ctx);
   if (!document || !(await canReadDocument(document, ctx))) {
-    return { ok: false as const, error: "Documento não encontrado ou sem permissão." };
+    return { ok: false as const, error: "Carta não encontrada ou sem permissão." };
   }
 
   const existing = await listDocumentComments(documentId);

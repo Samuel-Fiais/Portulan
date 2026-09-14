@@ -109,11 +109,11 @@ export function IntegrationsPanel({
       <section className="doc-section">
         <header className="page-heading split-row">
           <div className="split-row__main workspace-heading">
-            <span className="eyebrow">Integrações</span>
-            <h1 className="fp-h1">Integrações</h1>
+            <span className="eyebrow">Instrumentos</span>
+            <h1 className="fp-h1">Instrumentos</h1>
             <p className="workspace-lead">
               Conecte um cliente MCP com a identidade do seu usuário Portulan.
-              Uma biblioteca que agentes também conseguem manter.
+              Uma cartoteca que agentes também conseguem manter.
             </p>
           </div>
         </header>
@@ -540,7 +540,7 @@ function IntegrationSkillCopy({ skillMarkdown }: { skillMarkdown: string }) {
             <span className="eyebrow">Skill para agentes</span>
             <h2>portulan-mcp</h2>
             <p>
-              Markdown com instruções MCP, templates e diretivas. Copie para o
+              Markdown com instruções MCP, gabaritos e diretivas. Copie para o
               diretório de skills do seu agente ou anexe ao prompt do sistema.
             </p>
             {!hasSkill ? (

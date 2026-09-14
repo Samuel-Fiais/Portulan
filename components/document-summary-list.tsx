@@ -15,8 +15,8 @@ import { formatRelativeDate } from "@/lib/utils";
 export function DocumentSummaryList({
   documents,
   currentUserId,
-  emptyTitle = "Nenhum documento encontrado",
-  emptyDescription = "Ajuste a busca ou crie um novo documento.",
+  emptyTitle = "Nenhuma carta encontrada",
+  emptyDescription = "Ajuste a busca ou crie uma nova carta.",
 }: {
   documents: DocumentSummary[];
   currentUserId?: string;
@@ -45,7 +45,7 @@ export function DocumentSummaryList({
                 secondaryColor={document.secondaryColor}
               />
               <StatusBadge status={document.status} />
-              <VisibilityBadge isPublic={document.isPublic} />
+              <VisibilityBadge visibility={document.visibility} />
               {currentUserId ? (
                 <OwnershipBadge isOwner={document.userId === currentUserId} />
               ) : null}

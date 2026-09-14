@@ -22,12 +22,17 @@ import {
   type DocumentStatus,
   type PublicReleaseResult,
 } from "@/lib/documents";
+import { isDocumentVisibility, type DocumentVisibility } from "@/lib/workspaces";
 
 export type DocumentAccessContext = {
   userId?: string | null;
   userEmail?: string | null;
   bypassOwnership?: boolean;
   shareRole?: "viewer" | "editor" | null;
+  /** Todos os portos em que a pessoa é tripulante — decide o acesso por porto. */
+  workspaceIds?: string[];
+  /** Porto ativo — decide o recorte da cartoteca e onde nascem as cartas novas. */
+  activeWorkspaceId?: string | null;
 };
 
 type DocumentRow = typeof documents.$inferSelect;
@@ -51,11 +56,25 @@ function mapRow(row: DocumentRow, template: Pick<TemplateRow, "name" | "primaryC
     content: row.content,
     version: row.version,
     userId: row.userId,
+    workspaceId: row.workspaceId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     publishedAt: row.publishedAt,
     disabled: row.disabled,
-    isPublic: row.isPublic,
+    visibility: normalizeVisibility(row.visibility),
+    isPublic: normalizeVisibility(row.visibility) === "public",
+  };
+}
+
+function normalizeVisibility(value: string | null | undefined): DocumentVisibility {
+  return isDocumentVisibility(value) ? value : "private";
+}
+
+function templateContext(ctx: DocumentAccessContext) {
+  return {
+    userId: ctx.userId!,
+    workspaceId: ctx.activeWorkspaceId ?? null,
+    workspaceIds: ctx.workspaceIds ?? [],
   };
 }
 
@@ -87,15 +106,29 @@ function mapReleaseRow(
   };
 }
 
-function visibilityClause(userId?: string | null, userEmail?: string | null, sharedDocumentIds?: string[]) {
+function visibilityClause(ctx: DocumentAccessContext, sharedDocumentIds?: string[]) {
   const clauses = [isNull(documents.userId)];
-  if (userId) {
-    clauses.push(eq(documents.userId, userId));
+  if (ctx.userId) {
+    clauses.push(eq(documents.userId, ctx.userId));
   }
   if (sharedDocumentIds?.length) {
     clauses.push(inArray(documents.id, sharedDocumentIds));
   }
+  if (ctx.workspaceIds?.length) {
+    clauses.push(
+      and(
+        inArray(documents.workspaceId, ctx.workspaceIds),
+        inArray(documents.visibility, ["workspace", "public"]),
+      )!,
+    );
+  }
   return or(...clauses);
+}
+
+/** A cartoteca mostra só o porto ativo (cartas legadas, sem porto, continuam visíveis). */
+function workspaceScopeClause(ctx: DocumentAccessContext) {
+  if (!ctx.activeWorkspaceId) return undefined;
+  return or(eq(documents.workspaceId, ctx.activeWorkspaceId), isNull(documents.workspaceId));
 }
 
 export function isDocumentOwner(document: DocumentRecord, ctx: DocumentAccessContext = {}) {
@@ -117,6 +150,16 @@ export async function getDocumentAccessLevel(
     (await getDocumentShareRole(document.id, ctx.userId, ctx.userEmail ?? null));
   if (shareRole === "editor") return "editor";
   if (shareRole === "viewer") return "viewer";
+
+  // Carta aberta ao porto: toda a tripulação lê, ninguém edita sem convite nominal.
+  if (
+    document.visibility !== "private" &&
+    document.workspaceId &&
+    ctx.workspaceIds?.includes(document.workspaceId)
+  ) {
+    return "workspace";
+  }
+
   return null;
 }
 
@@ -184,7 +227,9 @@ export async function listDocuments(
       : [];
 
   if (!ctx.bypassOwnership) {
-    clauses.push(visibilityClause(ctx.userId, ctx.userEmail, sharedDocumentIds));
+    clauses.push(visibilityClause(ctx, sharedDocumentIds));
+    const scope = workspaceScopeClause(ctx);
+    if (scope) clauses.push(scope);
   }
 
   if (filters?.query) {
@@ -229,13 +274,13 @@ export async function getDocument(idOrSlug: string, ctx: DocumentAccessContext =
 
 export async function createDocument(
   input: DocumentInput,
-  options?: { id?: string; slug?: string; userId?: string | null },
+  options?: { id?: string; slug?: string; userId?: string | null; workspaceId?: string | null },
 ) {
   const db = await getDb();
   const userId = options?.userId ?? null;
   const template =
     userId != null
-      ? (await resolveTemplateForUser(input.templateId, userId)) ?? (await getDefaultTemplate())
+      ? (await resolveTemplateForUser(input.templateId, { userId, workspaceId: options?.workspaceId ?? null, workspaceIds: options?.workspaceId ? [options.workspaceId] : [] })) ?? (await getDefaultTemplate())
       : (await getDefaultTemplate());
   const id = options?.id ?? randomUUID();
   const now = new Date().toISOString();
@@ -255,10 +300,12 @@ export async function createDocument(
     content: input.content,
     version: 1,
     userId,
+    workspaceId: options?.workspaceId ?? null,
     createdAt: now,
     updatedAt: now,
     publishedAt,
     disabled: false,
+    visibility: "private",
     isPublic: false,
   });
 
@@ -286,7 +333,7 @@ export async function duplicateDocument(
       tags: source.tags,
       content: source.content,
     },
-    { userId: ctx.userId ?? null },
+    { userId: ctx.userId ?? null, workspaceId: source.workspaceId ?? ctx.activeWorkspaceId ?? null },
   );
 }
 
@@ -300,7 +347,7 @@ export async function updateDocument(
 
   let templateId = current.templateId;
   if (input.templateId && ctx.userId) {
-    const template = await resolveTemplateForUser(input.templateId, ctx.userId);
+    const template = await resolveTemplateForUser(input.templateId, templateContext(ctx));
     if (template) templateId = template.id;
   }
 
@@ -403,7 +450,7 @@ export async function resolvePublicReleaseById(
     .select({
       release: documentReleases,
       documentDisabled: documents.disabled,
-      documentIsPublic: documents.isPublic,
+      documentVisibility: documents.visibility,
       documentUserId: documents.userId,
       documentId: documents.id,
       slug: documents.slug,
@@ -430,7 +477,7 @@ export async function resolvePublicReleaseById(
   if (
     allowsAnonymousPublishedRead({
       disabled: row.documentDisabled,
-      isPublic: row.documentIsPublic,
+      visibility: normalizeVisibility(row.documentVisibility),
       userId: row.documentUserId,
     })
   ) {
@@ -470,7 +517,7 @@ export async function resolvePublicLatestReleaseBySlug(
     .select({
       id: documents.id,
       disabled: documents.disabled,
-      isPublic: documents.isPublic,
+      visibility: documents.visibility,
       userId: documents.userId,
       slug: documents.slug,
     })
@@ -505,7 +552,7 @@ export async function resolvePublicLatestReleaseBySlug(
   if (
     allowsAnonymousPublishedRead({
       disabled: documentRow.disabled,
-      isPublic: documentRow.isPublic,
+      visibility: normalizeVisibility(documentRow.visibility),
       userId: documentRow.userId,
     })
   ) {
@@ -530,7 +577,9 @@ export async function listLinkableDocuments(
       : [];
 
   if (!ctx.bypassOwnership) {
-    clauses.push(visibilityClause(ctx.userId, ctx.userEmail, sharedDocumentIds));
+    clauses.push(visibilityClause(ctx, sharedDocumentIds));
+    const scope = workspaceScopeClause(ctx);
+    if (scope) clauses.push(scope);
   }
   if (options?.excludeDocumentId) {
     clauses.push(sql`${documents.id} <> ${options.excludeDocumentId}`);
@@ -618,7 +667,7 @@ async function resolvePublishSnapshot(
   let secondaryColor = current.secondaryColor;
   let logoUrl = current.logoUrl;
   if (ctx.userId) {
-    const template = await resolveTemplateForUser(merged.templateId, ctx.userId);
+    const template = await resolveTemplateForUser(merged.templateId, templateContext(ctx));
     if (template) {
       templateName = template.name;
       primaryColor = template.primaryColor;
@@ -653,7 +702,7 @@ export async function publishDocument(
   const db = await getDb();
   let templateId = current.templateId;
   if (input.templateId && ctx.userId) {
-    const template = await resolveTemplateForUser(input.templateId, ctx.userId);
+    const template = await resolveTemplateForUser(input.templateId, templateContext(ctx));
     if (template) templateId = template.id;
   }
 
@@ -740,7 +789,7 @@ export async function restoreDocumentRelease(
 
   let templateId = release.templateId;
   if (ctx.userId) {
-    const template = await resolveTemplateForUser(release.templateId, ctx.userId);
+    const template = await resolveTemplateForUser(release.templateId, templateContext(ctx));
     if (template) templateId = template.id;
     else if (current.templateId) templateId = current.templateId;
   }
@@ -777,14 +826,46 @@ export async function setDocumentDisabled(id: string, disabled: boolean, ctx: Do
   return getDocument(id, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership });
 }
 
-export async function setDocumentPublic(id: string, isPublic: boolean, ctx: DocumentAccessContext = {}) {
+export async function setDocumentVisibility(
+  id: string,
+  visibility: DocumentVisibility,
+  ctx: DocumentAccessContext = {},
+) {
   const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
   if (!current || !canMutateDocument(current, ctx)) return null;
+  if (visibility === "workspace" && !current.workspaceId) return null;
 
   const db = await getDb();
   const now = new Date().toISOString();
-  await db.update(documents).set({ isPublic, updatedAt: now }).where(eq(documents.id, id));
-  return getDocument(id, { userId: ctx.userId, bypassOwnership: ctx.bypassOwnership });
+  await db
+    .update(documents)
+    .set({ visibility, isPublic: visibility === "public", updatedAt: now })
+    .where(eq(documents.id, id));
+  return getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership });
+}
+
+export async function setDocumentPublic(id: string, isPublic: boolean, ctx: DocumentAccessContext = {}) {
+  return setDocumentVisibility(id, isPublic ? "public" : "private", ctx);
+}
+
+/** Move a carta para outro porto em que o cartógrafo também é tripulante. */
+export async function setDocumentWorkspace(
+  id: string,
+  workspaceId: string,
+  ctx: DocumentAccessContext = {},
+) {
+  const current = await getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership ?? false });
+  if (!current || !canMutateDocument(current, ctx)) return null;
+  if (!ctx.workspaceIds?.includes(workspaceId)) return null;
+  if (current.workspaceId === workspaceId) return current;
+
+  const db = await getDb();
+  const now = new Date().toISOString();
+  await db
+    .update(documents)
+    .set({ workspaceId, updatedAt: now })
+    .where(eq(documents.id, id));
+  return getDocument(id, { ...ctx, bypassOwnership: ctx.bypassOwnership });
 }
 
 export async function setDocumentReleaseDisabled(
@@ -813,7 +894,10 @@ export async function getDocumentStats(ctx: DocumentAccessContext = {}) {
     ctx.userId && !ctx.bypassOwnership
       ? await listSharedDocumentIds(ctx.userId, ctx.userEmail ?? null)
       : [];
-  const visible = ctx.bypassOwnership ? undefined : visibilityClause(ctx.userId, ctx.userEmail, sharedDocumentIds);
+  const scope = ctx.bypassOwnership ? undefined : workspaceScopeClause(ctx);
+  const visible = ctx.bypassOwnership
+    ? undefined
+    : and(visibilityClause(ctx, sharedDocumentIds), ...(scope ? [scope] : []));
   const query = db
     .select({
       total: count(),

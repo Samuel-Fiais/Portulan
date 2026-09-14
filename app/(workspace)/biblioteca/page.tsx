@@ -1,13 +1,13 @@
 import { auth } from "@/auth";
 import { LibraryPanel } from "@/components/library-panel";
 import { listDocuments, listTemplates } from "@/lib/db";
-import { documentAccessContext } from "@/lib/access-context";
+import { documentAccessContext, templateAccessContext } from "@/lib/access-context";
 import { parseOwnershipFilter, parseStatusFilter } from "@/lib/library-filters";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Biblioteca" };
+export const metadata: Metadata = { title: "Cartoteca" };
 
 export default async function BibliotecaPage({
   searchParams,
@@ -23,7 +23,7 @@ export default async function BibliotecaPage({
   return (
     <LibraryPanel
       documents={documents}
-      templates={await listTemplates(userId)}
+      templates={await listTemplates(await templateAccessContext(userId))}
       currentUserId={userId}
       initialStatusFilter={parseStatusFilter(status)}
       initialOwnershipFilter={parseOwnershipFilter(ownership)}

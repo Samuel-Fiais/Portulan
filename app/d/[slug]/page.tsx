@@ -13,7 +13,7 @@ type Props = { params: Promise<{ slug: string }> };
 export const dynamic = "force-dynamic";
 
 function publishedDocumentTitle(result: PublicReleaseResult) {
-  return result.access === "ok" ? result.release.title : "Documento indisponível";
+  return result.access === "ok" ? result.release.title : "Carta indisponível";
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

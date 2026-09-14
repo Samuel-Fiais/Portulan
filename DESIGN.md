@@ -1,6 +1,6 @@
 ---
 name: Portulan
-description: Workspace editorial para documentos técnicos — carta náutica, tinta e papel, chrome em mono.
+description: Workspace editorial para cartas técnicas — carta náutica, tinta e papel, chrome em mono.
 colors:
   chart-ink: "#1A2847"
   chart-ink-inverse: "#9EC5F0"
@@ -134,7 +134,7 @@ components:
 
 **Creative North Star: "The Portolan Chart"**
 
-Portulan is a portolan chart for technical writing: rumos, tinta, and paper. The workspace is a gazette of instruments, not a SaaS dashboard. Density is that of a tool: 14px body, 1px rules, no ornament. Personality is JetBrains Mono — the instrument face of chrome, report titles, section labels, steps, and code — together with the three-bar brand mark (Chart Ink, Seal Wax, Compass Brass) and the 3px navy-to-burgundy rule under the header. IBM Plex Sans is the reading face for sentences on the paper, not the product voice.
+Portulan is a portolan chart for technical writing: rumos, tinta, and paper. The workspace is a gazette of instruments, not a SaaS dashboard. Its copy runs on the nautical lexicon: carta (document), cartoteca (library), gabarito (template), instrumentos (integrations), porto (workspace), tripulação (crew), cartógrafo (owner), frota (team), ponte (dashboard). Density is that of a tool: 14px body, 1px rules, no ornament. Personality is JetBrains Mono — the instrument face of chrome, report titles, section labels, steps, and code — together with the three-bar brand mark (Chart Ink, Seal Wax, Compass Brass) and the 3px navy-to-burgundy rule under the header. IBM Plex Sans is the reading face for sentences on the paper, not the product voice.
 
 The system is editorial ink. Hierarchy is typeset, not decorated. Burgundy eyebrows and teal section numbers are the gazette’s running heads; they are rare on purpose. Soft-SaaS (rounded-lg, card shadows, focus rings, glass, marketing gradients) and default shadcn (8px radius, 3px rings, shadow-sm) are anti-references even though the primitives sit on that library. New screens inherit the chart, not the kit.
 
@@ -212,9 +212,9 @@ The picker is a stamp grid (Claro / Escuro × six chips in one row). The sixth s
 
 ### Hierarchy
 
-- **Display** (700, clamp 30–48px, line-height 1.08, tracking −0.045em): Full masthead titles in JetBrains Mono — not the Biblioteca / Templates / Integrações register.
-- **Headline** (700, clamp 26–40px): Dashboard, login, Biblioteca, Templates, and Integrações (`fp-h1`). Editor document title is 700, clamp 24–34px. Title on the paper is 600, clamp 20–28px.
-- **Title** (600, 16px, tracking −0.015em): Workspace document rows. Report `###`, step titles, and alert titles are the same family at 13px / 600.
+- **Display** (700, clamp 30–48px, line-height 1.08, tracking −0.045em): Full masthead titles in JetBrains Mono — not the Cartoteca / Gabaritos / Instrumentos register.
+- **Headline** (700, clamp 26–40px): Ponte, login, Cartoteca, Gabaritos, Instrumentos, and Porto (`fp-h1`). Editor document title is 700, clamp 24–34px. Title on the paper is 600, clamp 20–28px.
+- **Title** (600, 16px, tracking −0.015em): Cartoteca rows. Report `###`, step titles, and alert titles are the same family at 13px / 600.
 - **Body:** Plex Sans 14px / 1.65–1.7 on the paper and in app copy. Form fields are 12px Plex Sans. Markdown source in the editor is JetBrains Mono 13px / 1.75.
 - **Label:** Eyebrows (10px / 600 / tracking 0.12em / uppercase Seal Wax), report `##` / `tmpl-label` (same), the index title (same) and entries (14px / 500; `###` at 13px), tabs, badges (9px / tracking 0.06em), field captions (10px / tracking 0.08em).
 
@@ -226,13 +226,15 @@ The picker is a stamp grid (Claro / Escuro × six chips in one row). The sixth s
 
 The spatial model is a sheet on a desk, not a fluid marketing canvas.
 
-Workspace pages sit in a centered column: 1100px for library, templates, integrations, login; 1380px for the dashboard. Biblioteca, Templates, and Integrações share one register: padding `sp-7` / `sp-6` (48px / 32px), Seal Wax eyebrow, Headline `h1` (clamp 26–40px), and 14px lead. The dashboard is tighter at the top (52px) and uses `clamp(24px, 4vw, 64px)` on the sides. The editor is full-bleed beside a 48px icon rail; the top chrome is 61px (58px inner + 3px identity rule), solid Paper, no frost. Mobile replaces the rail with a 56px sticky bar and a drawer.
+Workspace pages sit in a centered column: 1100px for cartoteca, gabaritos, instrumentos, porto, login; 1380px for the ponte. Cartoteca, Gabaritos, Instrumentos, and Porto share one register: padding `sp-7` / `sp-6` (48px / 32px), Seal Wax eyebrow, Headline `h1` (clamp 26–40px), and 14px lead. The ponte is tighter at the top (52px) and uses `clamp(24px, 4vw, 64px)` on the sides. The editor is full-bleed beside a 48px icon rail; the top chrome is 61px (58px inner + 3px identity rule), solid Paper, no frost. Mobile replaces the rail with a 56px sticky bar and a drawer.
 
-Hairline lists (document rows) stack as a single ruled column — one 1px border around the list, 1px between rows, 16–24px internal padding. Grids are auto-fit: stats from 180px, shortcuts from 240px, templates four columns collapsing to two at 1100px and one at 480px. Breakpoints in use: 1100px, 760px (the mobile gate: rail hides, editor preview hides, page padding 16px), 480px.
+The rail starts with the **porto** switcher: a 32px square mark with the porto initials, above the brand rule and the nav icons. It is the only rail item that opens a menu instead of navigating, and it carries the same tooltip register as the icons. In the mobile drawer it becomes a full-width row with the porto name.
 
-The report on screen is a second geometry: a full-bleed reading sheet in its pane or public shell (Hairline frame, Paper ground — not a muted desk, not a 46rem column). Editor preview, `/d`, `/p`, and draft preview share that sheet. Print and PDF remain A4 (`210mm × 297mm`). Do not put workspace grids on the paper or A4 margins on the library.
+Hairline lists (carta rows) stack as a single ruled column — one 1px border around the list, 1px between rows, 16–24px internal padding. Grids are auto-fit: stats from 180px, shortcuts from 240px, gabaritos four columns collapsing to two at 1100px and one at 480px. Breakpoints in use: 1100px, 760px (the mobile gate: rail hides, editor preview hides, page padding 16px), 480px.
 
-**The Measure Rule.** Workspace content maxes at 1100px (dashboard 1380px). Report reading on screen is full-bleed in its pane. Print/PDF maxes at A4. Leads stay inside ~64ch.
+The report on screen is a second geometry: a full-bleed reading sheet in its pane or public shell (Hairline frame, Paper ground — not a muted desk, not a 46rem column). Editor preview, `/d`, `/p`, and draft preview share that sheet. Print and PDF remain A4 (`210mm × 297mm`). Do not put workspace grids on the paper or A4 margins on the cartoteca.
+
+**The Measure Rule.** Workspace content maxes at 1100px (ponte 1380px). Report reading on screen is full-bleed in its pane. Print/PDF maxes at A4. Leads stay inside ~64ch.
 
 ## Elevation & Depth
 
@@ -308,7 +310,7 @@ A full-bleed web sheet in its pane (Paper ground, Plex Sans 14px / 1.68 for pros
 - **Do** use the stock’s single action ink as the only filled primary; keep the 3px header rule as action → accent and the 3px card/panel bars as that action ink.
 - **Do** stamp chrome at 28px (`--control-height`) unless the control is explicitly lg (40px) or xs (24px).
 - **Do** treat Seal Wax as eyebrow/selection/brand, Sounding Teal Ink as enumeration, Compass Brass as identity.
-- **Do** keep workspace measure at 1100px (dashboard 1380px), report reading full-bleed in its pane on screen, and A4 only in print/PDF.
+- **Do** keep workspace measure at 1100px (ponte 1380px), report reading full-bleed in its pane on screen, and A4 only in print/PDF.
 - **Do** write product UI in Portuguese (pt-BR), technical and direct — labels in mono where the chrome already does.
 - **Do** let each paper stock remap action, accent, and paper, and keep the brand bars on Chart Ink / Seal Wax / Compass Brass (lifted in `.dark`).
 

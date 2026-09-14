@@ -9,7 +9,8 @@ import {
   listDocumentReleases,
   listTemplates,
 } from "@/lib/db";
-import { documentAccessContext } from "@/lib/access-context";
+import { documentAccessContext, templateAccessContext } from "@/lib/access-context";
+import { resolveWorkspaceContext } from "@/lib/active-workspace";
 import { documentHasAnyShares, isPrivateOwnedDocument } from "@/lib/db/document-shares";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const document = await getDocument(id, { bypassOwnership: true });
-  return { title: document?.title ?? "Documento" };
+  return { title: document?.title ?? "Carta" };
 }
 
 export default async function DocumentPage({ params }: Props) {
@@ -46,7 +47,8 @@ export default async function DocumentPage({ params }: Props) {
   const canEdit = await canEditDocument(document, ctx);
   const isOwner = isDocumentOwner(document, ctx);
   const collaborators = await listDocumentCollaborators(document.id, document.userId);
-  const templates = canEdit && ctx.userId ? await listTemplates(ctx.userId) : [];
+  const templates = canEdit && ctx.userId ? await listTemplates(await templateAccessContext(ctx.userId)) : [];
+  const { workspaces } = await resolveWorkspaceContext(ctx.userId);
 
   return (
     <DocumentEditor
@@ -57,6 +59,7 @@ export default async function DocumentPage({ params }: Props) {
       isOwner={isOwner}
       collaborators={collaborators}
       currentUserId={session?.user?.id ?? null}
+      workspaces={workspaces.map((workspace) => ({ id: workspace.id, name: workspace.name }))}
     />
   );
 }

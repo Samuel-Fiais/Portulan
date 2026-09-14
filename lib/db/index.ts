@@ -20,6 +20,8 @@ export {
   resolvePublicReleaseById,
   setDocumentDisabled,
   setDocumentPublic,
+  setDocumentVisibility,
+  setDocumentWorkspace,
   setDocumentReleaseDisabled,
   updateDocument,
   updateDocumentLivingContent,
@@ -44,6 +46,7 @@ export {
 } from "@/lib/db/document-comments";
 
 export {
+  canManageTemplate,
   createTemplate,
   deleteTemplate,
   duplicateTemplate,
@@ -53,7 +56,32 @@ export {
   listTemplates,
   previewTemplateContent,
   updateTemplate,
+  type TemplateAccessContext,
 } from "@/lib/db/templates";
+
+export {
+  countWorkspaceDocuments,
+  countWorkspaceOwners,
+  createWorkspace,
+  createWorkspaceInvite,
+  deleteWorkspace,
+  ensurePersonalWorkspace,
+  findWorkspaceInviteByToken,
+  getWorkspace,
+  getWorkspaceMembership,
+  listUserWorkspaceIds,
+  listUserWorkspaces,
+  listWorkspaceCrewOtherThan,
+  listWorkspaceInvites,
+  listWorkspaceMemberIds,
+  listWorkspaceMembers,
+  redeemWorkspaceInvite,
+  removeWorkspaceMember,
+  revokeWorkspaceInvite,
+  setWorkspaceMemberRole,
+  transferWorkspaceCaptaincy,
+  updateWorkspaceIdentity,
+} from "@/lib/db/workspaces";
 
 export { createMcpToken, listMcpTokens, revokeMcpToken, validateMcpToken } from "@/lib/db/mcp-tokens";
 

@@ -22,6 +22,7 @@ export const builtinTemplates = [
 export type TemplateRecord = {
   id: string;
   userId: string | null;
+  workspaceId: string | null;
   name: string;
   primaryColor: string;
   secondaryColor: string;
@@ -30,6 +31,8 @@ export type TemplateRecord = {
   isBuiltin: boolean;
   createdAt: string;
 };
+
+import type { DocumentVisibility } from "./workspaces.ts";
 
 export type DocumentRecord = {
   id: string;
@@ -48,10 +51,13 @@ export type DocumentRecord = {
   content: string;
   version: number;
   userId: string | null;
+  workspaceId: string | null;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
   disabled: boolean;
+  visibility: DocumentVisibility;
+  /** Derivado de `visibility`; mantido para o contrato antigo de link público. */
   isPublic: boolean;
 };
 
@@ -104,6 +110,8 @@ export type DocumentShareRecord = {
   userLogin: string | null;
   userName: string | null;
   userAvatarUrl: string | null;
+  /** Convidado que não faz parte da tripulação do porto da carta. */
+  external?: boolean;
 };
 
 export type DocumentCollaborator = {
@@ -113,6 +121,7 @@ export type DocumentCollaborator = {
   avatarUrl: string | null;
   role: DocumentShareRole | "owner";
   email?: string;
+  external?: boolean;
 };
 
 export type DocumentCommentRecord = {
@@ -130,7 +139,8 @@ export type DocumentCommentRecord = {
   userAvatarUrl: string | null;
 };
 
-export type DocumentAccessLevel = "owner" | "editor" | "viewer" | "legacy" | null;
+/** `workspace`: leitura concedida pela tripulação do porto, sem convite nominal. */
+export type DocumentAccessLevel = "owner" | "editor" | "viewer" | "workspace" | "legacy" | null;
 
 export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecord {
   return {
@@ -150,22 +160,24 @@ export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecor
     content: release.content,
     version: release.version,
     userId: null,
+    workspaceId: null,
     createdAt: release.publishedAt,
     updatedAt: release.publishedAt,
     publishedAt: release.publishedAt,
     disabled: false,
+    visibility: "private",
     isPublic: false,
   };
 }
 
 export function allowsAnonymousPublishedRead(document: {
   disabled: boolean;
-  isPublic: boolean;
+  visibility: DocumentVisibility;
   userId: string | null;
 }) {
   if (document.disabled) return false;
   if (document.userId == null) return true;
-  return document.isPublic;
+  return document.visibility === "public";
 }
 
 export type PublicAccessDenied = "not_found" | "document_disabled" | "release_disabled" | "no_enabled_release";

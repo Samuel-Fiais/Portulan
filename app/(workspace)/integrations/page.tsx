@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Integrações" };
+export const metadata: Metadata = { title: "Instrumentos" };
 
 export default async function IntegrationsPage() {
   const session = await auth();

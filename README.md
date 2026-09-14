@@ -1,6 +1,6 @@
 # Portulan
 
-Workspace editorial para criar, revisar, publicar e imprimir documentos técnicos. Construído com Next.js App Router, React, Tailwind CSS, shadcn/ui, SQLite e MCP Streamable HTTP.
+Workspace editorial para criar, revisar, publicar e imprimir cartas técnicas (documentos), organizado em **portos** com tripulação própria. Construído com Next.js App Router, React, Tailwind CSS, shadcn/ui, Postgres (Neon/Drizzle) e MCP Streamable HTTP.
 
 ## Executar localmente
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Acesse `http://localhost:3000`. O banco é criado automaticamente em `data/portulan.sqlite` (ou `data/festpay-docs.sqlite` se já existir) e recebe três documentos de exemplo na primeira execução.
+Acesse `http://localhost:3000`. O schema é aplicado automaticamente no banco configurado e cada conta ganha o porto inicial na primeira entrada.
 
 ## Configuração
 
@@ -19,9 +19,10 @@ Copie `.env.example` para `.env.local` e configure `DATABASE_URL` (Neon Postgres
 
 ### Autenticação MCP (por usuário)
 
-1. Faça login no Portulan com GitHub
-2. Abra **Integrações → MCP** e clique em **Gerar token MCP**
-3. Envie o token em toda requisição ao endpoint MCP: `Authorization: Bearer ptl_<seu-token>`
+1. Faça login no Portulan com GitHub ou com handle/e-mail e senha
+2. Confira no trilho em que porto você está — o token fica preso a ele
+3. Abra **Instrumentos → MCP** e clique em **Gerar token MCP**
+4. Envie o token em toda requisição ao endpoint MCP: `Authorization: Bearer ptl_<seu-token>`
 
 ## MCP para agentes
 
@@ -45,10 +46,11 @@ Exemplo de configuração de cliente:
 
 Ferramentas disponíveis:
 
-- `list_documents`: pesquisa e filtra a biblioteca;
+- `list_workspaces`: portos da conta e qual deles o token opera;
+- `list_documents`: pesquisa e filtra a cartoteca do porto do token;
 - `get_document`: lê um documento completo por ID ou slug;
 - `create_document`: cria documentos em Markdown;
-- `update_document`: aplica alterações parciais e incrementa a versão;
+- `update_document`: aplica alterações parciais e define a visibilidade (`private` / `workspace` / `public`);
 - `publish_document`: publica a versão atual e retorna o link público `/p/{id}`;
 - `list_document_releases`: lista links públicos já gerados por versão;
 - `delete_document`: remove um documento pelo ID.

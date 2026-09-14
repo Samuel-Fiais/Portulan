@@ -1,5 +1,7 @@
+import { Anchor, Globe, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { statusMeta, type DocumentStatus } from "@/lib/documents";
+import { documentVisibilityMeta, type DocumentVisibility } from "@/lib/workspaces";
 import { cn } from "@/lib/utils";
 
 export function TemplateBadge({
@@ -36,10 +38,30 @@ export function StatusBadge({ status }: { status: DocumentStatus }) {
   );
 }
 
-export function VisibilityBadge({ isPublic }: { isPublic: boolean }) {
+const visibilityTone: Record<DocumentVisibility, string> = {
+  private: "status-private",
+  workspace: "status-workspace",
+  public: "status-public",
+};
+
+export function VisibilityIcon({ visibility }: { visibility: DocumentVisibility }) {
+  if (visibility === "public") return <Globe />;
+  if (visibility === "workspace") return <Anchor />;
+  return <Lock />;
+}
+
+export function VisibilityBadge({ visibility }: { visibility: DocumentVisibility }) {
   return (
-    <Badge variant="outline" className={cn("status-badge", isPublic ? "status-public" : "status-private")}>
-      {isPublic ? "Público" : "Privado"}
+    <Badge variant="outline" className={cn("status-badge", visibilityTone[visibility])}>
+      {documentVisibilityMeta[visibility].shortLabel}
+    </Badge>
+  );
+}
+
+export function ExternalBadge() {
+  return (
+    <Badge variant="outline" className={cn("status-badge", "status-external")}>
+      Externo
     </Badge>
   );
 }

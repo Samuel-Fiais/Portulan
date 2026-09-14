@@ -5,7 +5,7 @@ description: Operates the Portulan MCP server (portulan) to list, read, create, 
 
 # Portulan MCP
 
-Guia para agentes operarem a biblioteca técnica **Portulan** via MCP Streamable HTTP.
+Guia para agentes operarem a cartoteca técnica **Portulan** via MCP Streamable HTTP. Na UI o produto chama documento de **carta**, template de **gabarito** e workspace de **porto**; as ferramentas MCP mantêm os nomes técnicos.
 
 ## Pré-requisitos
 
@@ -68,29 +68,30 @@ Authorization: Bearer <MCP_API_KEY>
 
 No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
 
-## Ferramentas (28)
+## Ferramentas (29)
 
 | Ferramenta | Quando usar |
 |---|---|
 | `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo (inclui seção **Como evitar erros**) |
 | `upload_image` | Enviar imagem (base64) para um documento; usar a `url` retornada em `:::figure{src=...}` |
 | `upload_file` | Enviar anexo (base64) para um documento; usar `url` e `name` em `:::file{url=... name=...}` |
-| `list_documents` | Descobrir o que existe; buscar por título, tag, conteúdo, template ou status |
+| `list_workspaces` | Portos (workspaces) da pessoa e qual deles este token opera (RN-55) |
+| `list_documents` | Descobrir o que existe no porto do token (mais os compartilhados nominalmente); buscar por título, tag, conteúdo, template ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
-| `create_document` | Assunto novo, sem documento equivalente |
+| `create_document` | Assunto novo, sem documento equivalente. Nasce privado, no porto do token |
 | `duplicate_document` | Clonar documento como rascunho novo (apenas responsável; releases não copiadas) |
 | `update_document` | Editar rascunho/revisão; não cria versão publicada |
-| `publish_document` | Gerar versão imutável; o documento continua privado |
+| `publish_document` | Gerar versão imutável; a visibilidade não muda |
 | `restore_document` | Copiar uma release publicada para o rascunho; não publica nem apaga versões (RN-09) |
 | `list_document_releases` | Recuperar links `/d/{slug}` (estável) e `/p/{id}` (versão fixa) já publicados |
 | `delete_document` | Remover definitivamente (só UUID) |
 | `list_templates` | Descobrir os templates disponíveis e seus conteúdos-base |
 | `get_template` | Ler um template completo (cores + conteúdo-base) |
-| `create_template` | Criar um template particular com paleta e Markdown inicial |
+| `create_template` | Criar um template no porto do token, com paleta e Markdown inicial |
 | `update_template` | Alterar nome, cores ou conteúdo-base de um template |
-| `duplicate_template` | Clonar um template acessível como template particular |
+| `duplicate_template` | Clonar um template acessível para o porto do token |
 | `preview_template` | Resumo leve de um template (títulos + trecho inicial) |
-| `delete_template` | Remover definitivamente um template particular |
+| `delete_template` | Remover definitivamente um template do porto |
 | `list_markdown_components` | Catálogo de diretivas `:::` e Markdown do editor |
 | `explain_markdown_component` | Sintaxe, atributos, armadilhas (`avoidErrors`) e exemplos de um componente |
 | `list_document_comments` | Listar fios de revisão de um documento (RN-61) |
@@ -116,7 +117,7 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 |---|---|
 | `draft` | Rascunho |
 | `review` | Em revisão |
-| `published` | Publicado na biblioteca |
+| `published` | Publicado na cartoteca |
 | `archived` | Arquivado |
 
 ### Versão e publicação
@@ -124,9 +125,23 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 - `update_document` salva o rascunho sem criar uma nova versão.
 - **Estado living (RN-54):** se o payload incluir `content`, o servidor preserva `status` de `:::testcase` (por `id`) e checkboxes de `:::checklist` (por título) já salvos no rascunho — o valor do agente no payload é ignorado para itens que já existiam. Use `get_document` antes de editar; não dependa de resetar QA com `status="pending"` ou `- [ ]` no replace completo.
 - `publish_document` com `content` aplica a mesma preservação antes de criar o snapshot.
-- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{uuid}"` (UUID fixo na criação; não muda ao renomear título) e `publicPath: "/p/{releaseId}"` (versão fixa). **Não** liga o acesso público: o documento nasce e permanece privado até `update_document` com `is_public: true`.
+- `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{uuid}"` (UUID fixo na criação; não muda ao renomear título) e `publicPath: "/p/{releaseId}"` (versão fixa). **Não** muda a visibilidade: o documento nasce e permanece privado até `update_document` com `visibility: "workspace"` ou `"public"`.
 - Links antigos `/p/...` **não mudam** quando o documento é editado depois; nova publicação = novo link de versão fixa. O link `/d/{uuid}` passa a apontar para a versão mais recente.
-- Links `/d` e `/p`: `http://localhost:3000/d/{uuid}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa). Visitante sem login só vê se `isPublic` for verdadeiro.
+- Links `/d` e `/p`: `http://localhost:3000/d/{uuid}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa). Visitante sem login só vê se a visibilidade for `public`.
+
+### Porto (workspace) e visibilidade
+
+O token MCP opera em **um** porto, fixado quando foi gerado (RN-55). Documentos e templates criados pelo agente nascem nesse porto; `list_documents` e `list_templates` enxergam o acervo dele (mais os documentos compartilhados nominalmente com a pessoa). Para operar em outro porto, o usuário troca de porto na UI e gera um token novo. `list_workspaces` mostra os portos disponíveis e marca qual deles é o do token.
+
+`update_document` aceita `visibility` com três níveis (RN-17, RN-18). Só o responsável muda:
+
+| Valor | Quem lê |
+|---|---|
+| `private` | Só o responsável e quem foi convidado por e-mail. Padrão de todo documento novo. |
+| `workspace` | Toda a tripulação do porto do documento, **em leitura**. Exige documento com porto. |
+| `public` | Qualquer pessoa com `/d` ou `/p` vê a versão publicada habilitada. |
+
+`is_public: true` / `false` continua funcionando como atalho legado para `public` / `private`.
 
 ### Identificadores
 
@@ -142,7 +157,7 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 1. list_documents (query opcional) → confirmar que não existe equivalente
 2. create_document → type + title + content (+ summary, tags, author, team)
 3. publish_document (se precisar de uma versão imutável)
-4. update_document is_public=true (somente se visitantes devem abrir o link sem convite)
+4. update_document visibility="workspace" (a tripulação do porto lê) ou "public" (qualquer pessoa com o link)
 ```
 
 Prefira `type` coerente com o template em `lib/documents.ts` (`templates`).
@@ -184,13 +199,14 @@ Regras: RN-09 (não altera releases, não incrementa version, não publica); RN-
 1. Garantir conteúdo final (update_document se necessário)
 2. publish_document(id)
 3. Compartilhar o documento por e-mail (UI ou MCP de shares). /d e /p abrem para responsável e convidados autenticados
+4. Alternativa para o porto inteiro: update_document visibility="workspace" — a tripulação lê sem convite nominal
 ```
 
 ### Abrir o link a qualquer pessoa
 
 ```
 1. publish_document(id) se ainda não houver versão
-2. update_document(id, is_public: true) — só o responsável
+2. update_document(id, visibility: "public") — só o responsável
 3. Compartilhar {origin}/d/{slug} ou {origin}/p/{release.id}
 ```
 
@@ -207,8 +223,8 @@ Irreversível. Confirme com o usuário antes.
 ```
 1. list_templates → consultar id, paleta e conteúdo-base existentes
 2. get_template → ler conteúdo completo antes de editar ou clonar
-3. create_template → criar uma variação particular, quando apropriado
-4. duplicate_template → copiar um template interno ou particular
+3. create_template → criar uma variação no porto do token, quando apropriado
+4. duplicate_template → copiar um template interno ou do porto
 5. preview_template → inspecionar títulos e trecho inicial sem baixar tudo
 6. update_template → ajustar nome, cores ou conteúdo-base sem alterar documentos já criados
 ```
@@ -235,7 +251,7 @@ Comentários seguem RN-61 e RN-65: só no editor autenticado, para quem tem aces
 
 Leia `guide.avoidErrors` em `get_system_guide` antes de escrever blocos `:::`. Erros comuns: espaço antes de `{` na abertura, fechamento que não é só `:::`, tabelas GFM no lugar de linhas `- col | col`, aninhar diretivas fora de `:::columns`, e `}` de path API fora das aspas do atributo.
 
-Templates internos também podem ter nome, paleta e conteúdo-base ajustados; não podem ser excluídos. Templates particulares só podem ser alterados ou excluídos pelo respectivo usuário.
+Templates internos também podem ter nome, paleta e conteúdo-base ajustados; não podem ser excluídos. Templates do porto são alterados ou excluídos pelo autor, pelo capitão ou pelo imediato daquele porto (RN-92).
 
 ### Escolha do componente certo
 
@@ -368,7 +384,7 @@ curl -sS -X POST http://localhost:3000/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 28 ferramentas.
+Deve listar 29 ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 

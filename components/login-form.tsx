@@ -93,7 +93,7 @@ export function LoginForm({
           </h1>
           <p className="fp-lead login-lead">
             {mode === "login"
-              ? "Biblioteca, editor e publicação de documentos técnicos — com GitHub ou usuário e senha."
+              ? "Cartoteca, editor e publicação de cartas técnicas — com GitHub ou usuário e senha."
               : "Informe nome, usuário, e-mail e senha. Depois você pode ligar o GitHub na mesma conta."}
           </p>
 

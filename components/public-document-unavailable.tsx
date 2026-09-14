@@ -6,8 +6,8 @@ import type { PublicAccessDenied } from "@/lib/documents";
 
 const messages: Record<Exclude<PublicAccessDenied, "not_found">, { title: string; description: string }> = {
   document_disabled: {
-    title: "Este documento foi desativado.",
-    description: "O acesso público a este documento foi interrompido pelo responsável.",
+    title: "Esta carta foi desativada.",
+    description: "O acesso público a esta carta foi interrompido pelo cartógrafo.",
   },
   release_disabled: {
     title: "Esta versão foi desativada.",
@@ -15,7 +15,7 @@ const messages: Record<Exclude<PublicAccessDenied, "not_found">, { title: string
   },
   no_enabled_release: {
     title: "Nenhuma versão pública disponível.",
-    description: "Este documento não possui versões publicadas ativas no momento.",
+    description: "Esta carta não possui versões publicadas ativas no momento.",
   },
 };
 
@@ -33,7 +33,7 @@ export function PublicDocumentUnavailable({ reason }: { reason: Exclude<PublicAc
       <Button asChild>
         <Link href="/biblioteca">
           <ArrowLeft />
-          Voltar à biblioteca
+          Voltar à cartoteca
         </Link>
       </Button>
     </main>

@@ -5,9 +5,9 @@ import "./editor-screen.css";
 import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Ban, Blocks, Copy, Download, ExternalLink, Eye, FileText, GitCompareArrows, Globe, History, Link2, LoaderCircle, Lock, LockOpen, MessageSquare, MoreHorizontal, Plus, RotateCcw, Save, Share2, Tags, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, Ban, Blocks, Copy, Download, ExternalLink, Eye, FileText, GitCompareArrows, Globe, History, Link2, LoaderCircle, MessageSquare, MoreHorizontal, Plus, RotateCcw, Save, Share2, Tags, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, restoreDocumentReleaseAction, setDocumentDisabledAction, setDocumentPublicAction, setDocumentReleaseDisabledAction, updateDocumentAction } from "@/app/actions";
+import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction, publishDocumentAction, restoreDocumentReleaseAction, setDocumentDisabledAction, setDocumentReleaseDisabledAction, setDocumentVisibilityAction, setDocumentWorkspaceAction, updateDocumentAction } from "@/app/actions";
 import { BlobImageUpload } from "@/components/blob-image-upload";
 import { BlobFileUpload } from "@/components/blob-file-upload";
 import { DocumentCollaboratorAvatars } from "@/components/document-collaborator-avatars";
@@ -19,7 +19,7 @@ import { ReportPreview } from "@/components/report-preview";
 import { PreviewCommentRail, PreviewCommentsHost } from "@/components/preview-comments";
 import { VersionDiffDialog } from "@/components/version-diff-dialog";
 import { RichMarkdown } from "@/components/rich-markdown";
-import { StatusBadge, TemplateBadge, DisabledBadge, VisibilityBadge } from "@/components/document-badges";
+import { StatusBadge, TemplateBadge, DisabledBadge, VisibilityBadge, VisibilityIcon } from "@/components/document-badges";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -43,6 +43,7 @@ import { validateBlobImage } from "@/lib/blob-storage";
 import { reportPaletteStyle } from "@/lib/color-utils";
 import { applyMarkdownIndent } from "@/lib/markdown-indent";
 import { applyMarkdownFormat, isMarkdownShortcut } from "@/lib/markdown-shortcuts";
+import { documentVisibilities, documentVisibilityMeta, type DocumentVisibility } from "@/lib/workspaces";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import { releaseSideId, type VersionDiffSideId } from "@/lib/version-diff";
 
@@ -73,6 +74,7 @@ export function DocumentEditor({
   isOwner = true,
   collaborators = [],
   currentUserId,
+  workspaces = [],
 }: {
   initialDocument: DocumentRecord;
   initialReleases?: DocumentRelease[];
@@ -81,6 +83,7 @@ export function DocumentEditor({
   isOwner?: boolean;
   collaborators?: DocumentCollaborator[];
   currentUserId?: string | null;
+  workspaces?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [document, setDocument] = useState(initialDocument);
@@ -548,25 +551,36 @@ export function DocumentEditor({
         toast.error(result.error);
         return;
       }
-      toast.success("Documento excluído");
+      toast.success("Carta excluída");
       router.push("/");
     });
   }
 
-  function toggleDocumentPublic(isPublic: boolean) {
+  function changeDocumentVisibility(visibility: DocumentVisibility) {
     startTransition(async () => {
-      const result = await setDocumentPublicAction(document.id, isPublic);
+      const result = await setDocumentVisibilityAction(document.id, visibility);
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
       setDocument(result.document);
       setSavedDocument(result.document);
-      toast.success(isPublic ? "Documento público" : "Documento privado", {
-        description: isPublic
-          ? "Qualquer pessoa com o link da versão publicada pode abrir."
-          : "Só você e as pessoas convidadas têm acesso.",
+      toast.success(`Carta em ${documentVisibilityMeta[visibility].label.toLowerCase()}`, {
+        description: documentVisibilityMeta[visibility].blurb,
       });
+    });
+  }
+
+  function moveDocumentToWorkspace(workspaceId: string) {
+    startTransition(async () => {
+      const result = await setDocumentWorkspaceAction(document.id, workspaceId);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setDocument(result.document);
+      setSavedDocument(result.document);
+      toast.success("Carta movida de porto");
     });
   }
 
@@ -579,9 +593,9 @@ export function DocumentEditor({
       }
       setDocument(result.document);
       setSavedDocument(result.document);
-      toast.success(disabled ? "Documento desativado" : "Documento reativado", {
+      toast.success(disabled ? "Carta desativada" : "Carta reativada", {
         description: disabled
-          ? "Todos os links deste documento exibem uma mensagem de indisponibilidade."
+          ? "Todos os links desta carta exibem uma mensagem de indisponibilidade."
           : "O acesso foi restaurado conforme as versões ativas.",
       });
     });
@@ -629,15 +643,15 @@ export function DocumentEditor({
       try {
         await navigator.clipboard.writeText(stableUrl);
         toast.success("Versão publicada", {
-          description: result.document.isPublic
+          description: result.document.visibility === "public"
             ? `Link estável copiado. Use ${pinnedUrl} para fixar esta versão.`
-            : "O documento continua privado. O link só abre para você e para quem foi convidado.",
+            : `Link estável copiado. A carta segue em ${documentVisibilityMeta[result.document.visibility].label.toLowerCase()}.`,
         });
       } catch {
         toast.success("Versão publicada", {
-          description: result.document.isPublic
+          description: result.document.visibility === "public"
             ? `Link estável: ${stableUrl}. Versão fixa: ${pinnedUrl}`
-            : "O documento continua privado. Compartilhe com pessoas ou torne-o público.",
+            : `Link estável: ${stableUrl}. A carta segue em ${documentVisibilityMeta[result.document.visibility].label.toLowerCase()}.`,
         });
       }
     });
@@ -708,7 +722,7 @@ export function DocumentEditor({
       <header className="editor-topbar no-print">
         <div className="editor-topbar-inner">
         <div className="editor-context flex min-w-0 items-center gap-2">
-          <Button variant="ghost" size="icon-sm" asChild><Link href="/biblioteca" aria-label="Voltar à biblioteca"><ArrowLeft /></Link></Button>
+          <Button variant="ghost" size="icon-sm" asChild><Link href="/biblioteca" aria-label="Voltar à cartoteca"><ArrowLeft /></Link></Button>
           <div className="min-w-0">
             <strong className="block truncate text-sm">{document.title}</strong>
             <small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small>
@@ -756,11 +770,11 @@ export function DocumentEditor({
                       type="button"
                       variant="outline"
                       size="icon-sm"
-                      aria-label={document.isPublic ? "Documento público. Alterar acesso." : "Documento privado. Alterar acesso."}
+                      aria-label={`${documentVisibilityMeta[document.visibility].label}. Alterar visibilidade.`}
                       onClick={() => setShareDialogOpen(true)}
                       disabled={pending}
                     >
-                      {document.isPublic ? <LockOpen /> : <Lock />}
+                      <VisibilityIcon visibility={document.visibility} />
                     </Button>
                   ) : (
                     <span className="inline-flex">
@@ -769,21 +783,16 @@ export function DocumentEditor({
                         variant="outline"
                         size="icon-sm"
                         disabled
-                        aria-label={document.isPublic ? "Documento público" : "Documento privado"}
+                        aria-label={documentVisibilityMeta[document.visibility].label}
                       >
-                        {document.isPublic ? <LockOpen /> : <Lock />}
+                        <VisibilityIcon visibility={document.visibility} />
                       </Button>
                     </span>
                   )}
                 </TooltipTrigger>
                 <TooltipContent sideOffset={6}>
-                  {document.isPublic
-                    ? isOwner
-                      ? "Público — qualquer pessoa com o link. Clique para alterar."
-                      : "Público — qualquer pessoa com o link"
-                    : isOwner
-                      ? "Privado — só você e convidados. Clique para alterar."
-                      : "Privado — só o responsável e convidados"}
+                  {`${documentVisibilityMeta[document.visibility].label} — ${documentVisibilityMeta[document.visibility].blurb}`}
+                  {isOwner ? ". Clique para alterar." : ""}
                 </TooltipContent>
               </Tooltip>
               <DropdownMenu>
@@ -800,18 +809,18 @@ export function DocumentEditor({
                   </DropdownMenuItem>
                   {isOwner ? <DropdownMenuItem onClick={() => setShareDialogOpen(true)}><Share2 />Compartilhar</DropdownMenuItem> : null}
                   <DropdownMenuSeparator />
-                  {isOwner ? <DropdownMenuItem onClick={duplicate}><Copy />Duplicar documento</DropdownMenuItem> : null}
+                  {isOwner ? <DropdownMenuItem onClick={duplicate}><Copy />Duplicar carta</DropdownMenuItem> : null}
                   {isOwner ? (
                     document.disabled ? (
-                      <DropdownMenuItem onClick={() => toggleDocumentDisabled(false)}><RotateCcw />Reativar documento</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => toggleDocumentDisabled(false)}><RotateCcw />Reativar carta</DropdownMenuItem>
                     ) : (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <DropdownMenuItem variant="destructive" onSelect={(event) => event.preventDefault()}><Ban />Desativar documento</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" onSelect={(event) => event.preventDefault()}><Ban />Desativar carta</DropdownMenuItem>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Desativar este documento?</AlertDialogTitle>
+                            <AlertDialogTitle>Desativar esta carta?</AlertDialogTitle>
                             <AlertDialogDescription>
                               Todos os links públicos (/d/{document.slug} e /p/…) deixarão de exibir o conteúdo. Você poderá reativar depois.
                             </AlertDialogDescription>
@@ -828,9 +837,9 @@ export function DocumentEditor({
                     <>
                       <DropdownMenuSeparator />
                       <AlertDialog>
-                        <AlertDialogTrigger asChild><DropdownMenuItem variant="destructive" onSelect={(event) => event.preventDefault()}><Trash2 />Excluir documento</DropdownMenuItem></AlertDialogTrigger>
+                        <AlertDialogTrigger asChild><DropdownMenuItem variant="destructive" onSelect={(event) => event.preventDefault()}><Trash2 />Excluir carta</DropdownMenuItem></AlertDialogTrigger>
                         <AlertDialogContent>
-                          <AlertDialogHeader><AlertDialogTitle>Excluir este documento?</AlertDialogTitle><AlertDialogDescription>“{document.title}” será removido permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogHeader><AlertDialogTitle>Excluir esta carta?</AlertDialogTitle><AlertDialogDescription>“{document.title}” será removida permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
                           <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove}>Excluir definitivamente</AlertDialogAction></AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -862,10 +871,11 @@ export function DocumentEditor({
       {isOwner ? (
         <DocumentShareDialog
           documentId={document.id}
-          isPublic={document.isPublic}
-          onVisibilityChange={(isPublic) => {
-            setDocument((current) => ({ ...current, isPublic }));
-            setSavedDocument((current) => ({ ...current, isPublic }));
+          visibility={document.visibility}
+          workspaceName={workspaces.find((workspace) => workspace.id === document.workspaceId)?.name ?? null}
+          onVisibilityChange={(visibility) => {
+            setDocument((current) => ({ ...current, visibility, isPublic: visibility === "public" }));
+            setSavedDocument((current) => ({ ...current, visibility, isPublic: visibility === "public" }));
           }}
           initialCollaborators={documentCollaborators}
           open={shareDialogOpen}
@@ -889,11 +899,11 @@ export function DocumentEditor({
             <div className="flex flex-wrap items-center gap-2">
               <TemplateBadge name={document.templateName} primaryColor={document.primaryColor} secondaryColor={document.secondaryColor} />
               <StatusBadge status={document.status} />
-              <VisibilityBadge isPublic={document.isPublic} />
+              <VisibilityBadge visibility={document.visibility} />
               {document.disabled ? <DisabledBadge /> : null}
             </div>
-            <Textarea className="editor-title-input" value={document.title} onChange={(event) => patch("title", event.target.value)} aria-label="Título do documento" readOnly={!canEdit} />
-            <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo do documento…" aria-label="Resumo do documento" readOnly={!canEdit} />
+            <Textarea className="editor-title-input" value={document.title} onChange={(event) => patch("title", event.target.value)} aria-label="Título da carta" readOnly={!canEdit} />
+            <Textarea className="editor-summary-input" value={document.summary} onChange={(event) => patch("summary", event.target.value)} placeholder="Resumo executivo da carta…" aria-label="Resumo da carta" readOnly={!canEdit} />
           </div>
           <Tabs defaultValue="content" className="editor-tabs">
             <TabsList variant="line" className="editor-tabs-list"><TabsTrigger value="content"><FileText />Conteúdo</TabsTrigger>{currentUserId ? <TabsTrigger value="review"><EditorReviewTabLabel /></TabsTrigger> : null}<TabsTrigger value="metadata"><Tags />Metadados</TabsTrigger><TabsTrigger value="history"><History />Histórico</TabsTrigger></TabsList>
@@ -918,7 +928,7 @@ export function DocumentEditor({
             ) : null}
             <TabsContent value="metadata" className="editor-tab-content metadata-form">
               <section className="metadata-properties" aria-label="Propriedades">
-                <Field label="Template">
+                <Field label="Gabarito">
                   <Select value={document.templateId} onValueChange={changeTemplate} disabled={!canEdit}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -929,47 +939,64 @@ export function DocumentEditor({
                   </Select>
                 </Field>
                 <Field label="Status"><Select value={document.status} onValueChange={(value: DocumentRecord["status"]) => patch("status", value)} disabled={!canEdit}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentStatuses.map((status) => <SelectItem key={status} value={status}>{statusMeta[status].label}</SelectItem>)}</SelectContent></Select></Field>
-                <Field label="Responsável"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} readOnly={!canEdit} /></Field>
-                <Field label="Time"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
+                <Field label="Cartógrafo"><Input value={document.author} onChange={(event) => patch("author", event.target.value)} readOnly={!canEdit} /></Field>
+                <Field label="Frota"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
                 <Field label="Tags" className="metadata-field--full"><Input value={document.tags.join(", ")} onChange={(event) => patch("tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean))} placeholder="pagamentos, api, arquitetura" readOnly={!canEdit} aria-describedby="metadata-tags-hint" /><p id="metadata-tags-hint">Separe as tags por vírgula.</p></Field>
               </section>
               {isOwner ? (
-                <section className="metadata-actions" aria-label="Ações do documento">
+                <section className="metadata-actions" aria-label="Ações da carta">
                   <div className="metadata-action-panel">
-                    <h3 className="metadata-action-panel__title">Acesso ao link</h3>
-                    <p>
-                      {document.isPublic
-                        ? "Qualquer pessoa com o link da versão publicada pode abrir. Desligue para voltar ao privado."
-                        : "Documento privado: só você e as pessoas convidadas têm acesso, mesmo depois de publicar uma versão."}
-                    </p>
-                    <div className="metadata-action-panel__footer">
-                      {document.isPublic ? (
-                        <Button type="button" variant="outline" size="sm" onClick={() => toggleDocumentPublic(false)} disabled={pending}><Lock />Tornar privado</Button>
-                      ) : (
-                        <Button type="button" variant="outline" size="sm" onClick={() => toggleDocumentPublic(true)} disabled={pending}><Globe />Tornar público</Button>
-                      )}
+                    <h3 className="metadata-action-panel__title">Visibilidade</h3>
+                    <p>{documentVisibilityMeta[document.visibility].blurb}.</p>
+                    <div className="metadata-action-panel__footer metadata-visibility-choices">
+                      {documentVisibilities.map((level) => (
+                        <Button
+                          key={level}
+                          type="button"
+                          variant={document.visibility === level ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => changeDocumentVisibility(level)}
+                          disabled={pending || (level === "workspace" && !document.workspaceId)}
+                        >
+                          <VisibilityIcon visibility={level} />
+                          {documentVisibilityMeta[level].label}
+                        </Button>
+                      ))}
                     </div>
+                    {workspaces.length > 1 ? (
+                      <div className="metadata-action-panel__footer metadata-action-panel__footer--stack">
+                        <p className="metadata-action-panel__caption">Porto da carta</p>
+                        <Select value={document.workspaceId ?? ""} onValueChange={moveDocumentToWorkspace} disabled={pending}>
+                          <SelectTrigger aria-label="Porto da carta"><SelectValue placeholder="Sem porto" /></SelectTrigger>
+                          <SelectContent>
+                            {workspaces.map((workspace) => (
+                              <SelectItem key={workspace.id} value={workspace.id}>{workspace.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="metadata-action-panel metadata-action-panel--destructive">
                     <h3 className="metadata-action-panel__title">Interromper links</h3>
                     <p>
                       {document.disabled
-                        ? "Este documento está desativado. Links /d/ e /p/ exibem mensagem de indisponibilidade."
-                        : "Desative para interromper /d e /p sem excluir o documento, inclusive para convidados nessas URLs."}
+                        ? "Esta carta está desativada. Links /d/ e /p/ exibem mensagem de indisponibilidade."
+                        : "Desative para interromper /d e /p sem excluir a carta, inclusive para convidados nessas URLs."}
                     </p>
                     <div className="metadata-action-panel__footer">
                       {document.disabled ? (
-                        <Button type="button" variant="outline" size="sm" onClick={() => toggleDocumentDisabled(false)} disabled={pending}><RotateCcw />Reativar documento</Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => toggleDocumentDisabled(false)} disabled={pending}><RotateCcw />Reativar carta</Button>
                       ) : (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button type="button" variant="destructive" size="sm" disabled={pending}><Ban />Desativar documento</Button>
+                            <Button type="button" variant="destructive" size="sm" disabled={pending}><Ban />Desativar carta</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Desativar este documento?</AlertDialogTitle>
+                              <AlertDialogTitle>Desativar esta carta?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Todos os links públicos deixarão de exibir o conteúdo até você reativar o documento.
+                                Todos os links públicos deixarão de exibir o conteúdo até você reativar a carta.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -1038,9 +1065,11 @@ export function DocumentEditor({
                     <div className="split-row__main">
                       <strong>Link estável (UUID — sempre a última versão)</strong>
                       <span>
-                        {document.isPublic
+                        {document.visibility === "public"
                           ? "Identificador fixo; qualquer pessoa com o link vê a última versão publicada."
-                          : "Identificador fixo; só você e convidados autenticados abrem este link."}
+                          : document.visibility === "workspace"
+                            ? "Identificador fixo; a tripulação do porto e os convidados abrem este link."
+                            : "Identificador fixo; só o cartógrafo e convidados autenticados abrem este link."}
                       </span>
                       <code>/d/{document.slug}</code>
                     </div>

@@ -12,9 +12,11 @@ import { ThemePicker } from "@/components/theme-picker";
 export function ThemeToggle({
   className,
   side = "right",
+  workspaceId,
 }: {
   className?: string;
   side?: "top" | "right" | "bottom" | "left";
+  workspaceId?: string | null;
 }) {
   return (
     <DropdownMenu>
@@ -27,7 +29,7 @@ export function ThemeToggle({
         <Moon className="theme-icon-moon" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side={side} sideOffset={8} className="theme-picker-menu">
-        <ThemePicker variant="menu" />
+        <ThemePicker variant="menu" workspaceId={workspaceId} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

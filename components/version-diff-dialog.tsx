@@ -295,7 +295,7 @@ export function VersionDiffDialog({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Restaurar v{restoreableRelease.version} no rascunho?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    O conteúdo, metadados e template desta versão publicada substituirão o rascunho atual. As versões já publicadas não são alteradas — use Publicar depois para registrar uma nova release.
+                    O conteúdo, metadados e gabarito desta versão publicada substituirão o rascunho atual. As versões já publicadas não são alteradas — use Publicar depois para registrar uma nova release.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

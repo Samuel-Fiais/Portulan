@@ -12,9 +12,35 @@ type Db = NeonHttpDatabase<typeof schema>;
 /** Required Portulan tables and columns inside the dedicated Postgres schema. */
 export const PORTULAN_TABLE_COLUMNS = {
   users: ["id", "github_id", "login", "name", "avatar_url", "email", "password_hash", "created_at"],
+  workspaces: [
+    "id",
+    "slug",
+    "name",
+    "theme_paper",
+    "theme_mode",
+    "theme_ink",
+    "is_personal",
+    "created_by",
+    "created_at",
+  ],
+  workspace_members: ["id", "workspace_id", "user_id", "role", "created_at"],
+  workspace_invites: [
+    "id",
+    "workspace_id",
+    "token_hash",
+    "token_prefix",
+    "role",
+    "created_by",
+    "expires_at",
+    "max_uses",
+    "uses",
+    "revoked_at",
+    "created_at",
+  ],
   templates: [
     "id",
     "user_id",
+    "workspace_id",
     "name",
     "primary_color",
     "secondary_color",
@@ -23,7 +49,17 @@ export const PORTULAN_TABLE_COLUMNS = {
     "is_builtin",
     "created_at",
   ],
-  mcp_tokens: ["id", "user_id", "name", "token_hash", "token_prefix", "created_at", "last_used_at", "expires_at"],
+  mcp_tokens: [
+    "id",
+    "user_id",
+    "workspace_id",
+    "name",
+    "token_hash",
+    "token_prefix",
+    "created_at",
+    "last_used_at",
+    "expires_at",
+  ],
   documents: [
     "id",
     "slug",
@@ -37,11 +73,13 @@ export const PORTULAN_TABLE_COLUMNS = {
     "content",
     "version",
     "user_id",
+    "workspace_id",
     "created_at",
     "updated_at",
     "published_at",
     "disabled",
     "is_public",
+    "visibility",
   ],
   document_releases: [
     "id",
@@ -113,7 +151,18 @@ async function loadTableColumns(db: Db): Promise<Map<string, Set<string>>> {
     SELECT table_name, column_name
     FROM information_schema.columns
     WHERE table_schema = ${PORTULAN_PG_SCHEMA}
-      AND table_name IN ('users', 'templates', 'mcp_tokens', 'documents', 'document_releases', 'document_shares', 'document_comments')
+      AND table_name IN (
+        'users',
+        'workspaces',
+        'workspace_members',
+        'workspace_invites',
+        'templates',
+        'mcp_tokens',
+        'documents',
+        'document_releases',
+        'document_shares',
+        'document_comments'
+      )
   `);
 
   const byTable = new Map<string, Set<string>>();
@@ -301,6 +350,50 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
 
   await executeSchemaStatement(
     db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.workspaces (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      slug TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      theme_paper TEXT NOT NULL DEFAULT 'carta',
+      theme_mode TEXT NOT NULL DEFAULT 'light',
+      theme_ink TEXT NOT NULL DEFAULT '#1a2847',
+      is_personal BOOLEAN NOT NULL DEFAULT FALSE,
+      created_by UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+  );
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.workspace_members (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.workspaces(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (workspace_id, user_id)
+    )`,
+  );
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.workspace_invites (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.workspaces(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      token_prefix TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('admin', 'member')),
+      created_by UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ,
+      max_uses INTEGER,
+      uses INTEGER NOT NULL DEFAULT 0,
+      revoked_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+  );
+
+  await executeSchemaStatement(
+    db,
     `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.templates (
       id TEXT PRIMARY KEY,
       user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
@@ -477,19 +570,23 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     }
   }
 
-  await executeSchemaStatement(
-    db,
-    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_shares (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
-      email TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('viewer', 'editor')),
-      invited_by UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
-      user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE SET NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (document_id, email)
-    )`,
-  );
+  // Tabelas filhas de documents só entram aqui em banco legado. Em banco vazio,
+  // documents ainda não existe e a FK falharia — schema.sql cria tudo na ordem certa depois.
+  if (await portulanTableExists(db, "documents")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_shares (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('viewer', 'editor')),
+        invited_by UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (document_id, email)
+      )`,
+    );
+  }
 
   if (await portulanTableExists(db, "document_shares")) {
     await executeSchemaStatement(
@@ -536,20 +633,22 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     }
   }
 
-  await executeSchemaStatement(
-    db,
-    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_comments (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
-      user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
-      body TEXT NOT NULL,
-      section_anchor TEXT,
-      quoted_text TEXT,
-      parent_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.document_comments(id) ON DELETE CASCADE,
-      resolved_at TIMESTAMPTZ,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`,
-  );
+  if (await portulanTableExists(db, "documents")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        section_anchor TEXT,
+        quoted_text TEXT,
+        parent_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.document_comments(id) ON DELETE CASCADE,
+        resolved_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`,
+    );
+  }
 
   if (await portulanTableExists(db, "document_comments")) {
     await executeSchemaStatement(
@@ -570,13 +669,15 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     );
   }
 
-  await executeSchemaStatement(
-    db,
-    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_slug_aliases (
-      slug TEXT PRIMARY KEY,
-      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE
-    )`,
-  );
+  if (await portulanTableExists(db, "documents")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_slug_aliases (
+        slug TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE
+      )`,
+    );
+  }
 
   if (await portulanTableExists(db, "document_slug_aliases")) {
     await executeSchemaStatement(

@@ -1,0 +1,217 @@
+.porto-body {
+  display: grid;
+  gap: 16px;
+}
+
+.porto-stats {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+}
+.porto-stats dt {
+  color: var(--muted-foreground);
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.porto-stats dd {
+  margin: 4px 0 0;
+  font: 600 20px/1 var(--font-sans);
+}
+
+.porto-card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.porto-card--risk {
+  border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
+}
+.porto-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 600 14px/1.2 var(--font-sans);
+}
+.porto-card__title svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+}
+.porto-card__lead {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.porto-field {
+  display: grid;
+  gap: 8px;
+}
+.porto-field label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.porto-field label svg { width: 14px; height: 14px; }
+
+.porto-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.porto-inline > .porto-input,
+.porto-inline > input { flex: 1 1 240px; }
+.porto-inline--end { justify-content: flex-end; }
+
+.porto-hint {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.porto-crew {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  list-style: none;
+}
+.porto-crew__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+}
+.porto-crew__row + .porto-crew__row { border-top: 1px solid var(--border); }
+.porto-crew__person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+.porto-crew__person strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.porto-crew__person span {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.porto-crew__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.porto-tag,
+.porto-role {
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  color: var(--muted-foreground);
+  font: 600 10px/1.4 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.porto-invite-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.porto-invite-form .porto-field { min-width: 160px; }
+
+.porto-invite-fresh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  background: var(--muted);
+}
+.porto-invite-fresh code {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.porto-invite-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  list-style: none;
+}
+.porto-invite-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.porto-invite-list li + li { border-top: 1px solid var(--border); }
+.porto-invite-list strong { font-size: 13px; }
+.porto-invite-list span {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.porto-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--border);
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+/* Convite aberto fora do porto */
+.invite-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+.invite-card {
+  display: grid;
+  gap: 16px;
+  width: min(440px, 100%);
+  padding: 28px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  text-align: center;
+}
+.invite-card h1 {
+  margin: 0;
+  font: 600 20px/1.2 var(--font-sans);
+}
+.invite-card p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.invite-card__mark {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  font: 600 16px/1 var(--font-mono);
+}

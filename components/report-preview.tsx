@@ -86,8 +86,8 @@ export function ReportPreview({
           <span className={`fp-badge status-badge status-${document.status}`}>{statusMeta[document.status].label}</span>
         </div>
         <dl className="tmpl-meta-bar">
-          <div className="tmpl-meta-item"><dt className="tmpl-meta-k">Responsável</dt><dd className="tmpl-meta-v">{document.author || "—"}</dd></div>
-          <div className="tmpl-meta-item"><dt className="tmpl-meta-k">Time</dt><dd className="tmpl-meta-v">{document.team || "—"}</dd></div>
+          <div className="tmpl-meta-item"><dt className="tmpl-meta-k">Cartógrafo</dt><dd className="tmpl-meta-v">{document.author || "—"}</dd></div>
+          <div className="tmpl-meta-item"><dt className="tmpl-meta-k">Frota</dt><dd className="tmpl-meta-v">{document.team || "—"}</dd></div>
           <div className="tmpl-meta-item"><dt className="tmpl-meta-k">Atualizado</dt><dd className="tmpl-meta-v">{formatDate(document.updatedAt)}</dd></div>
         </dl>
         <ReportToc headings={tocHeadings} />

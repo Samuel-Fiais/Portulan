@@ -23,7 +23,7 @@ export function DocumentReviewPanel() {
       <div className="review-panel-heading split-row">
         <div className="split-row__main">
           <span>Revisão</span>
-          <p>Comente na prévia ou aqui. Os fios ficam visíveis para quem tem acesso ao documento, não em links públicos (/d ou /p).</p>
+          <p>Comente na prévia ou aqui. Os fios ficam visíveis para quem tem acesso à carta, não em links públicos (/d ou /p).</p>
         </div>
         <div className="review-panel-meta">
           <label className="review-thread-filter">

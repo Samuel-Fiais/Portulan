@@ -1,5 +1,13 @@
 import { z } from "zod";
 import { documentStatuses } from "@/lib/documents";
+import {
+  documentVisibilities,
+  workspaceInviteRoles,
+  workspaceRoles,
+  WORKSPACE_NAME_MAX,
+  WORKSPACE_NAME_MIN,
+} from "@/lib/workspaces";
+import { THEME_PAPER_IDS } from "@/lib/workspace-themes";
 
 export const documentInputSchema = z.object({
   title: z.string().trim().min(3).max(180),
@@ -98,6 +106,46 @@ export const documentCommentInputSchema = z.object({
 export const documentCommentResolveInputSchema = z.object({
   resolved: z.boolean(),
 });
+
+export const workspaceNameSchema = z.string().trim().min(WORKSPACE_NAME_MIN).max(WORKSPACE_NAME_MAX);
+
+export const workspaceInputSchema = z.object({
+  name: workspaceNameSchema,
+});
+
+export const workspaceThemeSchema = z.object({
+  themePaper: z.enum(THEME_PAPER_IDS),
+  themeMode: z.enum(["light", "dark"]),
+  themeInk: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
+});
+
+export const workspaceIdentitySchema = z
+  .object({ name: workspaceNameSchema.optional() })
+  .merge(workspaceThemeSchema.partial());
+
+export const workspaceRoleSchema = z.enum(workspaceRoles);
+
+export const workspaceInviteRoleSchema = z.enum(workspaceInviteRoles);
+
+export const workspaceInviteInputSchema = z.object({
+  role: workspaceInviteRoleSchema.default("member"),
+  expiration: z.enum(["1d", "7d", "30d", "never"]).default("7d"),
+  maxUses: z.number().int().min(1).max(500).nullable().default(null),
+});
+
+export function workspaceInviteExpiresAt(
+  preset: "1d" | "7d" | "30d" | "never",
+  now = new Date(),
+): string | null {
+  if (preset === "never") return null;
+  const expires = new Date(now);
+  if (preset === "1d") expires.setDate(expires.getDate() + 1);
+  else if (preset === "7d") expires.setDate(expires.getDate() + 7);
+  else expires.setDate(expires.getDate() + 30);
+  return expires.toISOString();
+}
+
+export const documentVisibilitySchema = z.enum(documentVisibilities);
 
 export const accountHandleSchema = z
   .string()
