@@ -570,19 +570,23 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     }
   }
 
-  await executeSchemaStatement(
-    db,
-    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_shares (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
-      email TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('viewer', 'editor')),
-      invited_by UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
-      user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE SET NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (document_id, email)
-    )`,
-  );
+  // Tabelas filhas de documents só entram aqui em banco legado. Em banco vazio,
+  // documents ainda não existe e a FK falharia — schema.sql cria tudo na ordem certa depois.
+  if (await portulanTableExists(db, "documents")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_shares (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('viewer', 'editor')),
+        invited_by UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (document_id, email)
+      )`,
+    );
+  }
 
   if (await portulanTableExists(db, "document_shares")) {
     await executeSchemaStatement(
@@ -629,20 +633,22 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     }
   }
 
-  await executeSchemaStatement(
-    db,
-    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_comments (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
-      user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
-      body TEXT NOT NULL,
-      section_anchor TEXT,
-      quoted_text TEXT,
-      parent_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.document_comments(id) ON DELETE CASCADE,
-      resolved_at TIMESTAMPTZ,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`,
-  );
+  if (await portulanTableExists(db, "documents")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        section_anchor TEXT,
+        quoted_text TEXT,
+        parent_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.document_comments(id) ON DELETE CASCADE,
+        resolved_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`,
+    );
+  }
 
   if (await portulanTableExists(db, "document_comments")) {
     await executeSchemaStatement(
@@ -663,13 +669,15 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     );
   }
 
-  await executeSchemaStatement(
-    db,
-    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_slug_aliases (
-      slug TEXT PRIMARY KEY,
-      document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE
-    )`,
-  );
+  if (await portulanTableExists(db, "documents")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.document_slug_aliases (
+        slug TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE
+      )`,
+    );
+  }
 
   if (await portulanTableExists(db, "document_slug_aliases")) {
     await executeSchemaStatement(
