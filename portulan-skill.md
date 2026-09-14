@@ -62,7 +62,7 @@ Revogue tokens comprometidos na tela Instrumentos a qualquer momento.
 
 ## Porto (workspace) e visibilidade
 
-O Portulan organiza o acervo em **portos** (workspaces), cada um com tripulação própria. O token MCP opera em **um** porto, fixado quando foi gerado: documentos e templates criados pelo agente nascem nele, e as listagens mostram o acervo desse porto mais os documentos compartilhados nominalmente com a pessoa. Use `list_workspaces` para ver os portos e qual deles é o do token; para operar em outro porto, troque de porto na UI e gere um token novo.
+O Portulan organiza o acervo em **portos** (workspaces), cada um com tripulação própria. O token MCP opera em **um** porto, fixado quando foi gerado: documentos e templates criados pelo agente nascem nele, e as listagens mostram o acervo desse porto mais os documentos compartilhados nominalmente com a pessoa. Use `list_workspaces` para ver os portos e qual deles é o do token; para operar em outro porto, troque de porto na UI e gere um token novo. `create_workspace` abre um porto novo, e `workspace_id` em `update_document` ou `update_template` move documento e template entre portos — sem mudar o porto do token.
 
 Cada documento tem um de três níveis de visibilidade, alterável só pelo responsável via `update_document` com `visibility`:
 
@@ -76,7 +76,7 @@ Cada documento tem um de três níveis de visibilidade, alterável só pelo resp
 
 A lista de ferramentas abaixo pode estar atrás do servidor: chame `get_system_guide` para o inventário e as regras vigentes.
 
-## Ferramentas (19)
+## Ferramentas (20)
 
 | Ferramenta | Quando usar |
 |---|---|
@@ -90,6 +90,7 @@ A lista de ferramentas abaixo pode estar atrás do servidor: chame `get_system_g
 | `list_markdown_components` | Catálogo de diretivas `:::` e Markdown |
 | `explain_markdown_component` | Sintaxe e exemplos de um componente |
 | `list_workspaces` | Portos da pessoa e qual deles este token opera |
+| `create_workspace` | Abrir um porto novo, como capitão; o token segue no porto de origem |
 | `list_documents` | Descobrir o que existe no porto do token; buscar por título, tag, template ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |

@@ -55,6 +55,7 @@ export {
   getTemplateForUser,
   listTemplates,
   previewTemplateContent,
+  setTemplateWorkspace,
   updateTemplate,
   type TemplateAccessContext,
 } from "@/lib/db/templates";

@@ -156,7 +156,7 @@ export function buildSystemGuide() {
       product: "Portulan — biblioteca técnica de documentos Markdown com templates, publicação e MCP, organizada em portos (workspaces) com tripulação própria.",
       documents: "Rascunhos editáveis; publicação cria snapshot imutável (release). Todo documento pertence a um porto e nasce privado.",
       workspaces:
-        "Este token opera em um único porto (RN-55): documentos e templates criados pelo agente nascem nele, e as listagens mostram o acervo desse porto mais os documentos compartilhados nominalmente. Use list_workspaces para ver os portos da pessoa e qual deles é o do token.",
+        "Este token opera em um único porto (RN-55): documentos e templates criados pelo agente nascem nele, e as listagens mostram o acervo desse porto mais os documentos compartilhados nominalmente. Use list_workspaces para ver os portos da pessoa e qual deles é o do token. create_workspace abre um porto novo (a pessoa entra como capitão) e workspace_id em update_document/update_template move documento ou template de porto (RN-19, RN-95); o token continua preso ao porto de origem.",
       visibility:
         "Três níveis em update_document (RN-17, RN-18), só o responsável muda: private (responsável e convidados nominais), workspace (toda a tripulação do porto lê, sem editar) e public (qualquer pessoa com o link vê a versão publicada). is_public é atalho legado para public/private.",
       links: {
@@ -173,7 +173,7 @@ export function buildSystemGuide() {
         "publish_document — gerar versão imutável (a visibilidade não muda)",
         "restore_document — copiar uma release publicada para o rascunho sem publicar (RN-09)",
         "update_document visibility — private, workspace ou public (RN-17, RN-18)",
-        "list_workspaces — portos da pessoa e qual deles este token opera (RN-55)",
+        "list_workspaces / create_workspace — portos da pessoa, qual deles este token opera (RN-55) e abertura de porto novo",
         "upload_image / upload_file — enviar mídia e anexos antes de inserir no Markdown",
         "list_document_comments / create_document_comment / delete_document_comment — revisão com fios (RN-61, RN-65); só rascunho autenticado",
       ],

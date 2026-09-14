@@ -131,6 +131,23 @@ export async function updateTemplate(ctx: TemplateAccessContext, id: string, inp
   return row ? mapRow(row) : null;
 }
 
+/** Move o gabarito para outro porto. Exige capitania nos dois lados: o gabarito serve a tripulação inteira. */
+export async function setTemplateWorkspace(ctx: TemplateAccessContext, id: string, workspaceId: string) {
+  const current = await getTemplate(id);
+  if (!current || current.isBuiltin || !canManageTemplate(current, ctx)) return null;
+  if (!ctx.manageableWorkspaceIds?.includes(workspaceId)) return null;
+  if (current.workspaceId === workspaceId) return current;
+
+  const db = await getDb();
+  const [row] = await db
+    .update(templates)
+    .set({ workspaceId })
+    .where(eq(templates.id, id))
+    .returning();
+
+  return row ? mapRow(row) : null;
+}
+
 export async function deleteTemplate(ctx: TemplateAccessContext, id: string) {
   if (id === DEFAULT_TEMPLATE_ID) return false;
 

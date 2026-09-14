@@ -3,7 +3,7 @@ export const MCP_TOOL_GROUPS = [
   {
     id: "porto",
     label: "Porto",
-    tools: ["list_workspaces"],
+    tools: ["list_workspaces", "create_workspace"],
   },
   {
     id: "docs",

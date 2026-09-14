@@ -90,6 +90,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 |---|---|---|
 | F-templates | Criar/editar gabarito do porto ativo (toda a tripulação usa); Default interno; tela própria | existe |
 | F-duplicar-template-ui | Duplicar gabarito na tela Gabaritos (paleta + conteúdo-base; mesmo contrato do MCP) | existe |
+| F-mover-gabarito | Mover o gabarito para outro porto com capitania nos dois lados (RN-95); só pelo agente (`update_template`), sem caminho na tela Gabaritos | parcial |
 | F-logo | Logo do gabarito e upload de imagens de relatório (Blob) | existe |
 | F-anexo | Upload de anexos de qualquer tipo em relatórios (`:::file`) com card e badge de extensão | existe |
 | F-auth | Entrar com GitHub ou com handle/e-mail e senha | existe |
@@ -102,11 +103,11 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 
 | ID | Capacidade | Estado |
 |---|---|---|
-| F-mcp-docs | listar, ler, criar, duplicar, editar, publicar, desativar, excluir cartas; `visibility` em `update_document` | existe |
+| F-mcp-docs | listar, ler, criar, duplicar, editar, publicar, desativar, excluir cartas; `visibility` e `workspace_id` em `update_document` | existe |
 | F-mcp-comentarios | listar fios, criar raiz (âncora opcional), responder e remover o próprio comentário (RN-61, RN-65) | existe |
 | F-mcp-restaurar | restaurar uma release no rascunho (`restore_document`) | existe |
-| F-mcp-templates | CRUD e preview de gabaritos do porto do token | existe |
-| F-mcp-portos | `list_workspaces` — portos da pessoa e qual deles o token opera (RN-55) | existe |
+| F-mcp-templates | CRUD e preview de gabaritos do porto do token; `workspace_id` em `update_template` move o gabarito de porto (RN-95) | existe |
+| F-mcp-portos | `list_workspaces` — portos da pessoa e qual deles o token opera (RN-55); `create_workspace` — abrir porto novo como capitão (RN-86) | existe |
 | F-mcp-share | listar, convidar, revogar compartilhamentos | existe |
 | F-mcp-catalogo | listar e explicar componentes Markdown | existe |
 | F-mcp-guia | get_system_guide — guia completo gerado do catálogo e do produto, incluindo seção **Como evitar erros** (armadilhas de sintaxe) e avoidErrors por componente via explain_markdown_component | existe |
