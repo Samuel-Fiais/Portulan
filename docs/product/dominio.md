@@ -29,12 +29,15 @@ A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as A
 | Plano de navegação | plano (`implementationPlan`) |
 | Manobra | tarefa de implementação raiz (`implementationTask`, `/context-packs/{id}/tasks/{taskId}`) |
 | Lance | subtarefa da Manobra (`implementationTask` com `parentTaskId`) |
-| Assumir o comando | lease da folha (`claimTask`) |
+| Assumir o comando | lease da linha (`claimTask`) |
 | Responsável | atribuição da Manobra ou Lance (`assigneeUserId` / `assigneeAgentIdentityId`) |
 | Identificador de bordo | inteiro único no porto (`boardNumber`, `#42`) |
 | Agente MCP | identidade nomeada (`agentIdentity`) |
 | Chave de bordo | token MCP (`mcpToken`) |
 | Diário de bordo | auditoria (`auditEvent`) |
+| Sala | recorte autorizado ao vivo (`collaborationRoom`) |
+| Presença | quem está na sala agora (`presence`) |
+| Operação colaborativa | mutação versionada de conteúdo mutável (`collabOperation`) |
 | Conversa de bordo | fio de coordenação (`coordinationThread`) |
 | Registro de bordo | relatório de progresso (`progressReport`) |
 | Marcos de chegada | critério de aceite (`acceptanceCriterion`) |
@@ -278,12 +281,12 @@ Bloco tipado do Rumo.
 
 ### Carta-fonte (`documentSource`)
 
-Relação entre Rumo, Manobra ou Lance e carta. No Rumo, fonte formal de aprovação aponta para **release imutável**. Em Manobra/Lance, cartas-fonte documentam referências de trabalho e a **Carta de conclusão** quando a folha é finalizada (RN-118). Publicar uma carta privada continua privado.
+Relação entre Rumo, Manobra ou Lance e carta. No Rumo, fonte formal de aprovação aponta para **release imutável**. Em Manobra/Lance, cartas-fonte documentam referências de trabalho e a **Carta de conclusão** quando a linha é finalizada (RN-118). Publicar uma carta privada continua privado.
 
 | Campo | Papel |
 |---|---|
 | carta + `releaseId` | Release específica. A UI distingue Carta viva e snapshot da edição fixada. |
-| papel da fonte | Como a carta entra no Rumo ou na folha. |
+| papel da fonte | Como a carta entra no Rumo ou na linha. |
 | seção | Trecho opcional. |
 | razão | Por que foi incluída. |
 | obrigatória | No Rumo: exigida para aprovação formal. Em Manobra/Lance: raro; quando true, edição publicada é obrigatória. |
@@ -313,7 +316,7 @@ O **Lance** é a mesma entidade com `parentTaskId` apontando para uma Manobra-ra
 
 No Kanban, `claimed` e `in_progress` compartilham a coluna **In progress**.
 
-Manobra **de código** tem `repositoryId`; sem isso é Manobra de contexto. Folha = Lance, ou Manobra sem Lances.
+Manobra **de código** tem `repositoryId`; sem isso é Manobra de contexto. Linha de comando = Manobra ou Lance. Uma Manobra com Lances também se assume.
 
 ### Responsável da Manobra ou Lance
 
@@ -321,7 +324,7 @@ Atribuição (`assigneeUserId` **ou** `assigneeAgentIdentityId`). Não é o leas
 
 ### Lease da Manobra
 
-Um lease ativo por **linha** (Manobra sem filhos ou Lance). Expira. Renovar exige atividade explícita. Expirado pode ser retomado. Pai com Lances não se assume.
+Um lease ativo por **linha** (Manobra ou Lance). Expira. Renovar exige atividade explícita. Expirado pode ser retomado. Manobra com Lances também se assume; o lease e o responsável de cada Lance são independentes do pai.
 
 ### Registro de bordo (`progressReport`)
 
@@ -337,7 +340,11 @@ Identidade nomeada criada junto com toda chave MCP nova. Responsável humano ún
 
 ### Diário de bordo (`auditEvent`)
 
-Evento imutável: principal humano, identidade do agente, chave, ação, alvo, data, correlação e `clientInfo` observado. A UI mostra “Nome via Agente”.
+Evento imutável: principal humano, identidade do agente, chave, ação, alvo, data, correlação e `clientInfo` observado. A UI mostra “Nome via Agente”. Toda chamada MCP autenticada gera um evento pesquisável (RN-122): ferramenta, alvo, resultado, duração e correlação — nunca token em texto puro, anexo ou Markdown integral.
+
+### Sala, presença e operação colaborativa
+
+Infraestrutura transversal do porto (RN-119). Uma **sala** é o recorte autorizado de um artefato (carta, gabarito, Rumo, plano, Expedição, Embarcação, Manobra, etc.) para participação ao vivo. **Presença** é quem está na sala agora — humano ou agente, com identidade e intenção visíveis. **Operação colaborativa** altera conteúdo mutável com versionamento e idempotência. **Comando atômico** (publicação, visibilidade, aprovação, lease, bloqueio, aceite) continua transação no servidor; não passa pelo canal de operações (RN-120). Postgres permanece a fonte de snapshots, releases, autorização e auditoria; o canal ao vivo não é fonte única de verdade (RN-124).
 
 ## Identificadores públicos
 

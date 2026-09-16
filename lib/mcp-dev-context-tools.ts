@@ -88,8 +88,7 @@ import { buildImplementationBrief } from "@/lib/implementation-brief";
 import {
   nextStatusAfterLastBlockerResolved,
   validateAcceptTaskResult,
-  validateAssignTask,
-  validateClaimLeaf,
+  validateAssignTaskOnTask,
   validateClaimTask,
   validateLanceObjective,
   validateParentResult,
@@ -298,7 +297,7 @@ export function registerDevContextMcpTools(
     {
       title: "Bootstrap do Agente de Bordo",
       description:
-        "Primeiro passo canônico. Devolve identidade, modo, clientInfo observado, Embarcação da sessão, Expedições, Manobras e o protocolo. RN-104, RN-105.",
+        "Primeiro passo canônico. Devolve identidade, modo, clientInfo observado, Embarcação da sessão, Expedições, Manobras, Lances e o protocolo. RN-104, RN-105, RN-113.",
       inputSchema: z.object({
         repository_id: z.string().uuid().optional().describe("Embarcação reconhecida nesta sessão, se houver"),
       }),
@@ -977,7 +976,7 @@ export function registerDevContextMcpTools(
     "add_implementation_task_source",
     {
       title: "Adicionar Carta-fonte à Manobra ou Lance",
-      description: "Vincula carta-fonte à folha de trabalho. Tripulação do porto (RN-118).",
+      description: "Vincula carta-fonte à linha de trabalho. Tripulação do porto (RN-118).",
       inputSchema: z.object({
         task_id: z.string(),
         document_id: z.string(),
@@ -1177,12 +1176,15 @@ export function registerDevContextMcpTools(
         action: "assign_implementation_task",
       });
       if (!check.ok) return errorResult(check.error);
-      const assigned = validateAssignTask({
+      const taskId = (await resolveBoardId(ready.store.workspaceId, task_id, "task")) ?? task_id;
+      const current = await getImplementationTask(taskId, ready.store.workspaceId);
+      if (!current) return errorResult("Manobra não encontrada.");
+      const assigned = validateAssignTaskOnTask({
+        status: current.status,
         assigneeUserId: assignee_user_id,
         assigneeAgentIdentityId: assignee_agent_identity_id,
       });
       if (!assigned.ok) return errorResult(assigned.error);
-      const taskId = (await resolveBoardId(ready.store.workspaceId, task_id, "task")) ?? task_id;
       const task = await assignImplementationTask({
         taskId,
         workspaceId: ready.store.workspaceId,
@@ -1358,7 +1360,7 @@ export function registerDevContextMcpTools(
     "list_available_implementation_tasks",
     {
       title: "Listar Manobras disponíveis",
-      description: "Manobras compatíveis com o modo do Agente de Bordo e a Embarcação da sessão.",
+      description: "Manobras e Lances compatíveis com o modo do Agente de Bordo e a Embarcação da sessão.",
       inputSchema: z.object({
         pack_id: z.string().optional(),
         repository_id: z.string().uuid().optional(),
@@ -1409,7 +1411,7 @@ export function registerDevContextMcpTools(
     "claim_implementation_task",
     {
       title: "Assumir o comando da Manobra",
-      description: "Lease atômico. Um único comando ativo. RN-103, RN-105.",
+      description: "Lease atômico na linha (Manobra ou Lance). Manobra com Lances também se assume. RN-103, RN-113.",
       inputSchema: z.object({
         task_id: z.string(),
         repository_id: z.string().uuid().optional(),
@@ -1422,9 +1424,6 @@ export function registerDevContextMcpTools(
       const resolvedTaskId = (await resolveBoardId(ready.store.workspaceId, task_id, "task")) ?? task_id;
       const task = await getImplementationTask(resolvedTaskId, ready.store.workspaceId);
       if (!task) return errorResult("Manobra não encontrada.");
-      const children = await listChildTasks(task.id, ready.store.workspaceId);
-      const leafCheck = validateClaimLeaf({ childCount: children.length });
-      if (!leafCheck.ok) return errorResult(leafCheck.error);
       const servable = await packIsServable(task.packId, task.packRevisionId);
       if (!servable.ok) {
         return textResult({

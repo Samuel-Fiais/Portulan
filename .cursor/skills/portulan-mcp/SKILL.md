@@ -228,7 +228,7 @@ Requer chave MCP com identidade nomeada (ou chave legada válida). Conteúdo de 
 
 | Ferramenta | Quando usar |
 |---|---|
-| `get_agent_bootstrap` | **Primeiro** em dev: identidade, Embarcação da sessão, folhas (Lances ou Manobras sem filhos), menções (`mentionedMe`) e protocolo (RN-105, RN-113) |
+| `get_agent_bootstrap` | **Primeiro** em dev: identidade, Embarcação da sessão, linhas disponíveis (Manobras e Lances), menções (`mentionedMe`) e protocolo (RN-105, RN-113) |
 | `find_context` | Buscar Expedições e Rumos |
 | `create_project` | Criar Expedição no porto (nome 2–80) |
 | `create_repository` | Registrar Embarcação; vínculo opcional com Expedição |
@@ -247,15 +247,15 @@ Requer chave MCP com identidade nomeada (ou chave legada válida). Conteúdo de 
 | `submit_context_pack_review` | Enviar Rumo para revisão |
 | `approve_context_pack` | Aprovar e gerar revisão imutável (RN-99) |
 | `start_new_context_pack_revision` | Nova revisão a partir de Rumo aprovado |
-| `list_available_implementation_tasks` | Manobras compatíveis com a sessão |
-| `claim_implementation_task` | Assumir comando da **folha** — lease atômico (RN-103, RN-113). IDs aceitam `42` ou `#42` |
+| `list_available_implementation_tasks` | Manobras e Lances disponíveis na sessão |
+| `claim_implementation_task` | Assumir comando da **linha** (Manobra ou Lance) — lease atômico (RN-103, RN-113). IDs aceitam `42` ou `#42` |
 | `renew_implementation_task_lease` | Renovar lease com atividade explícita |
 | `release_implementation_task` | Soltar comando |
 | `report_implementation_progress` | Registro de bordo — progresso (RN-108) |
 | `report_implementation_result` | Resultado; aceite humano é separado. Depois, Carta de conclusão (RN-118) |
 | `accept_implementation_task_result` | Aceitar resultado da Manobra (RN-103) |
 | `add_implementation_task_source` | Carta-fonte na Manobra ou Lance (tripulação do porto, RN-118) |
-| `delete_implementation_task_source` | Remover carta-fonte da folha |
+| `delete_implementation_task_source` | Remover carta-fonte da linha |
 | `list_coordination_threads` | Fios de Conversa de bordo, com mensagens (autor, agente e data) |
 | `create_coordination_message` | Abrir fio ou responder; comentário reutiliza o fio de discussão; `is_blocker: true` na abertura = Maré contrária (RN-109, RN-114); `mentioned_user_ids` / `mentioned_agent_identity_ids` |
 | `resolve_coordination_thread` | Resolver ou reabrir fio |
@@ -417,10 +417,10 @@ Alternativa para a tripulação inteira: `update_document` com `visibility: "wor
 ### Assumir Manobra e reportar (F-manobra, F-mcp-dev-context)
 
 ```
-1. get_agent_bootstrap(repository_id?) → folhas compatíveis (Lance ou Manobra sem Lances), menções, protocolo
+1. get_agent_bootstrap(repository_id?) → linhas disponíveis (Manobras e Lances), menções, protocolo
 2. get_context_pack(pack_id) ou get_implementation_brief → Rumo válido (RN-101). pack_id/task_id aceitam `42` ou `#42`
-3. list_available_implementation_tasks → só folhas
-4. claim_implementation_task(task_id) → lease na folha (RN-103, RN-113). Pai com Lances recusa
+3. list_available_implementation_tasks → Manobras e Lances
+4. claim_implementation_task(task_id) → lease na linha (RN-103, RN-113). Manobra com Lances também se assume
 5. assign_implementation_task se for delegar responsável (não cria lease)
 6. report_implementation_progress / report_implementation_result → resumo obrigatório (RN-108)
 7. renew_implementation_task_lease enquanto trabalha; release_implementation_task ao soltar

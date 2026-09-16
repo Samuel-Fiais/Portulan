@@ -829,7 +829,7 @@ Serve só revisão `approved` + validade `current`. Senão:
 
 ### Manobras e Lances
 
-`create_implementation_task` aceita `parent_task_id` (Lance, um nível). `assign_implementation_task` delega responsável sem criar lease (RN-115). `claim_implementation_task`, `renew_implementation_task_lease`, `release_implementation_task` — lease atômico na **folha** (RN-103, RN-113). `pack_id` e `task_id` aceitam inteiro do porto (`42` ou `#42`). `report_implementation_progress` e `report_implementation_result` exigem resumo não vazio (RN-108). Resultado reportado não é aceite humano. Manobra de código exige Embarcação reconhecida na sessão (RN-105).
+`create_implementation_task` aceita `parent_task_id` (Lance, um nível). `assign_implementation_task` delega responsável sem criar lease (RN-115). `claim_implementation_task`, `renew_implementation_task_lease`, `release_implementation_task` — lease atômico na **linha** (Manobra ou Lance; pai com Lances também se assume, RN-103, RN-113). `pack_id` e `task_id` aceitam inteiro do porto (`42` ou `#42`). `report_implementation_progress` e `report_implementation_result` exigem resumo não vazio (RN-108). Resultado da Manobra só com todos os Lances `reported`/`accepted`. Resultado reportado não é aceite humano. Manobra de código exige Embarcação reconhecida na sessão (RN-105).
 
 ### Conversas de bordo (RN-109)
 

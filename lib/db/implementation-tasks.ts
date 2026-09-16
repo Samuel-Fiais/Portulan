@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { coordinationThreads, implementationTasks, progressReports } from "@/lib/db/schema";
 import { parseJsonArray, stringifyJsonArray } from "@/lib/db/json-text";
@@ -15,7 +15,6 @@ import {
   nextLeaseExpiry,
   nextStatusAfterProgress,
   shouldCascadeAssignment,
-  validateClaimLeaf,
 } from "@/lib/implementation-task-policy";
 import type { ImplementationTaskStatus } from "@/lib/dev-context";
 
@@ -221,19 +220,7 @@ export async function listAvailableTasks(workspaceId: string, revisionId?: strin
       implementationTasks.createdAt,
       implementationTasks.id,
     );
-  const parentIds = new Set(
-    (
-      await db
-        .select({ parentTaskId: implementationTasks.parentTaskId })
-        .from(implementationTasks)
-        .where(
-          and(eq(implementationTasks.workspaceId, workspaceId), isNotNull(implementationTasks.parentTaskId)),
-        )
-    )
-      .map((row) => row.parentTaskId)
-      .filter((id): id is string => Boolean(id)),
-  );
-  return (await ensureRowBoardNumbers(rows, "task")).map(mapTask).filter((task) => !parentIds.has(task.id));
+  return (await ensureRowBoardNumbers(rows, "task")).map(mapTask);
 }
 
 export async function listClaimedTasksForToken(workspaceId: string, tokenId: string) {
@@ -261,8 +248,6 @@ export async function claimImplementationTask(input: {
 }) {
   const task = await getImplementationTask(input.taskId, input.workspaceId);
   if (!task) return null;
-  const leaf = validateClaimLeaf({ childCount: await countChildTasks(task.id, input.workspaceId) });
-  if (!leaf.ok) return null;
   const db = await getDb();
   const now = new Date().toISOString();
   const expiresAt = nextLeaseExpiry();

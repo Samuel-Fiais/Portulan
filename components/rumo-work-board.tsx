@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/user-avatar";
 import type { ImplementationTaskRecord } from "@/lib/db/implementation-tasks";
+import { canAssignTaskAssignee } from "@/lib/implementation-task-policy";
 import {
   groupManobras,
   KANBAN_COLUMNS,
@@ -49,13 +50,13 @@ function AssigneeRow({
   assigneeUserId,
   assigneeAgentIdentityId,
   roster,
-  canEdit,
+  canAssign,
 }: {
   taskId: string;
   assigneeUserId: string | null;
   assigneeAgentIdentityId: string | null;
   roster: WorkspaceRosterEntry[];
-  canEdit: boolean;
+  canAssign: boolean;
 }) {
   const entry = assigneeRosterEntry(roster, assigneeUserId, assigneeAgentIdentityId);
   const label = rosterLabel(roster, assigneeUserId, assigneeAgentIdentityId);
@@ -76,7 +77,7 @@ function AssigneeRow({
       ) : (
         <UserAvatar kind="human" name="Sem responsável" size="sm" />
       )}
-      {canEdit ? (
+      {canAssign ? (
         <TaskAssigneeSelect
           taskId={taskId}
           assigneeUserId={assigneeUserId}
@@ -160,7 +161,7 @@ function ManobraKanbanCard({
         assigneeUserId={task.assigneeUserId}
         assigneeAgentIdentityId={task.assigneeAgentIdentityId}
         roster={roster}
-        canEdit={canEdit}
+        canAssign={canAssignTaskAssignee(task.status)}
       />
 
       {task.leaseHolderUserId ? (
@@ -233,7 +234,7 @@ function LanceKanbanCard({
         assigneeUserId={task.assigneeUserId}
         assigneeAgentIdentityId={task.assigneeAgentIdentityId}
         roster={roster}
-        canEdit={canEdit}
+        canAssign={canAssignTaskAssignee(task.status)}
       />
 
       {task.leaseHolderUserId ? (
@@ -268,6 +269,29 @@ function ManobraLaneCell({
   );
 }
 
+function ManobraLanceToggle({
+  expanded,
+  manobraId,
+  onToggle,
+}: {
+  expanded: boolean;
+  manobraId: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn("rumo-task-row__toggle", expanded && "rumo-task-row__toggle--expanded")}
+      aria-expanded={expanded}
+      aria-controls={`manobra-lances-${manobraId}`}
+      aria-label={expanded ? "Recolher lances" : "Expandir lances"}
+      onClick={onToggle}
+    >
+      <span className="rumo-task-row__toggle-icon" aria-hidden />
+    </button>
+  );
+}
+
 function ListTaskRow({
   packId,
   task,
@@ -275,6 +299,7 @@ function ListTaskRow({
   canEdit,
   kind,
   hasChildren,
+  collapseToggle,
 }: {
   packId: string;
   task: ImplementationTaskRecord;
@@ -282,10 +307,26 @@ function ListTaskRow({
   canEdit: boolean;
   kind: "manobra" | "lance";
   hasChildren?: boolean;
+  collapseToggle?: ReactNode;
 }) {
   return (
-    <div className={cn("rumo-task-row", kind === "lance" && "rumo-task-row--lance")}>
-      <BoardId number={task.boardNumber} />
+    <div
+      className={cn(
+        "rumo-task-row",
+        kind === "lance" && "rumo-task-row--lance",
+        kind === "manobra" && "rumo-task-row--manobra",
+      )}
+    >
+      <div className="rumo-task-row__id">
+        {kind === "manobra" ? (
+          <div className="rumo-task-row__id-group">
+            {collapseToggle}
+            <BoardId number={task.boardNumber} />
+          </div>
+        ) : (
+          <BoardId number={task.boardNumber} />
+        )}
+      </div>
       <div className="rumo-task-row__main">
         {kind === "lance" ? <span className="rumo-task-row__kind">Lance</span> : null}
         <Link href={`/context-packs/${packId}/tasks/${task.id}`} className="rumo-task-row__title">
@@ -294,7 +335,7 @@ function ListTaskRow({
       </div>
       <div className="rumo-task-row__controls">
         <TaskStatusSelect taskId={task.id} status={task.status} canEdit={canEdit} />
-        {canEdit ? (
+        {canAssignTaskAssignee(task.status) ? (
           <TaskAssigneeSelect
             taskId={task.id}
             assigneeUserId={task.assigneeUserId}
@@ -421,7 +462,17 @@ export function RumoWorkBoard({
   view: "lista" | "kanban";
 }) {
   const [kanbanKind, setKanbanKind] = useState<"manobras" | "lances">("manobras");
+  const [expandedManobras, setExpandedManobras] = useState<Set<string>>(() => new Set());
   const trees = groupManobras(tasks);
+
+  function toggleManobraLances(manobraId: string) {
+    setExpandedManobras((current) => {
+      const next = new Set(current);
+      if (next.has(manobraId)) next.delete(manobraId);
+      else next.add(manobraId);
+      return next;
+    });
+  }
   if (tasks.length === 0) {
     return <p className="dev-empty">Nenhuma Manobra ainda.{canEdit ? " Crie a primeira no topo." : ""}</p>;
   }
@@ -548,43 +599,74 @@ export function RumoWorkBoard({
 
   return (
     <ul className="rumo-task-tree">
-      {trees.map((tree) => (
-        <li key={tree.parent.id} className="rumo-task-tree__manobra">
-          <ListTaskRow
-            packId={packId}
-            task={tree.parent}
-            roster={roster}
-            canEdit={canEdit}
-            kind="manobra"
-            hasChildren={tree.children.length > 0}
-          />
-          {tree.children.length > 0 || canEdit ? (
-            <div
-              className={cn(
-                "rumo-task-tree__branch",
-                tree.children.length === 0 && "rumo-task-tree__branch--empty",
-              )}
-            >
-              {tree.children.length > 0 ? (
-                <ul className="rumo-task-tree__lances">
-                  {tree.children.map((child) => (
-                    <li key={child.id}>
-                      <ListTaskRow
-                        packId={packId}
-                        task={child}
-                        roster={roster}
-                        canEdit={canEdit}
-                        kind="lance"
-                      />
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {canEdit ? <AddLanceControl packId={packId} parentTaskId={tree.parent.id} /> : null}
-            </div>
-          ) : null}
-        </li>
-      ))}
+      {trees.map((tree) => {
+        const hasLances = tree.children.length > 0;
+        const lancesExpanded = expandedManobras.has(tree.parent.id);
+        const showLancesList = hasLances && lancesExpanded;
+        const showAddLance = canEdit && (showLancesList || !hasLances);
+        const showBranch = showLancesList || showAddLance;
+
+        return (
+          <li
+            key={tree.parent.id}
+            className={cn(
+              "rumo-task-tree__manobra",
+              hasLances &&
+                (lancesExpanded
+                  ? "rumo-task-tree__manobra--expanded"
+                  : "rumo-task-tree__manobra--collapsed"),
+            )}
+          >
+            <ListTaskRow
+              packId={packId}
+              task={tree.parent}
+              roster={roster}
+              canEdit={canEdit}
+              kind="manobra"
+              hasChildren={hasLances}
+              collapseToggle={
+                hasLances ? (
+                  <ManobraLanceToggle
+                    expanded={lancesExpanded}
+                    manobraId={tree.parent.id}
+                    onToggle={() => toggleManobraLances(tree.parent.id)}
+                  />
+                ) : null
+              }
+            />
+            {showBranch ? (
+              <div
+                className={cn(
+                  "rumo-task-tree__branch",
+                  showAddLance && !showLancesList && "rumo-task-tree__branch--empty",
+                )}
+              >
+                {showLancesList ? (
+                  <ul
+                    id={`manobra-lances-${tree.parent.id}`}
+                    className="rumo-task-tree__lances"
+                  >
+                    {tree.children.map((child) => (
+                      <li key={child.id}>
+                        <ListTaskRow
+                          packId={packId}
+                          task={child}
+                          roster={roster}
+                          canEdit={canEdit}
+                          kind="lance"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {showAddLance ? (
+                  <AddLanceControl packId={packId} parentTaskId={tree.parent.id} />
+                ) : null}
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -57,13 +57,6 @@ export function validateParentTask(input: {
   return ok;
 }
 
-export function validateClaimLeaf(input: { childCount: number }): PolicyResult {
-  if (input.childCount > 0) {
-    return deny("Esta Manobra tem Lances. Assuma um Lance, não o pai.");
-  }
-  return ok;
-}
-
 export function validateParentResult(input: {
   children: Array<{ status: ImplementationTaskStatus }>;
 }): PolicyResult {
@@ -82,6 +75,23 @@ export function validateAssignTask(input: {
 }): PolicyResult {
   if (input.assigneeUserId && input.assigneeAgentIdentityId) {
     return deny("Delegue para um tripulante ou um agente, não os dois.");
+  }
+  return ok;
+}
+
+export function canAssignTaskAssignee(status: ImplementationTaskStatus) {
+  return status !== "accepted";
+}
+
+export function validateAssignTaskOnTask(input: {
+  status: ImplementationTaskStatus;
+  assigneeUserId?: string | null;
+  assigneeAgentIdentityId?: string | null;
+}): PolicyResult {
+  const assigned = validateAssignTask(input);
+  if (!assigned.ok) return assigned;
+  if (!canAssignTaskAssignee(input.status)) {
+    return deny("Manobra aceita não muda de responsável.");
   }
   return ok;
 }

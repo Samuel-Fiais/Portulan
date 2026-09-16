@@ -9,8 +9,9 @@ import {
   nextStatusAfterProgress,
   shouldCascadeAssignment,
   validateAcceptTaskResult,
+  canAssignTaskAssignee,
   validateAssignTask,
-  validateClaimLeaf,
+  validateAssignTaskOnTask,
   validateClaimTask,
   manualTaskStatusOptions,
   validateManualTaskStatusChange,
@@ -180,7 +181,7 @@ test("RN-109: última Maré resolvida volta ao estado anterior válido", () => {
   );
 });
 
-test("RN-113: Lance só sob Manobra-raiz; pai com filhos não se assume", () => {
+test("RN-113: Lance só sob Manobra-raiz; Manobra com Lances também se assume", () => {
   assert.equal(
     validateParentTask({
       parent: { id: "p", parentTaskId: null, packId: "pack" },
@@ -195,8 +196,14 @@ test("RN-113: Lance só sob Manobra-raiz; pai com filhos não se assume", () => 
     }).ok,
     false,
   );
-  assert.equal(validateClaimLeaf({ childCount: 0 }).ok, true);
-  assert.equal(validateClaimLeaf({ childCount: 2 }).ok, false);
+  const parentAvailable = {
+    status: "available" as const,
+    leaseHolderTokenId: null,
+    leaseExpiresAt: null,
+    packRevisionId: "rev",
+    repositoryId: null,
+  };
+  assert.equal(validateClaimTask({ task: parentAvailable, actorTokenId: "t1" }).ok, true);
 });
 
 test("RN-113: resultado do pai só com Lances reported/accepted", () => {
@@ -261,6 +268,26 @@ test("RN-118: finalizada e protocolo de Carta de conclusão", () => {
   const protocol = completionCartaProtocol().join(" ");
   assert.match(protocol, /Carta/);
   assert.match(protocol, /add_implementation_task_source/);
+});
+
+test("RN-115: delegar independe de Rumo editável; aceita bloqueia", () => {
+  assert.equal(canAssignTaskAssignee("in_progress"), true);
+  assert.equal(canAssignTaskAssignee("reported"), true);
+  assert.equal(canAssignTaskAssignee("accepted"), false);
+  assert.equal(
+    validateAssignTaskOnTask({
+      status: "in_progress",
+      assigneeUserId: "u",
+    }).ok,
+    true,
+  );
+  assert.equal(
+    validateAssignTaskOnTask({
+      status: "accepted",
+      assigneeUserId: "u",
+    }).ok,
+    false,
+  );
 });
 
 test("RN-115: cascata só se pai e filho estão sem dono", () => {

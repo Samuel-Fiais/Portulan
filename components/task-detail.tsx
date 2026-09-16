@@ -332,7 +332,7 @@ export function TaskDetail({
               <section className="manobra-panel manobra-panel--rail">
                 <h2 className="manobra-panel__title">Lances</h2>
                 {children.length === 0 ? (
-                  <p className="dev-empty">Nenhum Lance. Esta Manobra é a folha.</p>
+                  <p className="dev-empty">Nenhum Lance ainda.</p>
                 ) : (
                   <ul className="rumo-dense-list manobra-lance-list">
                     {children.map((child) => (

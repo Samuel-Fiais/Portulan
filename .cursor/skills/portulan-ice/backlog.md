@@ -6,7 +6,7 @@ Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para
 
 ## Ranking atual
 
-Pedido avulso (14 set. 2026), fora da leva 2.
+Pedido avulso (14 set. 2026), fora da leva 2. Rumo #1 (16 set. 2026): `realtime-transversal`.
 
 | # | ID | Melhoria | Superfície | I | C | E | Score | Estado |
 |---|---|---|---|---|---|---|---|---|
@@ -16,6 +16,16 @@ Pedido avulso (14 set. 2026), fora da leva 2.
 | — | auth-password | Cadastro com senha, mescla GitHub e modal da conta | Conta | 8 | 9 | 5 | 36.0 | entregue |
 | — | portos | Portos (workspaces) com tripulação, convite por link, visibilidade em três níveis, tema do porto e léxico náutico | Workspace | 9 | 9 | 4 | 32.4 | entregue |
 | — | dev-context | Contexto de desenvolvimento: Expedições, Rumos versionados, Manobras com lease, Agentes de Bordo, MCP e CLI `portulan init` | Expedição / MCP | 9 | 8 | 2 | 14.4 | entregue (correção 15 set. 2026) |
+| — | realtime-transversal | Colaboração ao vivo transversal (presença, operações em conteúdo mutável, atividade) e auditoria completa de MCP sem segredos | Colaboração / MCP | 9 | 8 | 2 | 14.4 | planejado |
+
+## Escopo (realtime-transversal)
+
+- Presença e atividade ao vivo em todos os artefatos do porto, com sala autorizada por porto + entidade + papel.
+- Coedição por operações em conteúdo mutável (carta, gabarito, Rumo em rascunho/revisão, plano). Comandos atômicos para publicação, visibilidade, aprovação, lease, bloqueio e aceite.
+- Agentes visíveis com identidade e intenção; auditoria de toda chamada MCP sem token, anexo ou Markdown integral.
+- Postgres continua fonte de snapshots, releases, autorização e auditoria.
+
+Fora: CRDT como fonte de verdade; editar release ou Rumo aprovado ao vivo; realtime que contorne permissão, lease, aprovação, publicação ou aceite; gravar segredo no Diário.
 
 ## Escopo (dev-context)
 
@@ -33,7 +43,7 @@ Fora: Kanban/sprints/prazos/alocação; execução de código no servidor; sync 
 ## Escopo (rumo-lances / bordo-feed / delegar-manobra)
 
 - Identificador inteiro único no porto (`#42`) para Rumo, Manobra, Lance, item, fonte, Marco, fio e recado.
-- Lance: um nível sob Manobra; lease na folha; aceite na Manobra.
+- Lance: um nível sob Manobra; lease na linha (Manobra ou Lance, mesmo com filhos); aceite na Manobra.
 - Kanban por estado (faixa = Manobra, cartão = Lance); sem drag de estado, prazo, pontos ou sprint.
 - Contexto unificado: contrato, Marcos, itens, fontes. Vistas Trabalho / Contexto / Atividade.
 - Delegar responsável (humano ou agente) com cascata só se pai e filhos estão sem dono. Delegar ≠ lease.
@@ -77,7 +87,7 @@ Fora: e-mail de convite, cobrança/plano por porto, domínio verificado, papéis
 |---|---|
 | Checklist living no servidor | `:::checklist` já existe; estado só em localStorage. Não pedido nesta leva. |
 | E-mail de convite | Exige provedor; o convite de porto por link e o convite nominal por e-mail já cobrem a entrada. |
-| Colaboração simultânea / CRDT | Custo alto demais para o desenho atual. |
+| CRDT como fonte de verdade | O Rumo #1 usa operações colaborativas com Postgres como snapshot; CRDT no lugar do banco continua fora. |
 | PDF anônimo em `/d` e `/p` | Puppeteer em rota pública: custo e abuso. Quem tem acesso baixa a versão no Histórico. |
 | Menções @ e notificação de comentário | Precisa de canal novo; o fio no editor já é o lugar da conversa. |
 

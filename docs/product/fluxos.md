@@ -217,7 +217,7 @@ Regras: RN-96, RN-97, RN-98.
 
 1. Na carta, **Iniciar um Rumo a partir desta Carta** (ou criar Rumo avulso na Expedição). Agente MCP cria rascunho via MCP (`propose_context_pack`).
 2. O Rumo nasce `draft`. Fontes formais pedem uma edição publicada imutável; o formulário mostra as edições e exige uma. Publicar carta privada continua privado.
-3. No **Contexto**, registra contrato (resultado esperado, escopo, não-escopo, plano), Marcos de chegada, itens (decisão, regra, contrato, risco, suposição, pergunta) e cartas-fonte. Enquanto está em rascunho ou revisão, dá para editar o contrato e trocar ou remover fonte, item e Marco. A vista **Trabalho** lista Manobras e Lances aninhados ou, em Kanban, alterna quadros **Manobras** (cartão com progresso e checklist de Lances) e **Lances** (faixa da Manobra-pai à esquerda do quadro; Lances nas colunas **To do**, **In progress**, **Blocked**, **Done** e **Accepted** da mesma faixa); estado muda na Lista ou no detalhe, remoção e delegação também no Kanban; a vista **Atividade** é o feed do Rumo. Detalhe de Rumo, Manobra, Lance, Expedição e Embarcação traz voltar.
+3. No **Contexto**, registra contrato (resultado esperado, escopo, não-escopo, plano), Marcos de chegada, itens (decisão, regra, contrato, risco, suposição, pergunta) e cartas-fonte. Enquanto está em rascunho ou revisão, dá para editar o contrato e trocar ou remover fonte, item e Marco. A vista **Trabalho** lista Manobras e Lances aninhados (Lances começam recolhidos; toggle ao lado do `#` da Manobra revela ou oculta os filhos) ou, em Kanban, alterna quadros **Manobras** (cartão com progresso e checklist de Lances) e **Lances** (faixa da Manobra-pai à esquerda do quadro; Lances nas colunas **To do**, **In progress**, **Blocked**, **Done** e **Accepted** da mesma faixa); estado muda na Lista ou no detalhe, remoção e delegação também no Kanban; a vista **Atividade** é o feed do Rumo. Detalhe de Rumo, Manobra, Lance, Expedição e Embarcação traz voltar.
 4. Enviar para revisão. Responsável do Rumo, capitão ou imediato aprova — confirmação explícita. Nasce revisão imutável. A tela mostra Carta viva, edição fixada e o snapshot `/p`.
 5. Se a Carta-fonte ganhar edição nova, o Rumo anterior permanece; a validade passa a `needs_review`. Recuperar o contrato é **Criar nova revisão**: copia o conteúdo para rascunho, preserva o histórico e deixa as Manobras na revisão que as sustentou.
 
@@ -227,14 +227,14 @@ Funcionalidades: F-rumo, F-rumo-aprovar, F-rumo-quadro, F-carta-usada-em-context
 
 ## Assumir Manobra e reportar
 
-1. Agente autenticado chama `get_agent_bootstrap`: identidade, Embarcação da sessão (só se existir no porto), folhas compatíveis (Lances, ou Manobras sem Lances), menções e protocolo. Sem participação no porto, a chave é recusada.
-2. Sem Rumo aprovado e válido, o MCP devolve diagnóstico — não um briefing meio pronto. Listar ou assumir folha também exige esse recorte.
-3. **Assumir o comando** cria lease atômico na folha. Pai com Lances não se assume. Renovar exige atividade. Expirado pode ser retomado. Progresso e resultado só pelo detentor do lease ativo. Resultado da Manobra só com todos os Lances `reported` ou `accepted`.
+1. Agente autenticado chama `get_agent_bootstrap`: identidade, Embarcação da sessão (só se existir no porto), linhas disponíveis (Manobras e Lances), menções e protocolo. Sem participação no porto, a chave é recusada.
+2. Sem Rumo aprovado e válido, o MCP devolve diagnóstico — não um briefing meio pronto. Listar ou assumir linha também exige esse recorte.
+3. **Assumir o comando** cria lease atômico na linha (Manobra ou Lance). Manobra com Lances também se assume; o lease e o responsável de cada Lance não mudam. Renovar exige atividade. Expirado pode ser retomado. Progresso e resultado só pelo detentor do lease ativo daquela linha. Resultado da Manobra só com todos os Lances `reported` ou `accepted`.
 4. A tripulação **delega** responsável (humano ou agente) na UI ou via MCP. Se a Manobra não tem responsável, os Lances sem dono herdam; Lance com dono fica. Delegar não assume o comando.
 5. Conversa de bordo no feed do Rumo, da Manobra ou do Lance. Comentário comum entra no fio de discussão; Maré contrária é tipo de fio (RN-109, RN-114). Agentes leem o corpo. Várias Marés só liberam quando a última for resolvida.
 6. O Registro de bordo descreve o resultado com evidências, lacunas e cobertura dos Marcos. Reportado não é aceito sozinho. Aceite humano é na Manobra e promove Lances `reported`. Resumo em branco não registra; mensagem em branco não envia.
 7. Manobra de código só com Embarcação do porto compatível. Ausência não é reconhecida automaticamente.
-8. **Cartas-fonte e conclusão:** na Manobra ou Lance, a tripulação vincula cartas-fonte (referências ou entregáveis). Quando a folha fica finalizada (`reported`/`accepted`, ou Manobra com todos os Lances finalizados), o agente cria ou atualiza uma **Carta de conclusão** (objetivo, o que foi feito, decisões, links de código/PR) e a vincula como carta-fonte da folha — via UI ou MCP (`add_implementation_task_source`).
+8. **Cartas-fonte e conclusão:** na Manobra ou Lance, a tripulação vincula cartas-fonte (referências ou entregáveis). Quando a linha fica finalizada (`reported`/`accepted`, ou Manobra com todos os Lances finalizados e ela mesma finalizada), o agente cria ou atualiza uma **Carta de conclusão** (objetivo, o que foi feito, decisões, links de código/PR) e a vincula como carta-fonte da linha — via UI ou MCP (`add_implementation_task_source`).
 
 Regras: RN-101, RN-103, RN-104, RN-105, RN-108, RN-109, RN-110, RN-111, RN-113, RN-114, RN-115, RN-116, RN-117, RN-118.
 
@@ -250,3 +250,25 @@ O humano **não** configura terminal nem arquivos MCP. A skill **portulan-mcp** 
 Regras: RN-50, RN-55, RN-106, RN-111.
 
 Funcionalidades: F-mcp-token, F-cli-init, F-agente-bordo.
+
+## Colaborar ao vivo no porto
+
+1. Quem tem acesso ao artefato entra na **sala** daquela entidade no porto ativo. A autorização é a mesma da UI/MCP (porto, papel, convite nominal). Sem acesso, a sala não abre.
+2. Presença mostra humanos e agentes com identidade e, no agente, a intenção. Mudanças autorizadas de estado e de conteúdo mutável aparecem para os outros participantes sem recarregar.
+3. Conteúdo mutável (rascunho de carta, gabarito, Rumo em rascunho ou revisão, plano) aplica-se por operações; dois participantes não se apagam em silêncio. Publicar, mudar visibilidade, aprovar Rumo, assumir lease, abrir Maré e aceitar Manobra passam pelo servidor como comando atômico e também atualizam a sala.
+4. Revogar tripulação, convite ou acesso à entidade tira a presença na hora e recusa novos eventos daquela sala.
+5. Releases e Rumos aprovados não entram em coedição: o caminho continua nova publicação ou nova revisão.
+
+Regras: RN-119, RN-120, RN-121, RN-123, RN-124.
+
+Funcionalidades: F-presenca, F-coedicao, F-atividade-viva.
+
+## Auditar chamada MCP no Diário
+
+1. Toda chamada autenticada (incluindo leitura e recusa) gera um evento no Diário de bordo: quem, qual ferramenta, qual alvo, resultado, duração e correlação.
+2. O evento **não** guarda token, segredo, anexo nem o Markdown integral. Quem consulta o Diário vê o carimbo “Nome via Agente”, não a chave.
+3. A mesma trilha aparece na atividade do artefato quando a ação foi sobre ele.
+
+Regras: RN-104, RN-122.
+
+Funcionalidades: F-diario-bordo, F-mcp-auditoria.

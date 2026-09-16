@@ -89,7 +89,7 @@ import {
   isLeaseActive,
   nextStatusAfterLastBlockerResolved,
   validateAcceptTaskResult,
-  validateAssignTask,
+  validateAssignTaskOnTask,
   validateLanceObjective,
   validateManualTaskStatusChange,
   validateParentResult,
@@ -682,7 +682,9 @@ export async function assignImplementationTaskAction(
 ) {
   const ctx = await requireActiveMembership();
   if (!ctx.ok) return ctx;
-  const assigned = validateAssignTask(input);
+  const current = await getImplementationTask(taskId, ctx.workspaceId);
+  if (!current) return { ok: false as const, error: "Manobra não encontrada." };
+  const assigned = validateAssignTaskOnTask({ status: current.status, ...input });
   if (!assigned.ok) return { ok: false as const, error: assigned.error };
   const task = await assignImplementationTask({
     taskId,
