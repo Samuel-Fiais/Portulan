@@ -237,16 +237,13 @@ Regras: RN-101, RN-103, RN-104, RN-105, RN-108, RN-109, RN-110, RN-111.
 
 Funcionalidades: F-manobra, F-conversa-bordo, F-mcp-dev-context, F-agente-bordo.
 
-## Auto-configuração do agente (ponta a ponta)
+## Setup do agente (humano + agente)
 
-1. Tripulante ou agente gera **chave MCP** em Instrumentos (passo 02) no porto correto, conectando ao Portulan na cloud (`https://portulan.vercel.app`).
-2. Configura o cliente MCP (`.cursor/mcp.json` com Bearer `ptl_…`).
-3. Exporta `PORTULAN_TOKEN` / `PORTULAN_ENDPOINT` para o terminal — nunca no repositório (RN-106).
-4. Na raiz do checkout de código: `portulan init` registra ou reusa Embarcação, vincula Expedição(ões), escreve `.portulan/config.json` e `.portulan/AGENT.md`, e acrescenta blocos gerenciados.
-5. `portulan doctor` confirma token, vínculo e blocos.
-6. Primeira chamada MCP de dev-context: `get_agent_bootstrap` com `repository_id` do config.
+1. **Humano:** gera **chave MCP** em Instrumentos (passo 02) no porto correto (`https://portulan.vercel.app`) e entrega `ptl_…` ao agente (ou configura `mcp.json` / env).
+2. **Agente:** com a chave recebida, configura MCP (`.cursor/mcp.json` com Bearer) e, para dev-context, `PORTULAN_TOKEN` + `portulan init` na raiz do checkout.
+3. **Agente:** `portulan doctor` confirma vínculo; `get_agent_bootstrap` com `repository_id` do config.
 
-A skill **portulan-mcp** e o **Guia do Agente** (copiado em Instrumentos) documentam este roteiro para auto-configuração sem instruções humanas adicionais.
+O agente **não** gera chave na UI. A skill **portulan-mcp** e o **Guia do Agente** (copiado em Instrumentos) documentam papéis e passos.
 
 Regras: RN-50, RN-55, RN-106, RN-111.
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { validateMcpToken } from "@/lib/db/mcp-tokens";
+import { validateMcpTokenWithReason } from "@/lib/db/mcp-tokens";
+import { mcpTokenAuthErrorMessage } from "@/lib/mcp-token-auth";
 import { getWorkspaceMembership } from "@/lib/db/workspaces";
 import type { McpTokenIdentity } from "@/lib/db/mcp-tokens";
 import type { WorkspaceRole } from "@/lib/workspaces";
@@ -11,9 +12,16 @@ export async function authenticateCliRequest(request: Request): Promise<CliAuth 
   if (!authHeader?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Token MCP ausente." }, { status: 401 });
   }
-  const identity = await validateMcpToken(authHeader.slice("Bearer ".length).trim());
-  if (!identity?.workspaceId) {
-    return NextResponse.json({ error: "Token MCP inválido ou sem porto." }, { status: 401 });
+  const auth = await validateMcpTokenWithReason(authHeader.slice("Bearer ".length).trim());
+  if (!auth.ok) {
+    return NextResponse.json({ error: mcpTokenAuthErrorMessage(auth.reason) }, { status: 401 });
+  }
+  const identity = auth.identity;
+  if (!identity.workspaceId) {
+    return NextResponse.json(
+      { error: "Chave MCP sem porto. Gere uma nova chave em Instrumentos com o porto correto ativo." },
+      { status: 401 },
+    );
   }
   const membership = await getWorkspaceMembership(identity.workspaceId, identity.userId);
   if (!membership) {

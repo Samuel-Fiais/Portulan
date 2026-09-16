@@ -66,6 +66,12 @@ export async function getAgentIdentity(id: string, workspaceId: string) {
   return row ? mapRow(row) : null;
 }
 
+export async function getAgentIdentityById(id: string) {
+  const db = await getDb();
+  const [row] = await db.select().from(agentIdentities).where(eq(agentIdentities.id, id)).limit(1);
+  return row ? mapRow(row) : null;
+}
+
 export async function createAgentIdentity(input: {
   workspaceId: string;
   ownerUserId: string;

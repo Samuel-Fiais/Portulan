@@ -92,6 +92,7 @@ export {
   revokeMcpTokensForAgentIdentity,
   revokeMcpTokensForWorkspaceUser,
   validateMcpToken,
+  validateMcpTokenWithReason,
 } from "@/lib/db/mcp-tokens";
 
 export {

@@ -564,6 +564,22 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     )`,
   );
 
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.agent_identities (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.workspaces(id) ON DELETE CASCADE,
+      owner_user_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      work_mode TEXT NOT NULL CHECK (work_mode IN ('context_and_coordination', 'local_implementation', 'review')),
+      allowed_mcp_tools TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+      deactivated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+  );
+
   if (await portulanTableExists(db, "mcp_tokens")) {
     const columns = (await loadTableColumns(db)).get("mcp_tokens") ?? new Set<string>();
 
@@ -577,6 +593,35 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       await executeSchemaStatement(
         db,
         `ALTER TABLE ${PORTULAN_PG_SCHEMA}.mcp_tokens ADD COLUMN IF NOT EXISTS last_client_info TEXT`,
+      );
+    }
+    if (!columns.has("workspace_id")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.mcp_tokens ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.workspaces(id) ON DELETE SET NULL`,
+      );
+    }
+    if (!columns.has("agent_identity_id")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.mcp_tokens ADD COLUMN IF NOT EXISTS agent_identity_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.agent_identities(id) ON DELETE SET NULL`,
+      );
+    }
+    if (!columns.has("scopes")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.mcp_tokens ADD COLUMN IF NOT EXISTS scopes TEXT NOT NULL DEFAULT '[]'`,
+      );
+    }
+
+    if (await portulanTableExists(db, "agent_identities")) {
+      await executeSchemaStatement(
+        db,
+        `UPDATE ${PORTULAN_PG_SCHEMA}.mcp_tokens AS t
+         SET workspace_id = ai.workspace_id
+         FROM ${PORTULAN_PG_SCHEMA}.agent_identities AS ai
+         WHERE t.agent_identity_id = ai.id
+           AND t.workspace_id IS NULL`,
       );
     }
   }
@@ -876,11 +921,11 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
 }
 
 export async function applyPortulanSchema(db: Db): Promise<void> {
+  await migrateLegacyPortulanTables(db);
+
   if (await isPortulanSchemaReady(db)) {
     return;
   }
-
-  await migrateLegacyPortulanTables(db);
 
   const schemaPath = path.join(process.cwd(), "schema.sql");
   const ddl = readFileSync(schemaPath, "utf8");

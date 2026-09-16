@@ -5,6 +5,11 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { mcpTokens } from "@/lib/db/schema";
 import { getWorkspaceMembership } from "@/lib/db/workspaces";
+import {
+  evaluateAgentIdentityGate,
+  normalizeMcpToken,
+  type McpTokenAuthFailure,
+} from "@/lib/mcp-token-auth";
 import { validateMcpWorkspaceAccess } from "@/lib/mcp-token-policy";
 import { mcpTokenExpiresAtFromPreset, type McpTokenExpirationPreset } from "@/lib/validation";
 
@@ -116,28 +121,42 @@ export async function revokeMcpToken(userId: string, tokenId: string) {
   return true;
 }
 
-export async function validateMcpToken(token: string): Promise<McpTokenIdentity | null> {
-  if (!token.startsWith("ptl_")) return null;
+export type McpTokenValidationResult =
+  | { ok: true; identity: McpTokenIdentity }
+  | { ok: false; reason: McpTokenAuthFailure };
+
+export async function validateMcpTokenWithReason(rawToken: string): Promise<McpTokenValidationResult> {
+  const token = normalizeMcpToken(rawToken);
+  if (!token.startsWith("ptl_")) return { ok: false, reason: "malformed" };
 
   const db = await getDb();
   const tokenHash = hashToken(token);
   const [row] = await db.select().from(mcpTokens).where(eq(mcpTokens.tokenHash, tokenHash)).limit(1);
-  if (!row || isExpired(row.expiresAt)) return null;
+  if (!row) return { ok: false, reason: "not_found" };
+  if (isExpired(row.expiresAt)) return { ok: false, reason: "expired" };
 
-  const workspaceId = row.workspaceId ?? null;
+  let workspaceId = row.workspaceId ?? null;
+  const agentIdentityId = row.agentIdentityId ?? null;
+
+  if (agentIdentityId) {
+    const { getAgentIdentityById } = await import("@/lib/db/agent-identities");
+    const agentIdentity = await getAgentIdentityById(agentIdentityId);
+    const gate = evaluateAgentIdentityGate({
+      agentIdentityId,
+      workspaceId,
+      identity: agentIdentity,
+    });
+    if (!gate.ok) return { ok: false, reason: gate.reason };
+    workspaceId = gate.workspaceId;
+  }
+
   if (workspaceId) {
     const membership = await getWorkspaceMembership(workspaceId, row.userId);
     const access = validateMcpWorkspaceAccess({
       workspaceId,
       isMember: Boolean(membership),
     });
-    if (!access.ok) return null;
-  }
-
-  if (row.agentIdentityId && workspaceId) {
-    const { getAgentIdentity } = await import("@/lib/db/agent-identities");
-    const agentIdentity = await getAgentIdentity(row.agentIdentityId, workspaceId);
-    if (!agentIdentity || agentIdentity.status !== "active") return null;
+    if (!access.ok) return { ok: false, reason: "workspace_access" };
   }
 
   await db
@@ -146,12 +165,20 @@ export async function validateMcpToken(token: string): Promise<McpTokenIdentity 
     .where(eq(mcpTokens.id, row.id));
 
   return {
-    userId: row.userId,
-    workspaceId,
-    tokenId: row.id,
-    agentIdentityId: row.agentIdentityId ?? null,
-    lastClientInfo: parseClientInfo(row.lastClientInfo),
+    ok: true,
+    identity: {
+      userId: row.userId,
+      workspaceId,
+      tokenId: row.id,
+      agentIdentityId,
+      lastClientInfo: parseClientInfo(row.lastClientInfo),
+    },
   };
+}
+
+export async function validateMcpToken(token: string): Promise<McpTokenIdentity | null> {
+  const result = await validateMcpTokenWithReason(token);
+  return result.ok ? result.identity : null;
 }
 
 export async function revokeMcpTokensForWorkspaceUser(workspaceId: string, userId: string) {

@@ -30,9 +30,10 @@ import {
   setTemplateWorkspace,
   updateDocument,
   updateTemplate,
-  validateMcpToken,
+  validateMcpTokenWithReason,
   recordMcpClientInfo,
 } from "@/lib/db";
+import { mcpTokenAuthErrorMessage } from "@/lib/mcp-token-auth";
 import { templateAccessContext, workspaceScopedAccessContext } from "@/lib/access-context";
 import { validateWorkspaceName } from "@/lib/workspace-policy";
 import {
@@ -807,12 +808,12 @@ async function authenticateMcpRequest(request: Request) {
   }
 
   const token = authHeader.slice("Bearer ".length).trim();
-  const identity = await validateMcpToken(token);
-  if (!identity) {
-    return Response.json({ error: "Token MCP inválido ou revogado." }, { status: 401 });
+  const auth = await validateMcpTokenWithReason(token);
+  if (!auth.ok) {
+    return Response.json({ error: mcpTokenAuthErrorMessage(auth.reason) }, { status: 401 });
   }
 
-  return identity;
+  return auth.identity;
 }
 
 async function handler(request: Request) {

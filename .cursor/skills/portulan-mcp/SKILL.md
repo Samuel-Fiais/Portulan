@@ -1,6 +1,6 @@
 ---
 name: portulan-mcp
-description: Operates the Portulan MCP server (portulan) for editorial cartas/gabaritos and for development context (Expedições, Rumos, Manobras, Conversas de bordo). Covers end-to-end self-setup — chave MCP, mcp.json, portulan init/doctor, get_agent_bootstrap. Use when the user mentions Portulan MCP, /api/mcp, Instrumentos, portulan init, list_documents, get_agent_bootstrap, publishing /d or /p links, or coordinating work via MCP in Cursor or Claude Code.
+description: Operates the Portulan MCP server (portulan) for editorial cartas/gabaritos and for development context (Expedições, Rumos, Manobras, Conversas de bordo). Setup assumes the human provides the MCP key (ptl_…); the agent configures mcp.json, portulan init/doctor, and get_agent_bootstrap. Use when the user mentions Portulan MCP, /api/mcp, portulan init, list_documents, get_agent_bootstrap, publishing /d or /p links, or coordinating work via MCP in Cursor or Claude Code.
 ---
 
 # Portulan MCP
@@ -11,52 +11,58 @@ Guia para agentes operarem o **Portulan** via MCP Streamable HTTP — cartoteca 
 
 ## Pré-requisitos
 
-1. Portulan acessível na **cloud**: `https://portulan.vercel.app` (produção)
-2. Endpoint MCP: `https://portulan.vercel.app/api/mcp`
+1. Portulan na cloud: `https://portulan.vercel.app` · MCP: `https://portulan.vercel.app/api/mcp`
+2. **Chave MCP** (`ptl_…`) **fornecida pelo responsável humano** — você não gera chave na UI
 3. Servidor MCP: `portulan` v0.10.0
-4. Chave MCP (`ptl_…`) gerada em **Instrumentos** no porto correto
 
-**Localhost** (`npm run dev` → `http://localhost:3000/api/mcp`) só para quem desenvolve o repositório Portulan — agentes em outros checkouts usam a cloud.
+Localhost (`http://localhost:3000/api/mcp`) só quando o responsável desenvolve o repo Portulan.
 
-Sem instância acessível ou chave válida, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
+Sem chave válida ou MCP desconectado: 401 ou ferramentas indisponíveis.
 
 ## Chaves MCP (RN-55, RN-111, F-mcp-token)
 
-O catálogo em Instrumentos agrupa **49 ferramentas** (`lib/mcp-tool-catalog.ts`). Toda chave nova cria uma identidade nomeada no passo **02 — Chaves MCP**: nome do agente, validade e ferramentas (todas habilitadas por padrão; desmarque por segurança, RN-111).
+**Quem gera:** só o humano, em Instrumentos → passo 02 — Chaves MCP (identidade, validade, ferramentas).
 
-O token fica preso ao **porto ativo** no momento da geração. Para operar em outro porto, troque na UI e gere chave nova.
+**Quem usa:** você, com a chave que o humano colar no chat, exportar como `PORTULAN_TOKEN` ou já ter colocado em `.cursor/mcp.json`.
 
-Chaves legadas sem identidade continuam válidas até revogação, com catálogo completo.
+A chave fica presa ao **porto ativo** no momento em que foi gerada. Outro porto = o humano gera chave nova.
 
-## Auto-configuração de ponta a ponta
+Catálogo: **49 ferramentas** (`lib/mcp-tool-catalog.ts`); subconjunto se o humano desabilitou alguma na identidade (RN-111).
 
-Use este roteiro para se configurar **sem depender de instruções humanas**. O **Guia do Agente** (Instrumentos → card do agente → Copiar Guia do Agente) repete o mesmo fluxo personalizado.
+## Setup com chave do responsável
 
-### Escopo
+O **Guia do Agente** (Instrumentos → Copiar Guia do Agente) é o mesmo roteiro, personalizado por identidade.
 
-| Objetivo | Passos mínimos |
+### Papéis
+
+| Quem | Faz |
 |---|---|
-| Só cartas/gabaritos (editorial) | 1 → 2 → 3 → operar com `get_system_guide` |
-| Expedição, Rumo, Manobra (dev-context) | 1 → 2 → 3 → 4 → 5 → 6 → `get_agent_bootstrap` |
+| **Humano** | Gera `ptl_…` em Instrumentos e entrega a você (ou configura `mcp.json` / env) |
+| **Agente (você)** | Com a chave recebida: conecta MCP, roda CLI se necessário, opera |
 
-### 1. Confirmar o endpoint (cloud)
+### Se ainda não tem chave
 
-Produção: `https://portulan.vercel.app/api/mcp`.
+**Pare e peça.** Não invente token nem tente abrir Instrumentos.
 
-Override opcional: `PORTULAN_ENDPOINT=https://…` ou `--endpoint=` no CLI.
+Texto sugerido:
 
-Desenvolvimento do Portulan (só mantenedores): `npm run dev` no repo Portulan → `http://localhost:3000/api/mcp`.
+> Preciso da chave MCP (`ptl_…`) do porto [nome]. Gere em Instrumentos → Chaves MCP e cole aqui, ou configure `PORTULAN_TOKEN` / `.cursor/mcp.json` com Bearer.
 
-### 2. Gerar chave MCP
+### Com chave em mãos — editorial
 
-1. Abra **Instrumentos** no **porto** onde vai trabalhar.
-2. Passo **02 — Chaves MCP** → **Nova chave MCP**.
-3. Nome do agente, validade, ferramentas (todas marcadas por padrão).
-4. Copie `ptl_…` na hora — **nunca** commite no repositório (RN-106).
+1. Configure `.cursor/mcp.json` com a chave recebida (veja abaixo).
+2. Recarregue MCP (Cursor: Settings → MCP).
+3. `get_system_guide` antes de escrever cartas.
 
-### 3. Conectar o cliente MCP
+### Com chave em mãos — dev-context (Expedição / Rumo / Manobra)
 
-`.cursor/mcp.json` (ou equivalente no Claude):
+1. **MCP:** `.cursor/mcp.json` com Bearer `ptl_…` (chave do humano).
+2. **CLI:** `export PORTULAN_TOKEN=ptl_…` e `export PORTULAN_ENDPOINT=https://portulan.vercel.app`.
+3. **`portulan init --yes`** na raiz Git da Embarcação (registra vínculo, escreve `.portulan/` — RN-106).
+4. **`portulan doctor`** — deve responder `ok`.
+5. **`get_agent_bootstrap`** com `repository_id` de `.portulan/config.json`.
+
+### `.cursor/mcp.json`
 
 ```json
 {
@@ -64,67 +70,31 @@ Desenvolvimento do Portulan (só mantenedores): `npm run dev` no repo Portulan �
     "portulan": {
       "url": "https://portulan.vercel.app/api/mcp",
       "headers": {
-        "Authorization": "Bearer ptl_SUA_CHAVE"
+        "Authorization": "Bearer ptl_CHAVE_QUE_O_HUMANO_PASSOU"
       }
     }
   }
 }
 ```
 
-Recarregue MCPs após salvar (Cursor: Settings → MCP).
+**Nunca** commite `ptl_…` no repositório (RN-106). Se o humano já configurou MCP globalmente, confirme que as ferramentas respondem antes de `init`.
 
-**Dev local:** se `MCP_API_KEY` estiver em `.env.local` do Portulan, pode usar essa chave no header em vez de `ptl_`.
-
-**Stdio (`mcp-remote`):** prefira HTTP com header quando possível. Com stdio, exporte `PORTULAN_TOKEN` e verifique se o wrapper repassa o Bearer.
-
-### 4. Token para o CLI
-
-Para `portulan init` / `portulan doctor`, exporte na sessão de terminal:
+### CLI (`portulan init` / `doctor`)
 
 ```bash
-export PORTULAN_TOKEN=ptl_SUA_CHAVE
+export PORTULAN_TOKEN=ptl_CHAVE_QUE_O_HUMANO_PASSOU
 export PORTULAN_ENDPOINT=https://portulan.vercel.app
+node /caminho/para/Portulan/cli/portulan.mjs init --yes
+node /caminho/para/Portulan/cli/portulan.mjs doctor
 ```
 
-macOS keychain (opcional, RN-106):
+Keychain macOS (opcional, configurado pelo humano): `security add-generic-password -s portulan-mcp -a portulan -w 'ptl_…'`
 
-```bash
-security add-generic-password -s portulan-mcp -a portulan -w 'ptl_SUA_CHAVE'
-```
+### Depois do setup
 
-### 5. Preparar o checkout (`portulan init`)
+**Dev-context:** `.portulan/AGENT.md` → `get_agent_bootstrap` → demais ferramentas.
 
-Na **raiz Git** do repositório que será a Embarcação:
-
-```bash
-# no repo Portulan:
-npm run portulan -- init --yes
-
-# ou de qualquer lugar (endpoint default = cloud):
-node /caminho/para/Portulan/cli/portulan.mjs init --yes --endpoint=https://portulan.vercel.app
-```
-
-O `init` (RN-106, F-cli-init):
-
-- Detecta remoto Git (se houver) e registra ou reusa a Embarcação no porto.
-- Vincula a Embarcação à(s) Expedição(ões) — interativo se houver várias; `--yes` aceita padrões.
-- Escreve `.portulan/config.json` (sem segredo, sem path absoluto).
-- Escreve `.portulan/AGENT.md` com protocolo deste checkout.
-- Acrescenta blocos `BEGIN:portulan-dev-context` em `AGENTS.md`, `CLAUDE.md` e `.cursor/rules/portulan-dev-context.mdc` (confirma se arquivo já existir; `--yes` pula confirmação).
-
-### 6. Verificar (`portulan doctor`)
-
-```bash
-npm run portulan -- doctor
-```
-
-Deve imprimir `portulan doctor: ok`. Corrija token, config ou blocos antes de assumir Manobras.
-
-### 7. Operar
-
-**Dev-context:** leia `.portulan/AGENT.md`, depois `get_agent_bootstrap` com `repository_id` de `.portulan/config.json`.
-
-**Editorial:** `get_system_guide` antes de escrever cartas.
+**401:** chave ausente, errada ou revogada — peça ao responsável.
 
 ## Ferramentas (49)
 

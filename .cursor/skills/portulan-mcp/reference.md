@@ -35,7 +35,7 @@ Implementação CLI: `cli/portulan.mjs` · bin `portulan` em `package.json`.
 
 ## CLI — `portulan init` e `portulan doctor`
 
-Auto-configuração local do checkout (RN-106, F-cli-init). Complementa a seção **Auto-configuração** em `SKILL.md`.
+Preparação local do checkout (RN-106, F-cli-init). O **humano** fornece `ptl_…`; o **agente** roda o CLI. Ver **Setup com chave do responsável** em `SKILL.md`.
 
 ### `portulan init`
 
@@ -48,7 +48,7 @@ npm run portulan -- init [--yes] [--endpoint=https://portulan.vercel.app]
 | `--yes` | Aceita editar arquivos existentes e padrões de Expedição sem perguntar |
 | `--endpoint=` | URL base do Portulan (default: `PORTULAN_ENDPOINT` ou `https://portulan.vercel.app`) |
 
-**Pré-requisito:** `PORTULAN_TOKEN` ou `PORTULAN_MCP_TOKEN` (ou keychain macOS `service=portulan-mcp`).
+**Pré-requisito:** chave `ptl_…` entregue pelo responsável humano em `PORTULAN_TOKEN` / `PORTULAN_MCP_TOKEN` (ou keychain macOS `service=portulan-mcp`). O agente não gera chave na UI.
 
 **Cria/atualiza:**
 
@@ -71,7 +71,7 @@ Verifica: token presente, `config.json` válido (sem segredo/path absoluto), ví
 
 ### Depois do `init`
 
-1. Configure `.cursor/mcp.json` com Bearer `ptl_…` (se ainda não fez).
+1. Humano entrega `ptl_…`; agente configura `.cursor/mcp.json` ou env.
 2. Chame `get_agent_bootstrap` com `repository_id` de `.portulan/config.json`.
 
 ---

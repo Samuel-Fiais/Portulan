@@ -647,15 +647,19 @@ export async function createMcpKeyAction(input: unknown) {
     ctx.workspaceId,
     identity.id,
   );
-  await recordAuditEvent({
-    workspaceId: ctx.workspaceId,
-    userId: ctx.userId,
-    agentIdentityId: identity.id,
-    mcpTokenId: result.record.id,
-    action: "issue_mcp_key",
-    targetType: "agent_identity",
-    targetId: identity.id,
-  });
+  try {
+    await recordAuditEvent({
+      workspaceId: ctx.workspaceId,
+      userId: ctx.userId,
+      agentIdentityId: identity.id,
+      mcpTokenId: result.record.id,
+      action: "issue_mcp_key",
+      targetType: "agent_identity",
+      targetId: identity.id,
+    });
+  } catch {
+    // A chave já foi emitida; falha de auditoria não invalida a emissão.
+  }
   revalidateDev();
   return { ok: true as const, token: result.token, record: result.record, identity };
 }

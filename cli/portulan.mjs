@@ -32,10 +32,10 @@ function assertNoSecret(content, label) {
 function instructionBlock() {
   return `## Portulan — contexto de desenvolvimento
 
-Auto-configuração completa: skill \`portulan-mcp\` (seção **Auto-configuração**) ou Guia do Agente em Instrumentos.
+Setup: skill \`portulan-mcp\` (seção **Setup com chave do responsável**) ou Guia do Agente.
 
-1. Chave MCP em Instrumentos → \`.cursor/mcp.json\` com \`Authorization: Bearer ptl_…\`.
-2. \`PORTULAN_TOKEN\` no ambiente; \`portulan init\` / \`portulan doctor\` neste checkout.
+1. O **humano** gera \`ptl_…\` em Instrumentos e entrega ao agente (ou configura \`mcp.json\`/env).
+2. O **agente** usa essa chave em \`.cursor/mcp.json\` e \`PORTULAN_TOKEN\`; roda \`portulan init\` / \`doctor\` neste checkout.
 3. Leia \`.portulan/AGENT.md\` e \`.portulan/config.json\`.
 4. Chame \`get_agent_bootstrap\` com \`repository_id\` do config **antes** de assumir trabalho.
 5. Não assuma Manobra sem Rumo aprovado e válido (\`current\`).
@@ -108,10 +108,9 @@ Embarcação \`${config.repositoryId}\` · porto \`${config.workspaceId}\` · en
 
 ## Antes da primeira sessão
 
-1. Gere chave MCP em **Instrumentos** (passo 02) se ainda não tiver.
-2. Configure \`.cursor/mcp.json\` com \`Authorization: Bearer ptl_…\`.
-3. Exporte \`PORTULAN_TOKEN\` para o terminal (\`portulan doctor\` usa isso).
-4. Skill \`portulan-mcp\` — seção **Auto-configuração** — cobre o fluxo completo.
+1. O responsável humano gera \`ptl_…\` em Instrumentos e passa ao agente.
+2. Configure \`.cursor/mcp.json\` ou \`PORTULAN_TOKEN\` com essa chave (nunca no repo).
+3. Skill \`portulan-mcp\` — **Setup com chave do responsável**.
 
 ## Protocolo (cada sessão)
 

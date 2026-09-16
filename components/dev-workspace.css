@@ -897,10 +897,9 @@
 
 .rumo-entry__body {
   display: grid;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   gap: 6px;
   min-width: 0;
-  max-width: calc(100% - 36px);
 }
 
 .dev-ticks li.rumo-tick-row {
@@ -917,9 +916,8 @@
 }
 
 .dev-ticks li.rumo-tick-row > span {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: calc(100% - 2.5em);
 }
 
 .rumo-kind__hint {
