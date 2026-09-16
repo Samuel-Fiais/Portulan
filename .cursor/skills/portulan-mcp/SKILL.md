@@ -1,6 +1,6 @@
 ---
 name: portulan-mcp
-description: Operates the Portulan MCP server (portulan) for editorial cartas/gabaritos and for development context (Expedições, Rumos, Manobras, Conversas de bordo). Setup assumes the human provides the MCP key (ptl_…); the agent configures mcp.json, portulan init/doctor, and get_agent_bootstrap. Use when the user mentions Portulan MCP, /api/mcp, portulan init, list_documents, get_agent_bootstrap, publishing /d or /p links, or coordinating work via MCP in Cursor or Claude Code.
+description: Operates the Portulan MCP server (portulan) for editorial cartas/gabaritos and for development context (Expedições, Rumos, Manobras, Conversas de bordo). Setup assumes the human only pastes the Guia do Agente (with ptl_…); the agent alone configures MCP, export, curl, portulan init/doctor, and get_agent_bootstrap. Use when the user mentions Portulan MCP, /api/mcp, portulan init, list_documents, get_agent_bootstrap, publishing /d or /p links, or coordinating work via MCP.
 ---
 
 # Portulan MCP
@@ -12,22 +12,73 @@ Guia para agentes operarem o **Portulan** via MCP Streamable HTTP — cartoteca 
 ## Pré-requisitos
 
 1. Portulan na cloud: `https://portulan.vercel.app` · MCP: `https://portulan.vercel.app/api/mcp`
-2. **Chave MCP** (`ptl_…`) **fornecida pelo responsável humano** — você não gera chave na UI
+2. **Guia do Agente** colado pelo humano (com `ptl_…` na mesma mensagem) — você executa todo o setup
 3. Servidor MCP: `portulan` v0.10.0
 
 Localhost (`http://localhost:3000/api/mcp`) só quando o responsável desenvolve o repo Portulan.
 
 Sem chave válida ou MCP desconectado: 401 ou ferramentas indisponíveis.
 
+## Resolução MCP (siga nesta ordem)
+
+Use este roteiro **antes** de concluir que a chave é inválida ou que “não está na base”.
+
+### 1. Identifique **seu** cliente MCP
+
+| Se você enxerga… | Seu arquivo | Como passa a chave |
+|---|---|---|
+| Config em JSON no workspace | `mcp.json` | `headers.Authorization: Bearer ptl_…` |
+| Config em TOML (`config.toml`) | `.codex/config.toml` (copie de `.codex/config.toml.example`) | `http_headers = { Authorization = "Bearer ptl_…" }` — **você** grava; arquivo gitignored |
+
+**Regra:** editar `mcp.json` **não** configura um cliente TOML — e vice-versa. Colar `ptl_…` no chat **não** autentica nada.
+
+### 2. Escolha o endpoint
+
+| Cenário | URL MCP |
+|---|---|
+| Produção / agentes em checkout externo | `https://portulan.vercel.app/api/mcp` |
+| Dev local (`npm run dev` no repo Portulan) | `http://localhost:3000/api/mcp` |
+
+Local e cloud em geral compartilham o **mesmo Neon** — a mesma `ptl_…` vale nos dois se endpoint + Bearer/env estiverem certos.
+
+### 3. Checklist antes de pedir chave nova
+
+1. [ ] Arquivo **do seu cliente** editado (não o de outro)
+2. [ ] JSON ou TOML: Bearer gravado por **você** · `export PORTULAN_TOKEN=…` no **seu** shell
+3. [ ] `npm run dev` rodando (se localhost)
+4. [ ] Teste HTTP (abaixo) retorna **200**, não 401
+5. [ ] Só então: `get_agent_bootstrap` ou `portulan init` / `doctor`
+
+### 4. Teste HTTP (confirma chave + endpoint)
+
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" -X POST ENDPOINT_AQUI/api/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'Authorization: Bearer ptl_SUA_CHAVE' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+```
+
+- **401** → Bearer ausente/errado ou endpoint errado (volte ao passo 1–2)
+- **406** → falta header `Accept` (não é problema da chave)
+- **200** → chave OK; se o cliente ainda falha, o problema é **config do cliente**, não o Portulan
+
+### 5. Depois de conectar
+
+- **Editorial:** `get_system_guide`
+- **Dev-context:** `export PORTULAN_TOKEN=…` → `portulan init --yes` → `portulan doctor` → `get_agent_bootstrap`
+
 ## Chaves MCP (RN-55, RN-111, F-mcp-token)
 
-**Quem gera:** só o humano, em Instrumentos → passo 02 — Chaves MCP (identidade, validade, ferramentas).
+**Humano:** gera `ptl_…` em Instrumentos → passo 02 e cola o **Guia do Agente** no chat (chave na mesma mensagem). **Nada mais.**
 
-**Quem usa:** você, com a chave que o humano colar no chat, exportar como `PORTULAN_TOKEN` ou já ter colocado em `.cursor/mcp.json`.
+**Você (agente):** receber `ptl_…` no chat **não conecta** o MCP. **Você** grava Bearer na config do **seu** cliente, `export PORTULAN_TOKEN` no **seu** terminal, testa curl, roda `init`/`doctor`, reconecta MCP se o cliente permitir.
 
 A chave fica presa ao **porto ativo** no momento em que foi gerada. Outro porto = o humano gera chave nova.
 
-Catálogo: **49 ferramentas** (`lib/mcp-tool-catalog.ts`); subconjunto se o humano desabilitou alguma na identidade (RN-111).
+**Local vs cloud:** `npm run dev` em geral usa o **mesmo Neon** que produção (`DATABASE_URL`). Chave gerada em `localhost:3000` ou em `portulan.vercel.app` autentica nos dois — desde que o **endpoint** e o **header Bearer** batam. Não conclua “chave inválida” ou “não está na base” sem checar a config MCP (`mcp.json`) primeiro.
+
+Catálogo: **69 ferramentas** (`lib/mcp-tool-catalog.ts`); subconjunto se o humano desabilitou alguma na identidade (RN-111).
 
 ## Setup com chave do responsável
 
@@ -37,32 +88,28 @@ O **Guia do Agente** (Instrumentos → Copiar Guia do Agente) é o mesmo roteiro
 
 | Quem | Faz |
 |---|---|
-| **Humano** | Gera `ptl_…` em Instrumentos e entrega a você (ou configura `mcp.json` / env) |
-| **Agente (você)** | Com a chave recebida: conecta MCP, roda CLI se necessário, opera |
+| **Humano** | Gera `ptl_…` + cola **Guia do Agente** no chat. **Só isso.** |
+| **Agente (você)** | Config MCP, `export`, curl, `init`/`doctor`, MCP, operação |
 
-### Se ainda não tem chave
+**Não peça ao humano** `export`, editar config nem terminal — isso é **seu** trabalho.
 
-**Pare e peça.** Não invente token nem tente abrir Instrumentos.
+### Se o guia veio sem chave
 
-Texto sugerido:
+> Falta a `ptl_…` junto com o guia. Cole na mesma mensagem.
 
-> Preciso da chave MCP (`ptl_…`) do porto [nome]. Gere em Instrumentos → Chaves MCP e cole aqui, ou configure `PORTULAN_TOKEN` / `.cursor/mcp.json` com Bearer.
+### Checklist do agente (com chave recebida)
 
-### Com chave em mãos — editorial
+1. **Config MCP** do seu cliente (JSON ou TOML — § Config MCP)
+2. **`export PORTULAN_TOKEN=ptl_…`** e `PORTULAN_ENDPOINT` no seu shell
+3. **curl** initialize → **200** (§ Resolução MCP)
+4. **Dev-context:** `portulan init --yes` → `portulan doctor` → `get_agent_bootstrap`
+5. **Editorial:** pule `init`; após MCP ok → `get_system_guide`
 
-1. Configure `.cursor/mcp.json` com a chave recebida (veja abaixo).
-2. Recarregue MCP (Cursor: Settings → MCP).
-3. `get_system_guide` antes de escrever cartas.
+### Config MCP
 
-### Com chave em mãos — dev-context (Expedição / Rumo / Manobra)
+Cada **cliente** usa arquivo e formato próprios. Editar só o do **seu** ambiente — outros formatos não se aplicam.
 
-1. **MCP:** `.cursor/mcp.json` com Bearer `ptl_…` (chave do humano).
-2. **CLI:** `export PORTULAN_TOKEN=ptl_…` e `export PORTULAN_ENDPOINT=https://portulan.vercel.app`.
-3. **`portulan init --yes`** na raiz Git da Embarcação (registra vínculo, escreve `.portulan/` — RN-106).
-4. **`portulan doctor`** — deve responder `ok`.
-5. **`get_agent_bootstrap`** com `repository_id` de `.portulan/config.json`.
-
-### `.cursor/mcp.json`
+**JSON (`mcp.json`)** — Bearer inline no header:
 
 ```json
 {
@@ -77,7 +124,17 @@ Texto sugerido:
 }
 ```
 
-**Nunca** commite `ptl_…` no repositório (RN-106). Se o humano já configurou MCP globalmente, confirme que as ferramentas respondem antes de `init`.
+**TOML (`config.toml`)** — **você** grava Bearer em `http_headers` (arquivo local gitignored):
+
+```toml
+[mcp_servers.portulan]
+url = "http://localhost:3000/api/mcp"
+http_headers = { Authorization = "Bearer ptl_CHAVE_RECEBIDA" }
+```
+
+Modelos sem segredo: `.cursor/mcp.json.example`, `.codex/config.toml.example`.
+
+**Nunca** commite `ptl_…` (RN-106). O humano **não** edita estes arquivos — **você** edita.
 
 ### CLI (`portulan init` / `doctor`)
 
@@ -88,15 +145,15 @@ node /caminho/para/Portulan/cli/portulan.mjs init --yes
 node /caminho/para/Portulan/cli/portulan.mjs doctor
 ```
 
-Keychain macOS (opcional, configurado pelo humano): `security add-generic-password -s portulan-mcp -a portulan -w 'ptl_…'`
+Keychain macOS (opcional, **você** pode gravar): `security add-generic-password -s portulan-mcp -a portulan -w 'ptl_…'`
 
 ### Depois do setup
 
 **Dev-context:** `.portulan/AGENT.md` → `get_agent_bootstrap` → demais ferramentas.
 
-**401:** chave ausente, errada ou revogada — peça ao responsável.
+**401:** na ordem — (1) usou o **formato certo do seu cliente** (JSON com Bearer **ou** TOML com `PORTULAN_TOKEN` no processo)? (2) reconectou/reiniciou após editar? (3) endpoint bate com onde a chave foi gerada? Só então: errada, expirada ou revogada — peça ao responsável.
 
-## Ferramentas (49)
+## Ferramentas (60)
 
 Agrupamento igual à tela **Instrumentos** (`F-mcp-token`). Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 
@@ -171,7 +228,7 @@ Requer chave MCP com identidade nomeada (ou chave legada válida). Conteúdo de 
 
 | Ferramenta | Quando usar |
 |---|---|
-| `get_agent_bootstrap` | **Primeiro** em dev: identidade, Embarcação da sessão, Manobras, protocolo (RN-105) |
+| `get_agent_bootstrap` | **Primeiro** em dev: identidade, Embarcação da sessão, folhas (Lances ou Manobras sem filhos), menções (`mentionedMe`) e protocolo (RN-105, RN-113) |
 | `find_context` | Buscar Expedições e Rumos |
 | `create_project` | Criar Expedição no porto (nome 2–80) |
 | `create_repository` | Registrar Embarcação; vínculo opcional com Expedição |
@@ -180,14 +237,27 @@ Requer chave MCP com identidade nomeada (ou chave legada válida). Conteúdo de 
 | `get_implementation_brief` | Recorte `brief` ou `full` por Rumo/Manobra/Embarcação |
 | `get_related_context` | Rumos de uma carta ou Embarcações de uma Expedição |
 | `propose_context_pack` | Criar rascunho de Rumo numa Expedição (não aprova) |
+| `add_context_pack_item` | Item tipado no rascunho (decisão, regra, pergunta…) |
+| `add_context_pack_source` | Carta-fonte (release imutável quando formal) |
+| `delete_context_pack_item` / `delete_context_pack_source` | Remover item ou fonte do rascunho |
+| `add_acceptance_criterion` / `delete_acceptance_criterion` | Marcos de chegada |
+| `save_implementation_plan` | Plano de navegação opcional |
+| `create_implementation_task` | Criar Manobra ou Lance (`parent_task_id`) no rascunho |
+| `assign_implementation_task` | Delegar responsável (humano ou agente); não cria lease (RN-115) |
+| `submit_context_pack_review` | Enviar Rumo para revisão |
+| `approve_context_pack` | Aprovar e gerar revisão imutável (RN-99) |
+| `start_new_context_pack_revision` | Nova revisão a partir de Rumo aprovado |
 | `list_available_implementation_tasks` | Manobras compatíveis com a sessão |
-| `claim_implementation_task` | Assumir comando — lease atômico (RN-103) |
+| `claim_implementation_task` | Assumir comando da **folha** — lease atômico (RN-103, RN-113). IDs aceitam `42` ou `#42` |
 | `renew_implementation_task_lease` | Renovar lease com atividade explícita |
 | `release_implementation_task` | Soltar comando |
 | `report_implementation_progress` | Registro de bordo — progresso (RN-108) |
-| `report_implementation_result` | Resultado; aceite humano é separado |
+| `report_implementation_result` | Resultado; aceite humano é separado. Depois, Carta de conclusão (RN-118) |
+| `accept_implementation_task_result` | Aceitar resultado da Manobra (RN-103) |
+| `add_implementation_task_source` | Carta-fonte na Manobra ou Lance (tripulação do porto, RN-118) |
+| `delete_implementation_task_source` | Remover carta-fonte da folha |
 | `list_coordination_threads` | Fios de Conversa de bordo, com mensagens (autor, agente e data) |
-| `create_coordination_message` | Abrir fio ou responder; `is_blocker: true` na abertura = Maré contrária (RN-109) |
+| `create_coordination_message` | Abrir fio ou responder; comentário reutiliza o fio de discussão; `is_blocker: true` na abertura = Maré contrária (RN-109, RN-114); `mentioned_user_ids` / `mentioned_agent_identity_ids` |
 | `resolve_coordination_thread` | Resolver ou reabrir fio |
 
 ## Modelo de dados
@@ -237,7 +307,7 @@ O agente abre porto novo com `create_workspace` e reorganiza o acervo com `works
 
 ### Identificadores
 
-- `get_document`, `list_document_releases`, `publish_document`: aceitam **ID UUID ou UUID do link `/d/{uuid}`**. Slugs legados (título) ainda resolvem via alias.
+- Identificadores de bordo: Rumo, Manobra, Lance, item, fonte, Marco, fio e recado têm um inteiro único no porto (`#42`). MCP aceita `42`, `#42` ou UUID.
 - `delete_document`: exige **UUID** (`id` do documento).
 - Após `create_document`, guarde o `id` retornado.
 
@@ -347,15 +417,17 @@ Alternativa para a tripulação inteira: `update_document` com `visibility: "wor
 ### Assumir Manobra e reportar (F-manobra, F-mcp-dev-context)
 
 ```
-1. get_agent_bootstrap(repository_id?) → Manobras compatíveis, protocolo
-2. get_context_pack(pack_id) ou get_implementation_brief → Rumo válido (RN-101)
-3. list_available_implementation_tasks → escolher Manobra
-4. claim_implementation_task(task_id) → lease atômico (RN-103)
-5. report_implementation_progress / report_implementation_result → resumo obrigatório (RN-108)
-6. renew_implementation_task_lease enquanto trabalha; release_implementation_task ao soltar
+1. get_agent_bootstrap(repository_id?) → folhas compatíveis (Lance ou Manobra sem Lances), menções, protocolo
+2. get_context_pack(pack_id) ou get_implementation_brief → Rumo válido (RN-101). pack_id/task_id aceitam `42` ou `#42`
+3. list_available_implementation_tasks → só folhas
+4. claim_implementation_task(task_id) → lease na folha (RN-103, RN-113). Pai com Lances recusa
+5. assign_implementation_task se for delegar responsável (não cria lease)
+6. report_implementation_progress / report_implementation_result → resumo obrigatório (RN-108)
+7. renew_implementation_task_lease enquanto trabalha; release_implementation_task ao soltar
+8. Ao finalizar (`reported`/`accepted`): `get_system_guide` → criar/atualizar Carta de conclusão → `add_implementation_task_source` (RN-118)
 ```
 
-Manobra de código exige Embarcação reconhecida na sessão (RN-105). Aceite humano não vem do MCP.
+Manobra de código exige Embarcação reconhecida na sessão (RN-105). Aceite humano não vem do MCP. Carta de conclusão documenta objetivo, entregas, decisões e links de código/PR.
 
 ### Conversa de bordo e Maré contrária (F-conversa-bordo, RN-109)
 
@@ -498,9 +570,13 @@ Informação relevante.
 | Sintoma | Causa provável | Ação |
 |---|---|---|
 | `CONNECTION_CLOSED` | Cloud inacessível ou URL errada | Confirme `https://portulan.vercel.app/api/mcp` |
-| `401 Não autorizado` | `MCP_API_KEY` ativa | Header Bearer ou remova a chave em dev |
+| `401 Não autorizado` | Config do **cliente errado** ou Bearer/`PORTULAN_TOKEN` ausente | Siga **Resolução MCP** §1–3; reinicie o cliente |
+| `401` com curl 200 | Config do cliente errada ou desatualizada | **Você** regrava Bearer no arquivo certo do **seu** cliente |
+| `401` curl também 401 | Chave revogada/expirada ou endpoint errado | Peça chave nova ao responsável |
+| `406 Not Acceptable` | Falta `Accept: application/json, text/event-stream` | Corrigir headers HTTP, não a chave |
+| Ferramentas não aparecem | MCP desconectado | Reconectar + teste curl |
+| “Não está na base” | Diagnóstico prematuro | curl 200 prova que está na base — falta config do cliente |
 | `Documento não encontrado` | ID/slug errado | `list_documents` |
-| Ferramentas não aparecem | MCP desconectado | Reiniciar cliente / refresh MCP |
 | `delete_document` falha | Slug em vez de UUID | Use `document.id` de `get_document` |
 
 Teste manual:
@@ -509,10 +585,11 @@ Teste manual:
 curl -sS -X POST https://portulan.vercel.app/api/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+  -H 'Authorization: Bearer ptl_SUA_CHAVE' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 ```
 
-Deve listar **49** ferramentas.
+Sem `Authorization` → **401**. Com Bearer válido → **200** (SSE). Depois, `tools/list` lista as ferramentas da identidade.
 
 ## API HTTP (alternativa ao MCP)
 

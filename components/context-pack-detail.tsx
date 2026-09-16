@@ -13,16 +13,14 @@ import {
   addContextPackSourceAction,
   addImplementationTaskAction,
   approveContextPackAction,
-  createCoordinationMessageAction,
   deleteAcceptanceCriterionAction,
   deleteContextPackItemAction,
   deleteContextPackSourceAction,
-  resolveCoordinationThreadAction,
-  savePlanAction,
+  saveContextPackRecorteAction,
   startNewContextPackRevisionAction,
   submitContextPackReviewAction,
 } from "@/app/dev-context-actions";
-import { PackStatusBadge, PackValidityBadge, TaskStatusBadge } from "@/components/dev-status-badge";
+import { PackStatusBadge, PackValidityBadge } from "@/components/dev-status-badge";
 import { Button } from "@/components/ui/button";
 import { CheckboxField } from "@/components/ui/checkbox";
 import {
@@ -57,7 +55,6 @@ import {
 import {
   CONTEXT_ITEM_STRENGTH_LABELS,
   CONTEXT_ITEM_TYPE_LABELS,
-  COORDINATION_MESSAGE_MAX,
   DOCUMENT_SOURCE_ROLE_LABELS,
   contextItemStrengths,
   contextItemTypes,
@@ -65,8 +62,11 @@ import {
   type ContextItemStrength,
   type ContextItemType,
 } from "@/lib/dev-context";
-import { CoordinationKindStamps } from "@/components/coordination-kind-stamps";
-import { actorDisplayName } from "@/lib/audit-policy";
+import { BoardId } from "@/components/board-id";
+import { WorkspaceBackLink } from "@/components/workspace-back-link";
+import { BordoFeed } from "@/components/bordo-feed";
+import { RumoWorkBoard } from "@/components/rumo-work-board";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   AcceptanceCriterionRecord,
   ContextPackItemRecord,
@@ -77,6 +77,8 @@ import type {
 import type { ImplementationTaskRecord } from "@/lib/db/implementation-tasks";
 import type { CoordinationMessageRecord, CoordinationThreadRecord } from "@/lib/db/coordination";
 import type { RepositoryRecord } from "@/lib/db/projects";
+import type { WorkspaceRosterEntry } from "@/lib/workspace-roster";
+import { acceptedCount, blockingQuestions, itemsMatchingType } from "@/lib/rumo-work";
 
 export type CartaReleaseOption = {
   id: string;
@@ -91,23 +93,6 @@ export type CartaOption = {
   slug: string;
   releases: CartaReleaseOption[];
 };
-
-const ITEM_GROUP_LABELS: Record<ContextItemType, string> = {
-  decision: "Decisões",
-  rule: "Regras",
-  contract: "Contratos",
-  risk: "Riscos",
-  assumption: "Suposições",
-  question: "Perguntas",
-};
-
-function groupContextItems(items: ContextPackItemRecord[]) {
-  const visible = items.filter((item) => item.body.trim());
-  return contextItemTypes.flatMap((type) => {
-    const group = visible.filter((item) => item.type === type);
-    return group.length === 0 ? [] : [{ type, items: group }];
-  });
-}
 
 function RemoveRumoEntry({
   label,
@@ -140,6 +125,7 @@ export function ContextPackDetail({
   repositories,
   documents,
   planSummary,
+  roster,
 }: {
   pack: ContextPackRecord;
   projectName: string;
@@ -155,43 +141,44 @@ export function ContextPackDetail({
   repositories: RepositoryRecord[];
   documents: CartaOption[];
   planSummary: string;
+  roster: WorkspaceRosterEntry[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [workView, setWorkView] = useState<"lista" | "kanban">("lista");
+  const [itemFilter, setItemFilter] = useState<ContextItemType | "all">("all");
   const cartaById = new Map(documents.map((document) => [document.id, document]));
   const canEditPack = pack.status === "draft" || pack.status === "review";
-  const briefing = (
-    [
-      ["Resultado esperado", pack.expectedOutcome],
-      ["Escopo", pack.scope],
-      ["Fora de escopo", pack.outOfScope],
-    ] as const
-  ).filter(([, value]) => value);
-  const itemGroups = groupContextItems(items);
+  const defaultView = pack.status === "approved" ? "trabalho" : "contexto";
   const latestRevision = revisions[0];
-  const hasContext = itemGroups.length > 0 || sources.length > 0;
-  const hasRecorte = briefing.length > 0 || Boolean(planSummary);
-  const outcome = briefing.find(([label]) => label === "Resultado esperado");
-  const scope = briefing.find(([label]) => label === "Escopo");
-  const outOfScope = briefing.find(([label]) => label === "Fora de escopo");
+  const progress = acceptedCount(tasks);
+  const blockers = blockingQuestions(items);
+  const filteredItems = itemsMatchingType(items, itemFilter).filter(
+    (item) => !blockers.some((blocker) => blocker.id === item.id),
+  );
+  const packThreads = threads.filter((thread) => thread.subjectType === "pack" && thread.subjectId === pack.id);
+  const taskBlockers = threads.filter((thread) => thread.subjectType === "task" && thread.isBlocker && !thread.resolvedAt);
+  const itemThreadOpen = new Set(
+    threads.filter((thread) => !thread.resolvedAt && (thread.subjectType === "item" || thread.subjectType === "criterion")).map((thread) => thread.subjectId),
+  );
 
   useEffect(() => {
     const id = window.location.hash.replace(/^#/, "");
     if (!id.startsWith("conversa-")) return;
-    const el = document.getElementById(id);
-    if (el instanceof HTMLDetailsElement) {
-      el.open = true;
-      el.scrollIntoView({ block: "nearest" });
-    }
+    document.getElementById(id)?.scrollIntoView({ block: "nearest" });
   }, [threads]);
 
   return (
     <main className="page-wrap workspace-page workspace-page--dev workspace-page--rumo">
       <section className="doc-section">
         <header className="page-heading rumo-masthead">
+          <WorkspaceBackLink href={`/projects/${pack.projectId}`} label="Voltar à Expedição" />
           <div className="workspace-heading">
             <span className="eyebrow">Rumo</span>
-            <h1 className="fp-h1">{pack.title}</h1>
+            <h1 className="fp-h1">
+              <BoardId number={pack.boardNumber} className="board-id--heading" />
+              <span>{pack.title}</span>
+            </h1>
             <div className="rumo-masthead__bar">
               <div className="dev-badge-row">
                 <PackStatusBadge status={pack.status} />
@@ -292,6 +279,11 @@ export function ContextPackDetail({
                   {new Date(latestRevision.approvedAt).toLocaleDateString("pt-BR")}
                 </span>
               ) : null}
+              {progress.total > 0 ? (
+                <span>
+                  {progress.accepted}/{progress.total} Manobras aceitas
+                </span>
+              ) : null}
             </p>
             {pack.objective ? <p className="workspace-lead">{pack.objective}</p> : null}
           </div>
@@ -306,187 +298,113 @@ export function ContextPackDetail({
             </aside>
           ) : null}
 
-          {hasRecorte ? (
-            <section className="rumo-recorte">
-              <div className="rumo-recorte__header">
-                <h2>Recorte</h2>
-                {canEditPack ? <PlanDialog packId={pack.id} initial={planSummary} /> : null}
-              </div>
-              {outcome ? (
-                <div className="rumo-recorte__outcome">
-                  <p className="rumo-recorte__label">Resultado esperado</p>
-                  <p className="rumo-recorte__body">{outcome[1]}</p>
-                </div>
-              ) : null}
-              {scope || outOfScope ? (
-                <div className="rumo-recorte__pair">
-                  {scope ? (
-                    <div>
-                      <p className="rumo-recorte__label">Escopo</p>
-                      <p className="rumo-recorte__body">{scope[1]}</p>
-                    </div>
-                  ) : null}
-                  {outOfScope ? (
-                    <div className="rumo-recorte__out">
-                      <p className="rumo-recorte__label">Fora de escopo</p>
-                      <p className="rumo-recorte__body">{outOfScope[1]}</p>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              {planSummary ? (
-                <div className="rumo-plan">
-                  <p className="rumo-plan__label">Plano de navegação</p>
-                  <p className="dev-item-body">{planSummary}</p>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
+          <Tabs defaultValue={defaultView} className="rumo-views">
+            <TabsList variant="line" className="rumo-views__list">
+              <TabsTrigger value="trabalho">Trabalho</TabsTrigger>
+              <TabsTrigger value="contexto">Contexto</TabsTrigger>
+              <TabsTrigger value="atividade">Atividade</TabsTrigger>
+            </TabsList>
 
-          <ol className="integration-rumos">
-            <li className="integration-step">
-              <span className="section-number" aria-hidden="true">
-                01
-              </span>
-              <div className="integration-step-body">
-                <div className="section-header split-row">
-                  <h2>Contexto</h2>
-                  {canEditPack ? (
-                    <div className="split-row__actions rumo-section-actions">
-                      {!hasRecorte ? <PlanDialog packId={pack.id} initial={planSummary} /> : null}
-                      <AddItemDialog packId={pack.id} />
-                      <AddSourceDialog packId={pack.id} documents={documents} />
-                    </div>
-                  ) : null}
+            <TabsContent value="trabalho" className="rumo-views__pane">
+              <div className="section-header split-row">
+                <div className="rumo-work-toggle" role="group" aria-label="Vista de trabalho">
+                  <Button
+                    type="button"
+                    variant={workView === "lista" ? "default" : "outline"}
+                    onClick={() => setWorkView("lista")}
+                  >
+                    Lista
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={workView === "kanban" ? "default" : "outline"}
+                    onClick={() => setWorkView("kanban")}
+                  >
+                    Kanban
+                  </Button>
                 </div>
-                {hasContext ? (
-                  <div className="rumo-context">
-                    {itemGroups.map((group) => (
-                      <section key={group.type} className={`dev-subsection rumo-item-group rumo-item-group--${group.type}`}>
-                        <h3>{ITEM_GROUP_LABELS[group.type]}</h3>
-                        <ul className="rumo-item-list">
-                          {group.items.map((item) => (
-                            <li key={item.id} className={`rumo-item rumo-item--${item.type}`}>
-                              <div className="rumo-entry__body">
-                                {item.strength !== "required" || item.blocking ? (
-                                  <p className="dev-item-meta">
-                                    {item.strength !== "required"
-                                      ? CONTEXT_ITEM_STRENGTH_LABELS[item.strength]
-                                      : null}
-                                    {item.blocking ? (
-                                      <>
-                                        {item.strength !== "required" ? " · " : null}
-                                        bloqueadora
-                                      </>
-                                    ) : null}
-                                  </p>
-                                ) : null}
-                                <p className="dev-item-body">{item.body}</p>
-                              </div>
-                              {canEditPack ? (
-                                <RemoveRumoEntry
-                                  label={`Remover ${ITEM_GROUP_LABELS[item.type].toLowerCase()}`}
-                                  disabled={pending}
-                                  onClick={() =>
-                                    start(async () => {
-                                      const result = await deleteContextPackItemAction(pack.id, item.id);
-                                      if (!result.ok) toast.error(result.error);
-                                    })
-                                  }
-                                />
-                              ) : null}
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    ))}
-                    {sources.length > 0 ? (
-                      <section className="dev-subsection">
-                        <h3>Cartas-fonte</h3>
-                        <ul className="dev-rows">
-                          {sources.map((source) => {
-                            const carta = cartaById.get(source.documentId);
-                            const release = carta?.releases.find((item) => item.id === source.releaseId);
-                            return (
-                              <li key={source.id} className="rumo-entry">
-                                <div className="rumo-entry__body">
-                                  <p className="dev-item-meta">
-                                    {DOCUMENT_SOURCE_ROLE_LABELS[source.sourceRole]}
-                                    {source.required ? " · obrigatória" : ""}
-                                    {release ? ` · edição ${release.version}` : source.releaseId ? " · edição fixada" : " · sem edição"}
-                                  </p>
-                                  <p className="dev-item-title">
-                                    {source.releaseId ? (
-                                      <Link href={`/p/${source.releaseId}`}>
-                                        {carta?.title ?? "Carta"} — edição fixada
-                                      </Link>
-                                    ) : (
-                                      <Link
-                                        href={carta ? `/documents/${carta.slug}` : `/documents/${source.documentId}`}
-                                      >
-                                        {carta?.title ?? "Carta"}
-                                      </Link>
-                                    )}
-                                  </p>
-                                  <p className="dev-item-body">
-                                    <Link href={carta ? `/documents/${carta.slug}` : `/documents/${source.documentId}`}>
-                                      Carta viva
-                                    </Link>
-                                    {source.releaseId ? (
-                                      <>
-                                        {" · "}
-                                        <Link href={`/p/${source.releaseId}`}>Snapshot da edição</Link>
-                                      </>
-                                    ) : (
-                                      " · escolha uma edição publicada para fonte obrigatória"
-                                    )}
-                                  </p>
-                                  {source.reason ? <p className="dev-item-body">{source.reason}</p> : null}
-                                </div>
-                                {canEditPack ? (
-                                  <RemoveRumoEntry
-                                    label={`Remover carta-fonte ${carta?.title ?? ""}`.trim()}
-                                    disabled={pending}
-                                    onClick={() =>
-                                      start(async () => {
-                                        const result = await deleteContextPackSourceAction(pack.id, source.id);
-                                        if (!result.ok) toast.error(result.error);
-                                      })
-                                    }
-                                  />
-                                ) : null}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </section>
-                    ) : null}
-                  </div>
+                <div className="split-row__actions rumo-section-actions">
+                  <AddTaskDialog packId={pack.id} repositories={repositories} />
+                </div>
+              </div>
+              <RumoWorkBoard
+                packId={pack.id}
+                tasks={tasks}
+                roster={roster}
+                canEdit={canEditPack}
+                view={workView}
+              />
+            </TabsContent>
+
+            <TabsContent value="contexto" className="rumo-views__pane rumo-context">
+              <section className="rumo-recorte">
+                <div className="rumo-recorte__header">
+                  <h2>Contrato</h2>
+                </div>
+                {canEditPack ? (
+                  <RecorteForm
+                    packId={pack.id}
+                    initial={{
+                      expectedOutcome: pack.expectedOutcome,
+                      scope: pack.scope,
+                      outOfScope: pack.outOfScope,
+                      planSummary,
+                    }}
+                    onSuccess={() => router.refresh()}
+                  />
                 ) : (
-                  <p className="dev-empty">Nenhum item ou carta-fonte ainda.</p>
-                )}
-              </div>
-            </li>
-
-            <li className="integration-step">
-              <span className="section-number" aria-hidden="true">
-                02
-              </span>
-              <div className="integration-step-body">
-                <div className="section-header split-row">
-                  <h2>Manobras</h2>
-                  <div className="split-row__actions rumo-section-actions">
-                    {canEditPack ? <AddCriterionDialog packId={pack.id} /> : null}
-                    <AddTaskDialog packId={pack.id} repositories={repositories} />
+                  <div className="rumo-contrato-read">
+                    {pack.expectedOutcome ? (
+                      <div>
+                        <p className="rumo-recorte__label">Resultado esperado</p>
+                        <p className="rumo-recorte__body">{pack.expectedOutcome}</p>
+                      </div>
+                    ) : null}
+                    {pack.scope ? (
+                      <div>
+                        <p className="rumo-recorte__label">Escopo</p>
+                        <p className="rumo-recorte__body">{pack.scope}</p>
+                      </div>
+                    ) : null}
+                    {pack.outOfScope ? (
+                      <div>
+                        <p className="rumo-recorte__label">Fora de escopo</p>
+                        <p className="rumo-recorte__body">{pack.outOfScope}</p>
+                      </div>
+                    ) : null}
+                    {planSummary ? (
+                      <div>
+                        <p className="rumo-recorte__label">Plano de navegação</p>
+                        <p className="dev-item-body">{planSummary}</p>
+                      </div>
+                    ) : (
+                      <p className="dev-empty">Contrato ainda não definido.</p>
+                    )}
                   </div>
+                )}
+              </section>
+
+              <section className="dev-subsection">
+                <div className="section-header split-row">
+                  <h2>Marcos de chegada</h2>
+                  {canEditPack ? <AddCriterionDialog packId={pack.id} /> : null}
                 </div>
-                {criteria.length > 0 ? (
-                  <section className="dev-subsection">
-                    <h3>Marcos de chegada</h3>
-                    <ul className="dev-ticks">
-                      {criteria.map((criterion) => (
-                        <li key={criterion.id} className={canEditPack ? "rumo-tick-row" : undefined}>
-                          {canEditPack ? <span>{criterion.description}</span> : criterion.description}
+                {criteria.length === 0 ? (
+                  <p className="dev-empty">Nenhum marco ainda.{canEditPack ? " Adicione o primeiro." : ""}</p>
+                ) : (
+                  <ul className="rumo-dense-list">
+                    {criteria.map((criterion) => {
+                      const covering = tasks.filter((task) => task.criterionIds.includes(criterion.id)).length;
+                      return (
+                        <li key={criterion.id} className="rumo-dense-row">
+                          <BoardId number={criterion.boardNumber} />
+                          <span>{criterion.description}</span>
+                          {covering > 0 ? (
+                            <span className="dev-item-meta">
+                              {covering} {covering === 1 ? "Manobra" : "Manobras"}
+                            </span>
+                          ) : null}
+                          {itemThreadOpen.has(criterion.id) ? <span className="dev-item-meta">fio aberto</span> : null}
                           {canEditPack ? (
                             <RemoveRumoEntry
                               label="Remover marco"
@@ -500,65 +418,146 @@ export function ContextPackDetail({
                             />
                           ) : null}
                         </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+
+              <section className="dev-subsection">
+                <div className="section-header split-row">
+                  <h2>Itens</h2>
+                  {canEditPack ? <AddItemDialog packId={pack.id} /> : null}
+                </div>
+                <div className="rumo-item-filters" role="group" aria-label="Filtrar itens">
+                  <Button type="button" variant={itemFilter === "all" ? "default" : "outline"} onClick={() => setItemFilter("all")}>
+                    Todos
+                  </Button>
+                  {contextItemTypes.map((type) => (
+                    <Button
+                      key={type}
+                      type="button"
+                      variant={itemFilter === type ? "default" : "outline"}
+                      onClick={() => setItemFilter(type)}
+                    >
+                      {CONTEXT_ITEM_TYPE_LABELS[type]}
+                    </Button>
+                  ))}
+                </div>
+                {blockers.length > 0 ? (
+                  <aside className="fp-alert warning rumo-blocking" role="status">
+                    <p className="alert-body">Perguntas bloqueadoras</p>
+                    <ul className="rumo-dense-list">
+                      {blockers.map((item) => (
+                        <li key={item.id} className="rumo-dense-row rumo-item--question">
+                          <BoardId number={item.boardNumber} />
+                          <span className="rumo-type-chip">Pergunta</span>
+                          <span>{item.body}</span>
+                          {itemThreadOpen.has(item.id) ? <span className="dev-item-meta">fio aberto</span> : null}
+                        </li>
                       ))}
                     </ul>
-                  </section>
+                  </aside>
                 ) : null}
-                {tasks.length === 0 ? (
-                  <p className="dev-empty">Nenhuma manobra ainda.</p>
+                {filteredItems.length === 0 && blockers.length === 0 ? (
+                  <p className="dev-empty">Nenhum item ainda.{canEditPack ? " Adicione o primeiro." : ""}</p>
                 ) : (
-                  <ul className="rumo-task-list">
-                    {tasks.map((task) => (
-                      <li key={task.id}>
-                        <Link href={`/context-packs/${pack.id}/tasks/${task.id}`} className="rumo-task">
-                          <p className="dev-item-title">{task.objective}</p>
-                          <p className="dev-item-meta">
-                            <TaskStatusBadge status={task.status} />
-                            {task.packRevisionId && latestRevision && task.packRevisionId === latestRevision.id
-                              ? ` · revisão ${latestRevision.revisionNumber}`
-                              : task.packRevisionId
-                                ? ` · revisão ${revisions.find((revision) => revision.id === task.packRevisionId)?.revisionNumber ?? ""}`
-                                : " · rascunho"}
-                          </p>
-                        </Link>
+                  <ul className="rumo-dense-list">
+                    {filteredItems.map((item) => (
+                      <li key={item.id} className={`rumo-dense-row rumo-item--${item.type}`}>
+                        <BoardId number={item.boardNumber} />
+                        <span className="rumo-type-chip">{CONTEXT_ITEM_TYPE_LABELS[item.type]}</span>
+                        <span>{item.body}</span>
+                        {item.strength !== "required" ? (
+                          <span className="dev-item-meta">{CONTEXT_ITEM_STRENGTH_LABELS[item.strength]}</span>
+                        ) : null}
+                        {itemThreadOpen.has(item.id) ? <span className="dev-item-meta">fio aberto</span> : null}
+                        {canEditPack ? (
+                          <RemoveRumoEntry
+                            label={`Remover ${CONTEXT_ITEM_TYPE_LABELS[item.type].toLowerCase()}`}
+                            disabled={pending}
+                            onClick={() =>
+                              start(async () => {
+                                const result = await deleteContextPackItemAction(pack.id, item.id);
+                                if (!result.ok) toast.error(result.error);
+                              })
+                            }
+                          />
+                        ) : null}
                       </li>
                     ))}
                   </ul>
                 )}
-              </div>
-            </li>
+              </section>
 
-            <li className="integration-step" id="conversas">
-              <span className="section-number" aria-hidden="true">
-                03
-              </span>
-              <div className="integration-step-body">
+              <section className="dev-subsection">
                 <div className="section-header split-row">
-                  <h2>Conversas de bordo</h2>
-                  <div className="split-row__actions rumo-section-actions">
-                    <AddThreadDialog packId={pack.id} />
-                  </div>
+                  <h2>Cartas-fonte</h2>
+                  {canEditPack ? <AddSourceDialog packId={pack.id} documents={documents} /> : null}
                 </div>
-                {threads.length === 0 ? (
-                  <p className="dev-empty">Nenhuma conversa neste rumo.</p>
+                {sources.length === 0 ? (
+                  <p className="dev-empty">Nenhuma carta-fonte.{canEditPack ? " Vincule a primeira." : ""}</p>
                 ) : (
-                  <ul className="rumo-thread-list">
-                    {threads.map((thread) => (
-                      <li key={thread.id}>
-                        <PackThread
-                          packId={pack.id}
-                          thread={thread}
-                          messages={messagesByThread[thread.id] ?? []}
-                          userNames={userNames}
-                          agentNames={agentNames}
-                        />
-                      </li>
-                    ))}
+                  <ul className="rumo-dense-list">
+                    {sources.map((source) => {
+                      const carta = cartaById.get(source.documentId);
+                      const release = carta?.releases.find((item) => item.id === source.releaseId);
+                      return (
+                        <li key={source.id} className="rumo-dense-row">
+                          <BoardId number={source.boardNumber} />
+                          <span className="rumo-type-chip">{DOCUMENT_SOURCE_ROLE_LABELS[source.sourceRole]}</span>
+                          {source.releaseId ? (
+                            <Link href={`/p/${source.releaseId}`}>{carta?.title ?? "Carta"}</Link>
+                          ) : (
+                            <Link href={carta ? `/documents/${carta.slug}` : `/documents/${source.documentId}`}>
+                              {carta?.title ?? "Carta"}
+                            </Link>
+                          )}
+                          <span className="dev-item-meta">
+                            {release ? `edição ${release.version}` : source.releaseId ? "edição fixada" : "carta viva"}
+                            {pack.validity === "needs_review" ? " · revisar" : ""}
+                          </span>
+                          {canEditPack ? (
+                            <RemoveRumoEntry
+                              label={`Remover carta-fonte ${carta?.title ?? ""}`.trim()}
+                              disabled={pending}
+                              onClick={() =>
+                                start(async () => {
+                                  const result = await deleteContextPackSourceAction(pack.id, source.id);
+                                  if (!result.ok) toast.error(result.error);
+                                })
+                              }
+                            />
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
-              </div>
-            </li>
-          </ol>
+              </section>
+            </TabsContent>
+
+            <TabsContent value="atividade" className="rumo-views__pane">
+              {taskBlockers.length > 0 ? (
+                <p className="dev-item-meta">
+                  {taskBlockers.length} Maré{taskBlockers.length === 1 ? "" : "s"} nas Manobras.{" "}
+                  <Link href={`/context-packs/${pack.id}/tasks/${taskBlockers[0]?.subjectId}`}>
+                    Abrir Manobra
+                  </Link>
+                </p>
+              ) : null}
+              <BordoFeed
+                subjectType="pack"
+                subjectId={pack.id}
+                threads={packThreads}
+                messagesByThread={messagesByThread}
+                userNames={userNames}
+                agentNames={agentNames}
+                roster={roster}
+                emptyLabel="Nenhum recado neste Rumo."
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </section>
     </main>
@@ -604,31 +603,6 @@ function AddSourceDialog({ packId, documents }: { packId: string; documents: Car
         <AddSourceForm
           packId={packId}
           documents={documents}
-          onSuccess={() => {
-            setOpen(false);
-            router.refresh();
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function PlanDialog({ packId, initial }: { packId: string; initial: string }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">{initial ? "Editar plano" : "Registrar plano"}</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{initial ? "Editar plano" : "Registrar plano"}</DialogTitle>
-        </DialogHeader>
-        <PlanForm
-          packId={packId}
-          initial={initial}
           onSuccess={() => {
             setOpen(false);
             router.refresh();
@@ -685,164 +659,6 @@ function AddTaskDialog({ packId, repositories }: { packId: string; repositories:
         />
       </DialogContent>
     </Dialog>
-  );
-}
-
-function AddThreadDialog({ packId }: { packId: string }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [isBlocker, setIsBlocker] = useState(false);
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) setIsBlocker(false);
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button variant="outline">Nova conversa</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{isBlocker ? "Maré contrária" : "Nova conversa"}</DialogTitle>
-        </DialogHeader>
-        <AddThreadForm
-          packId={packId}
-          isBlocker={isBlocker}
-          onBlockerChange={setIsBlocker}
-          onSuccess={(threadId) => {
-            setOpen(false);
-            setIsBlocker(false);
-            if (threadId) window.location.hash = `conversa-${threadId}`;
-            router.refresh();
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function PackThread({
-  packId,
-  thread,
-  messages,
-  userNames,
-  agentNames,
-}: {
-  packId: string;
-  thread: CoordinationThreadRecord;
-  messages: CoordinationMessageRecord[];
-  userNames: Record<string, string>;
-  agentNames: Record<string, string>;
-}) {
-  const router = useRouter();
-  const [reply, setReply] = useState("");
-  const [pending, start] = useTransition();
-  const preview = messages[0]?.body ?? (thread.isBlocker ? "Maré contrária" : "Conversa");
-  const resolved = Boolean(thread.resolvedAt);
-  const statusLabel = `${thread.isBlocker ? "Maré contrária" : "Conversa"} · ${resolved ? "Resolvida" : "Aberta"}`;
-
-  function resolveThread() {
-    start(async () => {
-      const result = await resolveCoordinationThreadAction(thread.id, !resolved);
-      if (!result.ok) toast.error(result.error);
-      else {
-        toast.success(resolved ? "Conversa reaberta" : "Conversa resolvida");
-        router.refresh();
-      }
-    });
-  }
-
-  return (
-    <details
-      className={`rumo-thread${thread.isBlocker ? " rumo-thread--blocker" : ""}`}
-      id={`conversa-${thread.id}`}
-    >
-      <summary>
-        <p className="rumo-thread__status">{statusLabel}</p>
-        <p className="rumo-thread__preview">{preview}</p>
-      </summary>
-      <div className="rumo-thread-bar">
-        <button
-          type="button"
-          className="rumo-thread__status"
-          onClick={(event) => {
-            const root = event.currentTarget.closest("details");
-            if (root instanceof HTMLDetailsElement) root.open = false;
-          }}
-        >
-          {statusLabel}
-        </button>
-        <div className="rumo-thread__resolve">
-          <Button type="button" variant="outline" disabled={pending} onClick={resolveThread}>
-            {resolved ? "Reabrir" : "Resolver"}
-          </Button>
-        </div>
-      </div>
-      <div className="rumo-thread__body">
-        <ol className="rumo-message-list">
-          {messages.map((message) => (
-            <li key={message.id} className="rumo-message">
-              <p className="rumo-message__meta">
-                {actorDisplayName({
-                  userName: userNames[message.userId] ?? "Tripulante",
-                  agentName: message.agentIdentityId ? agentNames[message.agentIdentityId] : null,
-                })}
-                {" · "}
-                {new Date(message.createdAt).toLocaleString("pt-BR", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-              <p className="rumo-message__body">{message.body}</p>
-            </li>
-          ))}
-        </ol>
-        {resolved ? null : (
-          <form
-            className="rumo-thread__composer"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!reply.trim()) return;
-              start(async () => {
-                const result = await createCoordinationMessageAction({
-                  threadId: thread.id,
-                  subjectType: "pack",
-                  subjectId: packId,
-                  body: reply,
-                });
-                if (!result.ok) toast.error(result.error);
-                else {
-                  toast.success("Mensagem enviada");
-                  setReply("");
-                  router.refresh();
-                }
-              });
-            }}
-          >
-            <label className="sr-only" htmlFor={`reply-${thread.id}`}>
-              Responder
-            </label>
-            <Textarea
-              id={`reply-${thread.id}`}
-              className="rumo-thread__reply"
-              value={reply}
-              onChange={(event) => setReply(event.target.value)}
-              placeholder="Continuar o fio"
-              rows={2}
-              required
-              maxLength={COORDINATION_MESSAGE_MAX}
-            />
-            <Button type="submit" disabled={pending || !reply.trim()}>
-              Enviar
-            </Button>
-          </form>
-        )}
-      </div>
-    </details>
   );
 }
 
@@ -1074,16 +890,19 @@ function AddCriterionForm({ packId, onSuccess }: { packId: string; onSuccess?: (
   );
 }
 
-function PlanForm({
+function RecorteForm({
   packId,
   initial,
   onSuccess,
 }: {
   packId: string;
-  initial: string;
+  initial: { expectedOutcome: string; scope: string; outOfScope: string; planSummary: string };
   onSuccess?: () => void;
 }) {
-  const [summary, setSummary] = useState(initial);
+  const [expectedOutcome, setExpectedOutcome] = useState(initial.expectedOutcome);
+  const [scope, setScope] = useState(initial.scope);
+  const [outOfScope, setOutOfScope] = useState(initial.outOfScope);
+  const [planSummary, setPlanSummary] = useState(initial.planSummary);
   const [pending, start] = useTransition();
   return (
     <form
@@ -1091,21 +910,53 @@ function PlanForm({
       onSubmit={(event) => {
         event.preventDefault();
         start(async () => {
-          const result = await savePlanAction(packId, summary);
+          const result = await saveContextPackRecorteAction(packId, {
+            expectedOutcome,
+            scope,
+            outOfScope,
+            planSummary,
+          });
           if (!result.ok) toast.error(result.error);
           else {
-            toast.success("Plano gravado");
+            toast.success("Contrato gravado");
             onSuccess?.();
           }
         });
       }}
     >
       <div className="dev-field">
+        <Label htmlFor={`outcome-${packId}`}>Resultado esperado</Label>
+        <Textarea
+          id={`outcome-${packId}`}
+          value={expectedOutcome}
+          onChange={(event) => setExpectedOutcome(event.target.value)}
+          placeholder="Qual resultado este Rumo deve alcançar"
+        />
+      </div>
+      <div className="dev-field">
+        <Label htmlFor={`scope-${packId}`}>Escopo</Label>
+        <Textarea
+          id={`scope-${packId}`}
+          value={scope}
+          onChange={(event) => setScope(event.target.value)}
+          placeholder="O que este Rumo cobre"
+        />
+      </div>
+      <div className="dev-field">
+        <Label htmlFor={`out-of-scope-${packId}`}>Fora de escopo</Label>
+        <Textarea
+          id={`out-of-scope-${packId}`}
+          value={outOfScope}
+          onChange={(event) => setOutOfScope(event.target.value)}
+          placeholder="O que fica deliberadamente de fora"
+        />
+      </div>
+      <div className="dev-field">
         <Label htmlFor={`plan-${packId}`}>Plano de navegação</Label>
         <Textarea
           id={`plan-${packId}`}
-          value={summary}
-          onChange={(event) => setSummary(event.target.value)}
+          value={planSummary}
+          onChange={(event) => setPlanSummary(event.target.value)}
           placeholder="Como se chega ao resultado, se quiser registrar"
         />
       </div>
@@ -1179,68 +1030,6 @@ function AddTaskForm({
       <DialogFooter>
         <Button type="submit" disabled={pending || !objective.trim()}>
           Criar
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-}
-
-function AddThreadForm({
-  packId,
-  isBlocker,
-  onBlockerChange,
-  onSuccess,
-}: {
-  packId: string;
-  isBlocker: boolean;
-  onBlockerChange: (value: boolean) => void;
-  onSuccess?: (threadId?: string) => void;
-}) {
-  const [body, setBody] = useState("");
-  const [pending, start] = useTransition();
-  return (
-    <form
-      className="dev-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const text = body.trim();
-        if (!text) return;
-        start(async () => {
-          const result = await createCoordinationMessageAction({
-            subjectType: "pack",
-            subjectId: packId,
-            body: text,
-            isBlocker,
-          });
-          if (!result.ok) toast.error(result.error);
-          else {
-            toast.success(isBlocker ? "Maré contrária registrada" : "Conversa aberta");
-            setBody("");
-            onBlockerChange(false);
-            onSuccess?.(result.thread?.id);
-          }
-        });
-      }}
-    >
-      <CoordinationKindStamps
-        value={isBlocker}
-        onChange={onBlockerChange}
-        blockerHint="O fio entra como bloqueio do bordo — não é só um comentário."
-      />
-      <div className="dev-field">
-        <Label htmlFor={`thread-${packId}`}>{isBlocker ? "Maré contrária" : "Nova conversa"}</Label>
-        <Textarea
-          id={`thread-${packId}`}
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          placeholder={isBlocker ? "O que impede o bordo de seguir" : "Pergunta ou alinhamento para o bordo"}
-          required
-          maxLength={COORDINATION_MESSAGE_MAX}
-        />
-      </div>
-      <DialogFooter>
-        <Button type="submit" disabled={pending || !body.trim()}>
-          {isBlocker ? "Registrar maré" : "Enviar"}
         </Button>
       </DialogFooter>
     </form>

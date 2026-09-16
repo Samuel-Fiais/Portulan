@@ -5,6 +5,7 @@ import {
   getContextPack,
   getDraftPlan,
   getProject,
+  listAgentIdentities,
   listCoordinationMessages,
   listCoordinationThreads,
   listDocumentReleases,
@@ -19,10 +20,12 @@ import {
   listRevisionSources,
   listRevisionTasks,
   listRevisions,
+  listWorkspaceMembers,
 } from "@/lib/db";
 import { getUserById } from "@/lib/users";
 import { documentAccessContext } from "@/lib/access-context";
 import { resolveWorkspaceContext } from "@/lib/active-workspace";
+import { buildWorkspaceRoster } from "@/lib/workspace-roster";
 import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -38,19 +41,23 @@ export default async function RumoPage({ params }: { params: Promise<{ id: strin
   const revisionId = pack.currentRevisionId;
   const useRevision = pack.status === "approved" && revisionId;
   const access = await documentAccessContext(userId);
-  const [items, sources, criteria, tasks, threads, revisions, repositories, plan, project, documents] =
+  const [items, sources, criteria, tasks, allThreads, revisions, repositories, plan, project, documents, members, agents] =
     await Promise.all([
       useRevision ? listRevisionItems(pack.id, revisionId) : listDraftItems(pack.id),
       useRevision ? listRevisionSources(pack.id, revisionId) : listDraftSources(pack.id),
       useRevision ? listRevisionCriteria(pack.id, revisionId) : listDraftCriteria(pack.id),
       useRevision ? listRevisionTasks(pack.id, revisionId) : listDraftTasks(pack.id),
-      listCoordinationThreads(active.id, { subjectType: "pack", subjectId: pack.id }),
+      listCoordinationThreads(active.id),
       listRevisions(pack.id),
       listRepositories(active.id),
       getDraftPlan(pack.id),
       getProject(pack.projectId, active.id),
       listDocuments(undefined, access),
+      listWorkspaceMembers(active.id),
+      listAgentIdentities(active.id),
     ]);
+  const subjectIds = new Set([pack.id, ...items.map((item) => item.id), ...criteria.map((item) => item.id), ...tasks.map((task) => task.id)]);
+  const threads = allThreads.filter((thread) => subjectIds.has(thread.subjectId));
   const messagesByThread: Record<string, Awaited<ReturnType<typeof listCoordinationMessages>>> = {};
   await Promise.all(
     threads.map(async (thread) => {
@@ -79,6 +86,15 @@ export default async function RumoPage({ params }: { params: Promise<{ id: strin
       if (identity) agentNames[agentId] = identity.name;
     }),
   );
+  const ownerIds = [...new Set(agents.map((agent) => agent.ownerUserId))];
+  const ownerNames: Record<string, string> = {};
+  await Promise.all(
+    ownerIds.map(async (idValue) => {
+      const owner = await getUserById(idValue);
+      ownerNames[idValue] = owner?.name?.trim() || owner?.login || "Tripulante";
+    }),
+  );
+  const roster = buildWorkspaceRoster({ members, agents, ownerNames });
   return (
     <ContextPackDetail
       pack={pack}
@@ -107,6 +123,7 @@ export default async function RumoPage({ params }: { params: Promise<{ id: strin
         })),
       )}
       planSummary={plan?.summary ?? ""}
+      roster={roster}
     />
   );
 }

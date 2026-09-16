@@ -227,6 +227,21 @@
   font: 600 12px/1.3 var(--font-sans);
 }
 
+.workspace-page--integrations .agent-identity__section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.workspace-page--integrations .agent-identity__permissions-note {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .workspace-page--integrations .agent-key-list,
 .workspace-page--integrations .agent-log {
   display: grid;

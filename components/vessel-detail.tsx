@@ -34,6 +34,7 @@ import {
   type ProjectRepositoryRole,
   type RepositoryKind,
 } from "@/lib/dev-context";
+import { WorkspaceBackLink } from "@/components/workspace-back-link";
 import type { ProjectRecord, RepositoryRecord } from "@/lib/db/projects";
 
 type LinkedExpedition = ProjectRecord & {
@@ -59,6 +60,7 @@ export function VesselDetail({
     <main className="page-wrap workspace-page workspace-page--dev">
       <section className="doc-section">
         <header className="page-heading dev-masthead">
+          <WorkspaceBackLink href="/repositories" label="Voltar às Embarcações" />
           <div className="workspace-heading">
             <span className="eyebrow">Embarcação</span>
             <h1 className="fp-h1">{repository.name}</h1>

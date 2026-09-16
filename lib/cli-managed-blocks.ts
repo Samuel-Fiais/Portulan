@@ -35,5 +35,6 @@ export function buildLocalInstructionBlock() {
 3. Chame \`get_agent_bootstrap\` no MCP Portulan antes de assumir trabalho.
 4. Não assuma Manobra sem Rumo aprovado e válido.
 5. Registre Maré contrária e reporte o resultado; aceite humano é separado.
-6. Nunca grave token, segredo ou path absoluto neste repositório.`;
+6. Ao finalizar Manobra/Lance, crie Carta de conclusão e vincule como carta-fonte (RN-118).
+7. Nunca grave token, segredo ou path absoluto neste repositório.`;
 }

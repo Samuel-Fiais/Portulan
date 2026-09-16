@@ -144,28 +144,42 @@ export {
 } from "@/lib/db/context-packs";
 
 export {
+  addImplementationTaskSource,
+  deleteImplementationTaskSource,
+  listTaskSources,
+  type ImplementationTaskSourceRecord,
+} from "@/lib/db/implementation-task-sources";
+
+export {
   addImplementationTask,
   addProgressReport,
   claimImplementationTask,
   registerAuthorizedProgress,
   getImplementationTask,
   listAvailableTasks,
+  listChildTasks,
   listClaimedTasksForToken,
   listDraftTasks,
   listProgressReports,
   listRevisionTasks,
   releaseImplementationTask,
   renewImplementationTaskLease,
+  assignImplementationTask,
+  acceptReportedChildren,
+  deleteImplementationTask,
   setTaskStatus,
+  updateImplementationTaskStatus,
 } from "@/lib/db/implementation-tasks";
 
 export {
   addCoordinationMessage,
   countOpenBlockerThreads,
   createCoordinationThread,
+  findOpenDiscussionThread,
   getCoordinationThread,
   listCoordinationMessages,
   listCoordinationThreads,
+  listMentionsForActor,
   resolveCoordinationThread,
 } from "@/lib/db/coordination";
 

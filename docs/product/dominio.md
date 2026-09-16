@@ -27,8 +27,11 @@ A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as A
 | Rumo | Context Pack (`contextPack`, `/context-packs`)
 | Rumo de execução | projeção (`devContext`) |
 | Plano de navegação | plano (`implementationPlan`) |
-| Manobra | tarefa de implementação (`implementationTask`, `/context-packs/{id}/tasks/{taskId}`) |
-| Assumir o comando | lease da Manobra (`claimTask`) |
+| Manobra | tarefa de implementação raiz (`implementationTask`, `/context-packs/{id}/tasks/{taskId}`) |
+| Lance | subtarefa da Manobra (`implementationTask` com `parentTaskId`) |
+| Assumir o comando | lease da folha (`claimTask`) |
+| Responsável | atribuição da Manobra ou Lance (`assigneeUserId` / `assigneeAgentIdentityId`) |
+| Identificador de bordo | inteiro único no porto (`boardNumber`, `#42`) |
 | Agente MCP | identidade nomeada (`agentIdentity`) |
 | Chave de bordo | token MCP (`mcpToken`) |
 | Diário de bordo | auditoria (`auditEvent`) |
@@ -50,7 +53,8 @@ A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as A
 | Leitor | Convidado com papel `viewer` naquela carta. Lê rascunho e prévia; não edita. |
 | Externo | Convidado nominal que **não** faz parte do porto da carta. Mesmo papel de editor/leitor, marcado como externo na UI. |
 | Visitante público | Quem abre `/d/{slug}` ou `/p/{id}` sem login. Só vê versão publicada e habilitada de carta em mar aberto. |
-| Agente MCP | Cliente MCP autenticado com chave válida. Toda chave nova cria uma identidade nomeada (ex.: Claude Code) ligada a um responsável humano. Opera como aquele usuário, dentro do porto da chave. Não tem Embarcação fixa. |
+| Agente de bordo | Membro do porto do tipo `agente`: identidade nomeada (`agentIdentity`) com responsável humano, status e configuração MCP própria. Aparece na tripulação junto com humanos, mas **não** é conta nem membro com papel capitão/imediato/tripulante. Opera via MCP como o responsável, dentro do porto da chave. |
+| Agente MCP | Cliente MCP autenticado com chave válida ligado a um Agente de bordo. Não tem Embarcação fixa. |
 | Legado | Carta sem `userId` ou sem porto (pré-autenticação / pré-portos). Tratamento especial de acesso. |
 
 ## Entidades
@@ -68,7 +72,16 @@ Espaço de trabalho. Toda conta tem pelo menos um. Reúne tripulação, cartas, 
 | `isPersonal` | Verdadeiro no porto inicial da conta. Porto inicial não pode ser deixado nem excluído. |
 | `createdBy` | Quem criou. |
 
-### Tripulação (membro do porto)
+### Tripulação (roster do porto)
+
+Lista unificada de quem compõe o porto: **humanos** (conta + papel) e **agentes de bordo** (identidade + responsável). Toda a tripulação vê os dois tipos em `/workspace`.
+
+| Tipo | Entidade | Papel / configuração |
+|---|---|---|
+| Humano | `workspaceMember` + conta | `owner` · `admin` · `member` |
+| Agente de bordo | `agentIdentity` | Responsável humano, status (`active`/`inactive`), ferramentas MCP permitidas (RN-111). Sem capitania nem convite. |
+
+### Membro humano do porto
 
 Vínculo entre uma conta e um porto, com um papel.
 
@@ -240,7 +253,8 @@ Objeto persistente, curado, revisado e versionado. Uma carta pode ser fonte de z
 | `ownerUserId` | Responsável humano do Rumo. |
 | `projectId` | Expedição a que pertence. |
 | título | 3–180. |
-| objetivo, resultado, escopo, não-escopo | Contrato operacional (objetivo opcional na criação). |
+| `boardNumber` | Identificador público inteiro do porto (`#42`). UUID continua interno. |
+| objetivo, resultado, escopo, não-escopo | Contrato operacional (objetivo opcional na criação). A tela **Contexto** junta contrato, Marcos, itens e cartas-fonte. |
 
 ### Revisão do Rumo (`contextPackRevision`)
 
@@ -260,43 +274,54 @@ Bloco tipado do Rumo.
 | `strength` | `required` · `recommended` · `reference`. |
 | `blocking` | Em pergunta: se aberta, impede servir o Rumo. |
 | `body` | Texto do item; não vazio (RN-108). |
+| `boardNumber` | Identificador público inteiro do porto. |
 
 ### Carta-fonte (`documentSource`)
 
-Relação entre Rumo e carta. Fonte formal de aprovação aponta para **release imutável**. Publicar uma carta privada continua privado.
+Relação entre Rumo, Manobra ou Lance e carta. No Rumo, fonte formal de aprovação aponta para **release imutável**. Em Manobra/Lance, cartas-fonte documentam referências de trabalho e a **Carta de conclusão** quando a folha é finalizada (RN-118). Publicar uma carta privada continua privado.
 
 | Campo | Papel |
 |---|---|
 | carta + `releaseId` | Release específica. A UI distingue Carta viva e snapshot da edição fixada. |
-| papel da fonte | Como a carta entra no Rumo. |
+| papel da fonte | Como a carta entra no Rumo ou na folha. |
 | seção | Trecho opcional. |
 | razão | Por que foi incluída. |
-| obrigatória | Se a fonte é exigida para aprovação — neste caso a edição publicada é obrigatória. |
+| obrigatória | No Rumo: exigida para aprovação formal. Em Manobra/Lance: raro; quando true, edição publicada é obrigatória. |
+| `boardNumber` | Identificador público inteiro do porto. |
+| âncora | Rumo (`contextPackSource`) ou Manobra/Lance (`implementationTaskSource`). |
 
 ### Marcos de chegada (`acceptanceCriterion`)
 
-Critérios de aceite verificáveis do Rumo (e cobertos por Manobras).
+Critérios de aceite verificáveis do Rumo (e cobertos por Manobras). Pertencem ao **Contexto** da Feature, não à lista de trabalho. Têm `boardNumber`.
 
-### Plano de navegação e Manobra
+### Plano de navegação, Manobra e Lance
 
 O plano é **opcional** e pertence a uma revisão do Rumo. Não é fonte de verdade paralela.
 
-Cada Manobra tem objetivo, Embarcação e paths alvo (se for de código), itens obrigatórios que a governam, Marcos que cobre, dependências simples e a revisão exata do Rumo. Sem responsável humano, prazo, pontos, sprint ou quadro.
+A **Manobra** é o PBI: objetivo, Embarcação e paths alvo (se for de código), itens obrigatórios, Marcos que cobre, dependências simples, a revisão exata do Rumo, responsável (humano ou agente) e `boardNumber`. Sem prazo, pontos ou sprint. O quadro Kanban é só vista dos estados: no quadro de Lances, a Manobra é a faixa à esquerda e os Lances cruzam as colunas.
 
-| Estado | Significado |
-|---|---|
-| `available` | Livre para assumir. |
-| `claimed` | Com lease ativo. |
-| `in_progress` | Em trabalho. |
-| `blocked` | Com Maré contrária. |
-| `reported` | Resultado enviado; ainda não aceito. |
-| `accepted` | Aceite humano. |
+O **Lance** é a mesma entidade com `parentTaskId` apontando para uma Manobra-raiz. Um nível só: Lance não tem filhos.
 
-Manobra **de código** tem `repositoryId`; sem isso é Manobra de contexto.
+| Estado | Na UI | Significado |
+|---|---|---|
+| `available` | To do | Livre para assumir. |
+| `claimed` | Doing | Com lease ativo. |
+| `in_progress` | In progress | Em trabalho. |
+| `blocked` | Blocked | Com Maré contrária. |
+| `reported` | Done | Resultado enviado; ainda não aceito. |
+| `accepted` | Accepted | Aceite humano. |
+
+No Kanban, `claimed` e `in_progress` compartilham a coluna **In progress**.
+
+Manobra **de código** tem `repositoryId`; sem isso é Manobra de contexto. Folha = Lance, ou Manobra sem Lances.
+
+### Responsável da Manobra ou Lance
+
+Atribuição (`assigneeUserId` **ou** `assigneeAgentIdentityId`). Não é o lease. Delegar uma Manobra sem responsável preenche os Lances que também estão sem responsável (RN-115).
 
 ### Lease da Manobra
 
-Um lease ativo por Manobra. Expira. Renovar exige atividade explícita. Expirado pode ser retomado.
+Um lease ativo por **linha** (Manobra sem filhos ou Lance). Expira. Renovar exige atividade explícita. Expirado pode ser retomado. Pai com Lances não se assume.
 
 ### Registro de bordo (`progressReport`)
 
@@ -304,7 +329,7 @@ Relatório de progresso ou resultado: resumo, arquivos/escopos, testes/evidênci
 
 ### Conversa de bordo
 
-Fios de coordenação, separados dos comentários de revisão das cartas. Âncora: Rumo, Manobra, item ou Marco. Mensagem tem autor humano, identidade delegada opcional, horário e aberto/resolvido. O tipo do fio — Conversa ou Maré contrária — é escolhido ao abrir (RN-109). Corpo não vazio, até 2000 caracteres (RN-108). Conversa, mensagens e sujeito pertencem ao mesmo Porto.
+Fios de coordenação, separados dos comentários de revisão das cartas. Âncora: Rumo, Manobra, Lance, item ou Marco. Mensagem tem autor humano, identidade delegada opcional, horário, menções (`mentionedUserIds` / `mentionedAgentIdentityIds`) e aberto/resolvido. Comentário comum reutiliza o **fio de discussão** aberto do sujeito; Maré contrária é fio próprio (RN-109, RN-114). Corpo não vazio, até 2000 caracteres (RN-108). Fio e recado têm `boardNumber`. Conversa, mensagens e sujeito pertencem ao mesmo Porto.
 
 ### Identidade de agente MCP (`agentIdentity`)
 
@@ -315,6 +340,16 @@ Identidade nomeada criada junto com toda chave MCP nova. Responsável humano ún
 Evento imutável: principal humano, identidade do agente, chave, ação, alvo, data, correlação e `clientInfo` observado. A UI mostra “Nome via Agente”.
 
 ## Identificadores públicos
+
+| URL | Significado |
+|---|---|
+| `/d/{uuid}` | Sempre a última versão publicada **habilitada**. UUID fixo na criação. Em mar aberto, qualquer pessoa com o link vê; nos outros níveis, só cartógrafo, convidados e (em visibilidade de porto) a tripulação, autenticados. |
+| `/p/{releaseId}` | Aquela versão, para sempre, até ser desativada. Mesma regra de acesso que `/d`. |
+| `/documents/{id\|uuid}` | Editor autenticado. |
+| `/documents/{id}/preview` | Prévia do rascunho (quem tem acesso). |
+| `/invite/{token}` | Resgate de convite de porto. Exige login. |
+
+No porto, Rumo, Manobra, Lance, item, carta-fonte, Marco, fio e recado compartilham uma sequência de inteiros (`boardNumber`). A UI mostra `#42` e copia `42`. UUID não aparece. MCP e UI resolvem o número no porto ativo.
 
 | URL | Significado |
 |---|---|
@@ -336,8 +371,8 @@ Chrome com trilho compacto ou expandido (RN-70) e, no topo, o seletor de porto. 
 | `/projects` | Expedições do porto ativo: lista, detalhe, Embarcações vinculadas e Rumos. |
 | `/projects/{id}` | Detalhe de uma Expedição. |
 | `/context-packs` | Rumos do porto ativo. |
-| `/context-packs/{id}` | Detalhe de um Rumo. |
-| `/context-packs/{id}/tasks/{taskId}` | Detalhe de uma Manobra. |
+| `/context-packs/{id}` | Detalhe de um Rumo (vistas Trabalho, Contexto e Atividade). |
+| `/context-packs/{id}/tasks/{taskId}` | Detalhe de uma Manobra ou Lance. |
 | `/repositories` | Embarcações do porto ativo: lista, detalhe e vínculo com Expedições. |
 | `/repositories/{id}` | Detalhe de uma Embarcação. |
 | `/integrations` | Instrumentos: rumos de conexão MCP, chaves MCP, catálogo de ferramentas e skill. |

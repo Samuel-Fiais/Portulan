@@ -143,6 +143,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "validity",
     "owner_user_id",
     "current_revision_id",
+    "board_number",
     "created_at",
     "updated_at",
   ],
@@ -166,6 +167,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "body",
     "blocking",
     "sort_order",
+    "board_number",
     "created_at",
   ],
   context_pack_sources: [
@@ -179,9 +181,19 @@ export const PORTULAN_TABLE_COLUMNS = {
     "section",
     "reason",
     "required",
+    "board_number",
     "created_at",
   ],
-  acceptance_criteria: ["id", "pack_id", "workspace_id", "revision_id", "description", "sort_order", "created_at"],
+  acceptance_criteria: [
+    "id",
+    "pack_id",
+    "workspace_id",
+    "revision_id",
+    "description",
+    "sort_order",
+    "board_number",
+    "created_at",
+  ],
   implementation_plans: ["id", "pack_id", "workspace_id", "revision_id", "summary", "created_at"],
   implementation_tasks: [
     "id",
@@ -189,6 +201,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "workspace_id",
     "plan_id",
     "pack_revision_id",
+    "parent_task_id",
     "objective",
     "repository_id",
     "path_scopes",
@@ -196,13 +209,29 @@ export const PORTULAN_TABLE_COLUMNS = {
     "criterion_ids",
     "depends_on_task_ids",
     "status",
+    "assignee_user_id",
+    "assignee_agent_identity_id",
     "lease_holder_token_id",
     "lease_holder_identity_id",
     "lease_holder_user_id",
     "lease_expires_at",
     "sort_order",
+    "board_number",
     "created_at",
     "updated_at",
+  ],
+  implementation_task_sources: [
+    "id",
+    "task_id",
+    "workspace_id",
+    "document_id",
+    "release_id",
+    "source_role",
+    "section",
+    "reason",
+    "required",
+    "board_number",
+    "created_at",
   ],
   progress_reports: [
     "id",
@@ -229,6 +258,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "is_blocker",
     "resolved_at",
     "created_by",
+    "board_number",
     "created_at",
   ],
   coordination_messages: [
@@ -239,8 +269,13 @@ export const PORTULAN_TABLE_COLUMNS = {
     "agent_identity_id",
     "body",
     "parent_id",
+    "mentioned_user_ids",
+    "mentioned_agent_identity_ids",
+    "board_number",
     "created_at",
   ],
+  workspace_board_counters: ["workspace_id", "next_value"],
+  workspace_board_refs: ["workspace_id", "board_number", "kind", "target_id"],
   audit_events: [
     "id",
     "workspace_id",
@@ -916,6 +951,129 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
     await executeSchemaStatement(
       db,
       `UPDATE ${PORTULAN_PG_SCHEMA}.documents SET slug = id WHERE slug <> id`,
+    );
+  }
+
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.workspace_board_counters (
+      workspace_id UUID PRIMARY KEY REFERENCES ${PORTULAN_PG_SCHEMA}.workspaces(id) ON DELETE CASCADE,
+      next_value INTEGER NOT NULL DEFAULT 1
+    )`,
+  );
+  await executeSchemaStatement(
+    db,
+    `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.workspace_board_refs (
+      workspace_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.workspaces(id) ON DELETE CASCADE,
+      board_number INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      UNIQUE (workspace_id, board_number)
+    )`,
+  );
+  await executeSchemaStatement(
+    db,
+    `CREATE INDEX IF NOT EXISTS idx_workspace_board_refs_target ON ${PORTULAN_PG_SCHEMA}.workspace_board_refs (workspace_id, kind, target_id)`,
+  );
+
+  if (await portulanTableExists(db, "context_packs")) {
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.context_packs ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (await portulanTableExists(db, "context_pack_items")) {
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.context_pack_items ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (await portulanTableExists(db, "context_pack_sources")) {
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.context_pack_sources ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (await portulanTableExists(db, "acceptance_criteria")) {
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.acceptance_criteria ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (await portulanTableExists(db, "implementation_tasks")) {
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.implementation_tasks ADD COLUMN IF NOT EXISTS parent_task_id UUID`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.implementation_tasks DROP CONSTRAINT IF EXISTS implementation_tasks_parent_task_id_fkey`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.implementation_tasks ADD CONSTRAINT implementation_tasks_parent_task_id_fkey FOREIGN KEY (parent_task_id) REFERENCES ${PORTULAN_PG_SCHEMA}.implementation_tasks(id) ON DELETE CASCADE`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.implementation_tasks ADD COLUMN IF NOT EXISTS assignee_user_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.users(id) ON DELETE SET NULL`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.implementation_tasks ADD COLUMN IF NOT EXISTS assignee_agent_identity_id UUID REFERENCES ${PORTULAN_PG_SCHEMA}.agent_identities(id) ON DELETE SET NULL`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.implementation_tasks ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_implementation_tasks_parent_task_id ON ${PORTULAN_PG_SCHEMA}.implementation_tasks (parent_task_id)`,
+    );
+  }
+  if (await portulanTableExists(db, "implementation_tasks")) {
+    await executeSchemaStatement(
+      db,
+      `CREATE TABLE IF NOT EXISTS ${PORTULAN_PG_SCHEMA}.implementation_task_sources (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        task_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.implementation_tasks(id) ON DELETE CASCADE,
+        workspace_id UUID NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.workspaces(id) ON DELETE CASCADE,
+        document_id TEXT NOT NULL REFERENCES ${PORTULAN_PG_SCHEMA}.documents(id) ON DELETE CASCADE,
+        release_id TEXT REFERENCES ${PORTULAN_PG_SCHEMA}.document_releases(id) ON DELETE SET NULL,
+        source_role TEXT NOT NULL DEFAULT 'spec',
+        section TEXT,
+        reason TEXT NOT NULL DEFAULT '',
+        required BOOLEAN NOT NULL DEFAULT FALSE,
+        board_number INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_implementation_task_sources_task_id ON ${PORTULAN_PG_SCHEMA}.implementation_task_sources (task_id)`,
+    );
+    await executeSchemaStatement(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_implementation_task_sources_document_id ON ${PORTULAN_PG_SCHEMA}.implementation_task_sources (document_id)`,
+    );
+  }
+  if (await portulanTableExists(db, "coordination_threads")) {
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.coordination_threads ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (await portulanTableExists(db, "coordination_messages")) {
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.coordination_messages ADD COLUMN IF NOT EXISTS mentioned_user_ids TEXT NOT NULL DEFAULT '[]'`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.coordination_messages ADD COLUMN IF NOT EXISTS mentioned_agent_identity_ids TEXT NOT NULL DEFAULT '[]'`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.coordination_messages ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
     );
   }
 }

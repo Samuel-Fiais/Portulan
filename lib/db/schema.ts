@@ -347,6 +347,7 @@ export const contextPacks = portulanSchema.table(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     currentRevisionId: uuid("current_revision_id"),
+    boardNumber: integer("board_number").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
@@ -394,6 +395,7 @@ export const contextPackItems = portulanSchema.table(
     body: text("body").notNull(),
     blocking: boolean("blocking").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
+    boardNumber: integer("board_number").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [
@@ -421,6 +423,7 @@ export const contextPackSources = portulanSchema.table(
     section: text("section"),
     reason: text("reason").notNull().default(""),
     required: boolean("required").notNull().default(true),
+    boardNumber: integer("board_number").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [
@@ -442,6 +445,7 @@ export const acceptanceCriteria = portulanSchema.table(
     revisionId: uuid("revision_id").references(() => contextPackRevisions.id, { onDelete: "cascade" }),
     description: text("description").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
+    boardNumber: integer("board_number").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [index("idx_acceptance_criteria_pack_id").on(table.packId)],
@@ -476,6 +480,7 @@ export const implementationTasks = portulanSchema.table(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     planId: uuid("plan_id").references(() => implementationPlans.id, { onDelete: "set null" }),
     packRevisionId: uuid("pack_revision_id").references(() => contextPackRevisions.id, { onDelete: "set null" }),
+    parentTaskId: uuid("parent_task_id"),
     objective: text("objective").notNull(),
     repositoryId: uuid("repository_id").references(() => repositories.id, { onDelete: "set null" }),
     pathScopes: text("path_scopes").notNull().default("[]"),
@@ -483,6 +488,10 @@ export const implementationTasks = portulanSchema.table(
     criterionIds: text("criterion_ids").notNull().default("[]"),
     dependsOnTaskIds: text("depends_on_task_ids").notNull().default("[]"),
     status: text("status").notNull().default("available"),
+    assigneeUserId: uuid("assignee_user_id").references(() => users.id, { onDelete: "set null" }),
+    assigneeAgentIdentityId: uuid("assignee_agent_identity_id").references(() => agentIdentities.id, {
+      onDelete: "set null",
+    }),
     leaseHolderTokenId: uuid("lease_holder_token_id").references(() => mcpTokens.id, { onDelete: "set null" }),
     leaseHolderIdentityId: uuid("lease_holder_identity_id").references(() => agentIdentities.id, {
       onDelete: "set null",
@@ -490,12 +499,46 @@ export const implementationTasks = portulanSchema.table(
     leaseHolderUserId: uuid("lease_holder_user_id").references(() => users.id, { onDelete: "set null" }),
     leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true, mode: "string" }),
     sortOrder: integer("sort_order").notNull().default(0),
+    boardNumber: integer("board_number").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [
     index("idx_implementation_tasks_pack_id").on(table.packId),
     index("idx_implementation_tasks_status").on(table.status),
+    index("idx_implementation_tasks_parent_task_id").on(table.parentTaskId),
+    foreignKey({
+      columns: [table.parentTaskId],
+      foreignColumns: [table.id],
+      name: "implementation_tasks_parent_task_id_fkey",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const implementationTaskSources = portulanSchema.table(
+  "implementation_task_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => implementationTasks.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    releaseId: text("release_id").references(() => documentReleases.id, { onDelete: "set null" }),
+    sourceRole: text("source_role").notNull().default("spec"),
+    section: text("section"),
+    reason: text("reason").notNull().default(""),
+    required: boolean("required").notNull().default(false),
+    boardNumber: integer("board_number").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_implementation_task_sources_task_id").on(table.taskId),
+    index("idx_implementation_task_sources_document_id").on(table.documentId),
   ],
 );
 
@@ -539,6 +582,7 @@ export const coordinationThreads = portulanSchema.table(
     isBlocker: boolean("is_blocker").notNull().default(false),
     resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: "string" }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    boardNumber: integer("board_number").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [
@@ -563,6 +607,9 @@ export const coordinationMessages = portulanSchema.table(
     agentIdentityId: uuid("agent_identity_id").references(() => agentIdentities.id, { onDelete: "set null" }),
     body: text("body").notNull(),
     parentId: uuid("parent_id"),
+    mentionedUserIds: text("mentioned_user_ids").notNull().default("[]"),
+    mentionedAgentIdentityIds: text("mentioned_agent_identity_ids").notNull().default("[]"),
+    boardNumber: integer("board_number").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [
@@ -598,5 +645,28 @@ export const auditEvents = portulanSchema.table(
   (table) => [
     index("idx_audit_events_workspace_id").on(table.workspaceId),
     index("idx_audit_events_created_at").on(table.createdAt),
+  ],
+);
+
+export const workspaceBoardCounters = portulanSchema.table("workspace_board_counters", {
+  workspaceId: uuid("workspace_id")
+    .primaryKey()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  nextValue: integer("next_value").notNull().default(1),
+});
+
+export const workspaceBoardRefs = portulanSchema.table(
+  "workspace_board_refs",
+  {
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    boardNumber: integer("board_number").notNull(),
+    kind: text("kind").notNull(),
+    targetId: text("target_id").notNull(),
+  },
+  (table) => [
+    unique("workspace_board_refs_number").on(table.workspaceId, table.boardNumber),
+    index("idx_workspace_board_refs_target").on(table.workspaceId, table.kind, table.targetId),
   ],
 );

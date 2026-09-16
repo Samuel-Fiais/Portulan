@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "portulan": {
+      "url": "https://portulan.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ptl_SUBSTITUA_PELA_CHAVE"
+      }
+    }
+  }
+}

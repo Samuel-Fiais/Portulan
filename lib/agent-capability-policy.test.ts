@@ -13,6 +13,19 @@ test("Agente de Bordo pode criar Expedição, Embarcação e Rumo", () => {
   }
 });
 
+test("Agente de Bordo pode montar Rumo e Manobras (paridade RN-105)", () => {
+  for (const action of [
+    "add_context_pack_item",
+    "save_implementation_plan",
+    "create_implementation_task",
+    "assign_implementation_task",
+    "submit_context_pack_review",
+    "approve_context_pack",
+  ] as const) {
+    assert.equal(validateAgentAction({ mode: "context_and_coordination", action }).ok, true);
+  }
+});
+
 test("Agente de Bordo assume Manobra de código com Embarcação reconhecida", () => {
   assert.equal(
     validateAgentAction({

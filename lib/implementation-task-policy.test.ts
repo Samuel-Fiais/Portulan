@@ -4,15 +4,27 @@ import {
   canRegisterTaskProgress,
   canRegisterTaskResult,
   canRetakeExpiredLease,
+  childrenToAcceptWithParent,
   nextStatusAfterLastBlockerResolved,
   nextStatusAfterProgress,
+  shouldCascadeAssignment,
   validateAcceptTaskResult,
+  validateAssignTask,
+  validateClaimLeaf,
   validateClaimTask,
+  manualTaskStatusOptions,
+  validateManualTaskStatusChange,
+  validateParentResult,
+  validateParentTask,
   validateProgressReportSummary,
   validateRegisterProgress,
   validateRegisterResult,
   validateReleaseTask,
   validateRenewLease,
+  completionCartaProtocol,
+  isTaskStatusFinalized,
+  isTaskWorkFinalized,
+  validateTaskDeletion,
   validateTaskObjective,
   validateTaskRevisionChoice,
 } from "./implementation-task-policy.ts";
@@ -166,4 +178,99 @@ test("RN-109: última Maré resolvida volta ao estado anterior válido", () => {
     }),
     "reported",
   );
+});
+
+test("RN-113: Lance só sob Manobra-raiz; pai com filhos não se assume", () => {
+  assert.equal(
+    validateParentTask({
+      parent: { id: "p", parentTaskId: null, packId: "pack" },
+      packId: "pack",
+    }).ok,
+    true,
+  );
+  assert.equal(
+    validateParentTask({
+      parent: { id: "p", parentTaskId: "other", packId: "pack" },
+      packId: "pack",
+    }).ok,
+    false,
+  );
+  assert.equal(validateClaimLeaf({ childCount: 0 }).ok, true);
+  assert.equal(validateClaimLeaf({ childCount: 2 }).ok, false);
+});
+
+test("RN-113: resultado do pai só com Lances reported/accepted", () => {
+  assert.equal(validateParentResult({ children: [{ status: "reported" }, { status: "accepted" }] }).ok, true);
+  assert.equal(validateParentResult({ children: [{ status: "in_progress" }] }).ok, false);
+  assert.deepEqual(
+    childrenToAcceptWithParent([
+      { id: "a", status: "reported" },
+      { id: "b", status: "accepted" },
+      { id: "c", status: "available" },
+    ]),
+    ["a"],
+  );
+});
+
+test("RN-117: estado manual só em Rumo editável; aceita e maré contrária ficam de fora", () => {
+  assert.deepEqual(manualTaskStatusOptions("in_progress"), [
+    "available",
+    "claimed",
+    "in_progress",
+    "reported",
+  ]);
+  assert.deepEqual(manualTaskStatusOptions("accepted"), []);
+  assert.equal(
+    validateManualTaskStatusChange({
+      current: "in_progress",
+      next: "blocked",
+      packEditable: true,
+    }).ok,
+    false,
+  );
+  assert.equal(
+    validateManualTaskStatusChange({
+      current: "accepted",
+      next: "in_progress",
+      packEditable: true,
+    }).ok,
+    false,
+  );
+  assert.equal(validateTaskDeletion({ packEditable: false }).ok, false);
+  assert.equal(validateTaskDeletion({ packEditable: true }).ok, true);
+});
+
+test("RN-118: finalizada e protocolo de Carta de conclusão", () => {
+  assert.equal(isTaskStatusFinalized("reported"), true);
+  assert.equal(isTaskStatusFinalized("accepted"), true);
+  assert.equal(isTaskStatusFinalized("in_progress"), false);
+  assert.equal(
+    isTaskWorkFinalized({
+      status: "reported",
+      children: [{ status: "accepted" }, { status: "reported" }],
+    }),
+    true,
+  );
+  assert.equal(
+    isTaskWorkFinalized({
+      status: "reported",
+      children: [{ status: "in_progress" }],
+    }),
+    false,
+  );
+  const protocol = completionCartaProtocol().join(" ");
+  assert.match(protocol, /Carta/);
+  assert.match(protocol, /add_implementation_task_source/);
+});
+
+test("RN-115: cascata só se pai e filho estão sem dono", () => {
+  assert.equal(shouldCascadeAssignment({ parentHadAssignee: false, childHasAssignee: false }), true);
+  assert.equal(shouldCascadeAssignment({ parentHadAssignee: false, childHasAssignee: true }), false);
+  assert.equal(shouldCascadeAssignment({ parentHadAssignee: true, childHasAssignee: false }), false);
+  assert.equal(
+    shouldCascadeAssignment({ parentHadAssignee: false, childHasAssignee: false, clearing: true }),
+    false,
+  );
+  assert.equal(validateAssignTask({ assigneeUserId: "u", assigneeAgentIdentityId: "a" }).ok, false);
+  assert.equal(validateAssignTask({ assigneeUserId: "u" }).ok, true);
 });

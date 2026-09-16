@@ -349,6 +349,7 @@ CREATE TABLE IF NOT EXISTS portulan.context_packs (
   validity TEXT NOT NULL DEFAULT 'current' CHECK (validity IN ('current', 'needs_review', 'expired')),
   owner_user_id UUID NOT NULL REFERENCES portulan.users(id) ON DELETE CASCADE,
   current_revision_id UUID,
+  board_number INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -380,6 +381,7 @@ CREATE TABLE IF NOT EXISTS portulan.context_pack_items (
   body TEXT NOT NULL,
   blocking BOOLEAN NOT NULL DEFAULT FALSE,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  board_number INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -397,6 +399,7 @@ CREATE TABLE IF NOT EXISTS portulan.context_pack_sources (
   section TEXT,
   reason TEXT NOT NULL DEFAULT '',
   required BOOLEAN NOT NULL DEFAULT TRUE,
+  board_number INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -410,6 +413,7 @@ CREATE TABLE IF NOT EXISTS portulan.acceptance_criteria (
   revision_id UUID REFERENCES portulan.context_pack_revisions(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  board_number INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -432,6 +436,7 @@ CREATE TABLE IF NOT EXISTS portulan.implementation_tasks (
   workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
   plan_id UUID REFERENCES portulan.implementation_plans(id) ON DELETE SET NULL,
   pack_revision_id UUID REFERENCES portulan.context_pack_revisions(id) ON DELETE SET NULL,
+  parent_task_id UUID REFERENCES portulan.implementation_tasks(id) ON DELETE CASCADE,
   objective TEXT NOT NULL,
   repository_id UUID REFERENCES portulan.repositories(id) ON DELETE SET NULL,
   path_scopes TEXT NOT NULL DEFAULT '[]',
@@ -439,17 +444,38 @@ CREATE TABLE IF NOT EXISTS portulan.implementation_tasks (
   criterion_ids TEXT NOT NULL DEFAULT '[]',
   depends_on_task_ids TEXT NOT NULL DEFAULT '[]',
   status TEXT NOT NULL DEFAULT 'available' CHECK (status IN ('available', 'claimed', 'in_progress', 'blocked', 'reported', 'accepted')),
+  assignee_user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
+  assignee_agent_identity_id UUID REFERENCES portulan.agent_identities(id) ON DELETE SET NULL,
   lease_holder_token_id UUID REFERENCES portulan.mcp_tokens(id) ON DELETE SET NULL,
   lease_holder_identity_id UUID REFERENCES portulan.agent_identities(id) ON DELETE SET NULL,
   lease_holder_user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
   lease_expires_at TIMESTAMPTZ,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  board_number INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_implementation_tasks_pack_id ON portulan.implementation_tasks (pack_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_tasks_status ON portulan.implementation_tasks (status);
+CREATE INDEX IF NOT EXISTS idx_implementation_tasks_parent_task_id ON portulan.implementation_tasks (parent_task_id);
+
+CREATE TABLE IF NOT EXISTS portulan.implementation_task_sources (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES portulan.implementation_tasks(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
+  document_id TEXT NOT NULL REFERENCES portulan.documents(id) ON DELETE CASCADE,
+  release_id TEXT REFERENCES portulan.document_releases(id) ON DELETE SET NULL,
+  source_role TEXT NOT NULL DEFAULT 'spec',
+  section TEXT,
+  reason TEXT NOT NULL DEFAULT '',
+  required BOOLEAN NOT NULL DEFAULT FALSE,
+  board_number INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_implementation_task_sources_task_id ON portulan.implementation_task_sources (task_id);
+CREATE INDEX IF NOT EXISTS idx_implementation_task_sources_document_id ON portulan.implementation_task_sources (document_id);
 
 CREATE TABLE IF NOT EXISTS portulan.progress_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -479,6 +505,7 @@ CREATE TABLE IF NOT EXISTS portulan.coordination_threads (
   is_blocker BOOLEAN NOT NULL DEFAULT FALSE,
   resolved_at TIMESTAMPTZ,
   created_by UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
+  board_number INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -493,6 +520,9 @@ CREATE TABLE IF NOT EXISTS portulan.coordination_messages (
   agent_identity_id UUID REFERENCES portulan.agent_identities(id) ON DELETE SET NULL,
   body TEXT NOT NULL,
   parent_id UUID REFERENCES portulan.coordination_messages(id) ON DELETE CASCADE,
+  mentioned_user_ids TEXT NOT NULL DEFAULT '[]',
+  mentioned_agent_identity_ids TEXT NOT NULL DEFAULT '[]',
+  board_number INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -515,3 +545,18 @@ CREATE TABLE IF NOT EXISTS portulan.audit_events (
 
 CREATE INDEX IF NOT EXISTS idx_audit_events_workspace_id ON portulan.audit_events (workspace_id);
 CREATE INDEX IF NOT EXISTS idx_audit_events_created_at ON portulan.audit_events (created_at);
+
+CREATE TABLE IF NOT EXISTS portulan.workspace_board_counters (
+  workspace_id UUID PRIMARY KEY REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
+  next_value INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS portulan.workspace_board_refs (
+  workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
+  board_number INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  UNIQUE (workspace_id, board_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_board_refs_target ON portulan.workspace_board_refs (workspace_id, kind, target_id);

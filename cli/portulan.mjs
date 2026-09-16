@@ -34,13 +34,14 @@ function instructionBlock() {
 
 Setup: skill \`portulan-mcp\` (seção **Setup com chave do responsável**) ou Guia do Agente.
 
-1. O **humano** gera \`ptl_…\` em Instrumentos e entrega ao agente (ou configura \`mcp.json\`/env).
-2. O **agente** usa essa chave em \`.cursor/mcp.json\` e \`PORTULAN_TOKEN\`; roda \`portulan init\` / \`doctor\` neste checkout.
+1. O **humano** gera \`ptl_…\` e cola o **Guia do Agente** no chat (só isso).
+2. O **agente** configura MCP, \`export PORTULAN_TOKEN\`, roda \`portulan init\` / \`doctor\` neste checkout.
 3. Leia \`.portulan/AGENT.md\` e \`.portulan/config.json\`.
 4. Chame \`get_agent_bootstrap\` com \`repository_id\` do config **antes** de assumir trabalho.
 5. Não assuma Manobra sem Rumo aprovado e válido (\`current\`).
 6. Registre Maré contrária e reporte o resultado; aceite humano é separado.
-7. Nunca grave token, segredo ou path absoluto neste repositório (RN-106).`;
+7. Ao finalizar Manobra/Lance, crie Carta de conclusão e vincule como carta-fonte (RN-118).
+8. Nunca grave token, segredo ou path absoluto neste repositório (RN-106).`;
 }
 
 function usage() {
@@ -108,8 +109,8 @@ Embarcação \`${config.repositoryId}\` · porto \`${config.workspaceId}\` · en
 
 ## Antes da primeira sessão
 
-1. O responsável humano gera \`ptl_…\` em Instrumentos e passa ao agente.
-2. Configure \`.cursor/mcp.json\` ou \`PORTULAN_TOKEN\` com essa chave (nunca no repo).
+1. O responsável colou o Guia do Agente (com \`ptl_…\`) no chat.
+2. Você (agente) configura MCP e \`export PORTULAN_TOKEN\` — nunca no repo.
 3. Skill \`portulan-mcp\` — **Setup com chave do responsável**.
 
 ## Protocolo (cada sessão)
@@ -119,6 +120,7 @@ Embarcação \`${config.repositoryId}\` · porto \`${config.workspaceId}\` · en
 3. Não assuma Manobra sem Rumo aprovado e válido.
 4. Se o MCP devolver \`pack_not_servable\`, trate como diagnóstico — não invente briefing.
 5. Renove lease com atividade explícita; registre Maré contrária e resultado.
+6. Ao finalizar Manobra/Lance, crie Carta de conclusão e vincule como carta-fonte (RN-118).
 
 Remote: ${config.remoteUrl || "local"} · Expedições: ${(config.projectIds ?? []).join(", ") || "nenhuma"}
 

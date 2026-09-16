@@ -38,6 +38,7 @@ import {
   REPOSITORY_KIND_LABELS,
   type ProjectRepositoryRole,
 } from "@/lib/dev-context";
+import { WorkspaceBackLink } from "@/components/workspace-back-link";
 import type { ContextPackRecord } from "@/lib/db/context-packs";
 import type { ProjectRecord, ProjectRepositoryRecord, RepositoryRecord } from "@/lib/db/projects";
 
@@ -59,6 +60,7 @@ export function ExpeditionDetail({
     <main className="page-wrap workspace-page workspace-page--dev">
       <section className="doc-section">
         <header className="page-heading dev-masthead">
+          <WorkspaceBackLink href="/projects" label="Voltar às Expedições" />
           <div className="workspace-heading">
             <span className="eyebrow">Expedição</span>
             <h1 className="fp-h1">{project.name}</h1>

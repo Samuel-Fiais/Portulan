@@ -9,4 +9,7 @@ test("MCP_TOOL_GROUPS lists every tool once", () => {
   assert.ok(MCP_TOOL_COUNT >= 30);
   assert.ok(tools.includes("get_agent_bootstrap"));
   assert.ok(tools.includes("list_documents"));
+  assert.ok(tools.includes("add_context_pack_item"));
+  assert.ok(tools.includes("assign_implementation_task"));
+  assert.ok(tools.includes("approve_context_pack"));
 });

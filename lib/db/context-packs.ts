@@ -12,6 +12,13 @@ import {
   implementationTasks,
 } from "@/lib/db/schema";
 import { parseJsonArray, stringifyJsonArray } from "@/lib/db/json-text";
+import {
+  assignExistingBoardNumber,
+  backfillWorkspaceBoardNumbers,
+  ensureEntityBoardNumber,
+  ensureRowBoardNumbers,
+  resolveBoardId,
+} from "@/lib/db/board-numbers";
 import type {
   ContextItemStrength,
   ContextItemType,
@@ -33,6 +40,7 @@ export type ContextPackRecord = {
   validity: ContextPackValidity;
   ownerUserId: string;
   currentRevisionId: string | null;
+  boardNumber: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -46,6 +54,7 @@ export type ContextPackItemRecord = {
   body: string;
   blocking: boolean;
   sortOrder: number;
+  boardNumber: number;
 };
 
 export type ContextPackSourceRecord = {
@@ -58,6 +67,7 @@ export type ContextPackSourceRecord = {
   section: string | null;
   reason: string;
   required: boolean;
+  boardNumber: number;
 };
 
 export type AcceptanceCriterionRecord = {
@@ -66,6 +76,7 @@ export type AcceptanceCriterionRecord = {
   revisionId: string | null;
   description: string;
   sortOrder: number;
+  boardNumber: number;
 };
 
 export type ImplementationPlanRecord = {
@@ -98,6 +109,7 @@ function mapPack(row: typeof contextPacks.$inferSelect): ContextPackRecord {
     validity: row.validity as ContextPackValidity,
     ownerUserId: row.ownerUserId,
     currentRevisionId: row.currentRevisionId,
+    boardNumber: row.boardNumber,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -113,6 +125,7 @@ function mapItem(row: typeof contextPackItems.$inferSelect): ContextPackItemReco
     body: row.body,
     blocking: row.blocking,
     sortOrder: row.sortOrder,
+    boardNumber: row.boardNumber,
   };
 }
 
@@ -127,6 +140,7 @@ function mapSource(row: typeof contextPackSources.$inferSelect): ContextPackSour
     section: row.section,
     reason: row.reason,
     required: row.required,
+    boardNumber: row.boardNumber,
   };
 }
 
@@ -137,6 +151,7 @@ function mapCriterion(row: typeof acceptanceCriteria.$inferSelect): AcceptanceCr
     revisionId: row.revisionId,
     description: row.description,
     sortOrder: row.sortOrder,
+    boardNumber: row.boardNumber,
   };
 }
 
@@ -153,17 +168,40 @@ export async function listContextPacks(workspaceId: string, projectId?: string) 
         .from(contextPacks)
         .where(eq(contextPacks.workspaceId, workspaceId))
         .orderBy(desc(contextPacks.updatedAt));
-  return rows.map(mapPack);
+  if (rows.some((row) => row.boardNumber <= 0)) {
+    await backfillWorkspaceBoardNumbers(workspaceId);
+    const refreshed = projectId
+      ? await db
+          .select()
+          .from(contextPacks)
+          .where(and(eq(contextPacks.workspaceId, workspaceId), eq(contextPacks.projectId, projectId)))
+          .orderBy(desc(contextPacks.updatedAt))
+      : await db
+          .select()
+          .from(contextPacks)
+          .where(eq(contextPacks.workspaceId, workspaceId))
+          .orderBy(desc(contextPacks.updatedAt));
+    return (await ensureRowBoardNumbers(refreshed, "pack")).map(mapPack);
+  }
+  return (await ensureRowBoardNumbers(rows, "pack")).map(mapPack);
 }
 
 export async function getContextPack(id: string, workspaceId: string) {
+  const resolvedId = (await resolveBoardId(workspaceId, id, "pack")) ?? id;
   const db = await getDb();
   const [row] = await db
     .select()
     .from(contextPacks)
-    .where(and(eq(contextPacks.id, id), eq(contextPacks.workspaceId, workspaceId)))
+    .where(and(eq(contextPacks.id, resolvedId), eq(contextPacks.workspaceId, workspaceId)))
     .limit(1);
-  return row ? mapPack(row) : null;
+  if (!row) return null;
+  const boardNumber = await ensureEntityBoardNumber({
+    workspaceId,
+    kind: "pack",
+    targetId: row.id,
+    current: row.boardNumber,
+  });
+  return mapPack({ ...row, boardNumber });
 }
 
 export async function createContextPack(input: {
@@ -193,7 +231,12 @@ export async function createContextPack(input: {
       updatedAt: now,
     })
     .returning();
-  return mapPack(row);
+  const boardNumber = await ensureEntityBoardNumber({
+    workspaceId: input.workspaceId,
+    kind: "pack",
+    targetId: row.id,
+  });
+  return mapPack({ ...row, boardNumber });
 }
 
 export async function updateContextPack(
@@ -225,7 +268,7 @@ export async function listDraftItems(packId: string) {
     .from(contextPackItems)
     .where(and(eq(contextPackItems.packId, packId), isNull(contextPackItems.revisionId)))
     .orderBy(contextPackItems.sortOrder);
-  return rows.map(mapItem);
+  return (await ensureRowBoardNumbers(rows, "item")).map(mapItem);
 }
 
 export async function listRevisionItems(packId: string, revisionId: string) {
@@ -235,7 +278,7 @@ export async function listRevisionItems(packId: string, revisionId: string) {
     .from(contextPackItems)
     .where(and(eq(contextPackItems.packId, packId), eq(contextPackItems.revisionId, revisionId)))
     .orderBy(contextPackItems.sortOrder);
-  return rows.map(mapItem);
+  return (await ensureRowBoardNumbers(rows, "item")).map(mapItem);
 }
 
 export async function addContextPackItem(input: {
@@ -258,7 +301,12 @@ export async function addContextPackItem(input: {
       blocking: input.blocking ?? input.type === "question",
     })
     .returning();
-  return mapItem(row);
+  const boardNumber = await ensureEntityBoardNumber({
+    workspaceId: input.workspaceId,
+    kind: "item",
+    targetId: row.id,
+  });
+  return mapItem({ ...row, boardNumber });
 }
 
 export async function listDraftSources(packId: string) {
@@ -267,7 +315,7 @@ export async function listDraftSources(packId: string) {
     .select()
     .from(contextPackSources)
     .where(and(eq(contextPackSources.packId, packId), isNull(contextPackSources.revisionId)));
-  return rows.map(mapSource);
+  return (await ensureRowBoardNumbers(rows, "source")).map(mapSource);
 }
 
 export async function listRevisionSources(packId: string, revisionId: string) {
@@ -276,7 +324,7 @@ export async function listRevisionSources(packId: string, revisionId: string) {
     .select()
     .from(contextPackSources)
     .where(and(eq(contextPackSources.packId, packId), eq(contextPackSources.revisionId, revisionId)));
-  return rows.map(mapSource);
+  return (await ensureRowBoardNumbers(rows, "source")).map(mapSource);
 }
 
 export async function deleteContextPackItem(id: string, packId: string) {
@@ -330,7 +378,12 @@ export async function addContextPackSource(input: {
       required: input.required ?? true,
     })
     .returning();
-  return mapSource(row);
+  const boardNumber = await ensureEntityBoardNumber({
+    workspaceId: input.workspaceId,
+    kind: "source",
+    targetId: row.id,
+  });
+  return mapSource({ ...row, boardNumber });
 }
 
 export async function listDraftCriteria(packId: string) {
@@ -340,7 +393,7 @@ export async function listDraftCriteria(packId: string) {
     .from(acceptanceCriteria)
     .where(and(eq(acceptanceCriteria.packId, packId), isNull(acceptanceCriteria.revisionId)))
     .orderBy(acceptanceCriteria.sortOrder);
-  return rows.map(mapCriterion);
+  return (await ensureRowBoardNumbers(rows, "criterion")).map(mapCriterion);
 }
 
 export async function listRevisionCriteria(packId: string, revisionId: string) {
@@ -350,7 +403,7 @@ export async function listRevisionCriteria(packId: string, revisionId: string) {
     .from(acceptanceCriteria)
     .where(and(eq(acceptanceCriteria.packId, packId), eq(acceptanceCriteria.revisionId, revisionId)))
     .orderBy(acceptanceCriteria.sortOrder);
-  return rows.map(mapCriterion);
+  return (await ensureRowBoardNumbers(rows, "criterion")).map(mapCriterion);
 }
 
 export async function addAcceptanceCriterion(input: { packId: string; workspaceId: string; description: string }) {
@@ -363,7 +416,12 @@ export async function addAcceptanceCriterion(input: { packId: string; workspaceI
       description: input.description.trim(),
     })
     .returning();
-  return mapCriterion(row);
+  const boardNumber = await ensureEntityBoardNumber({
+    workspaceId: input.workspaceId,
+    kind: "criterion",
+    targetId: row.id,
+  });
+  return mapCriterion({ ...row, boardNumber });
 }
 
 export async function getDraftPlan(packId: string) {
@@ -479,6 +537,7 @@ export async function approveContextPack(input: {
       body: item.body,
       blocking: item.blocking,
       sortOrder: item.sortOrder,
+      boardNumber: item.boardNumber,
     });
   }
   const draftSources = await listDraftSources(input.pack.id);
@@ -493,6 +552,7 @@ export async function approveContextPack(input: {
       section: source.section,
       reason: source.reason,
       required: source.required,
+      boardNumber: source.boardNumber,
     });
   }
   const draftCriteria = await listDraftCriteria(input.pack.id);
@@ -503,6 +563,7 @@ export async function approveContextPack(input: {
       revisionId: revision.id,
       description: criterion.description,
       sortOrder: criterion.sortOrder,
+      boardNumber: criterion.boardNumber,
     });
   }
   const draftPlan = await getDraftPlan(input.pack.id);
@@ -524,21 +585,43 @@ export async function approveContextPack(input: {
     .select()
     .from(implementationTasks)
     .where(and(eq(implementationTasks.packId, input.pack.id), isNull(implementationTasks.packRevisionId)));
-  for (const task of draftTasks) {
-    await db.insert(implementationTasks).values({
-      packId: task.packId,
-      workspaceId: task.workspaceId,
-      planId: planRevisionId ?? task.planId,
-      packRevisionId: revision.id,
-      objective: task.objective,
-      repositoryId: task.repositoryId,
-      pathScopes: task.pathScopes,
-      requiredItemIds: task.requiredItemIds,
-      criterionIds: task.criterionIds,
-      dependsOnTaskIds: task.dependsOnTaskIds,
-      status: "available",
-      sortOrder: task.sortOrder,
-    });
+  const idMap = new Map<string, string>();
+  const ordered = [
+    ...draftTasks.filter((task) => !task.parentTaskId),
+    ...draftTasks.filter((task) => task.parentTaskId),
+  ];
+  for (const task of ordered) {
+    const dependsOn = parseJsonArray(task.dependsOnTaskIds).map((id) => idMap.get(id) ?? id);
+    const [copy] = await db
+      .insert(implementationTasks)
+      .values({
+        packId: task.packId,
+        workspaceId: task.workspaceId,
+        planId: planRevisionId ?? task.planId,
+        packRevisionId: revision.id,
+        parentTaskId: task.parentTaskId ? (idMap.get(task.parentTaskId) ?? null) : null,
+        objective: task.objective,
+        repositoryId: task.repositoryId,
+        pathScopes: task.pathScopes,
+        requiredItemIds: task.requiredItemIds,
+        criterionIds: task.criterionIds,
+        dependsOnTaskIds: stringifyJsonArray(dependsOn),
+        status: "available",
+        assigneeUserId: task.assigneeUserId,
+        assigneeAgentIdentityId: task.assigneeAgentIdentityId,
+        sortOrder: task.sortOrder,
+        boardNumber: task.boardNumber,
+      })
+      .returning();
+    idMap.set(task.id, copy.id);
+    if (task.boardNumber > 0) {
+      await assignExistingBoardNumber({
+        workspaceId: task.workspaceId,
+        boardNumber: task.boardNumber,
+        kind: "task",
+        targetId: copy.id,
+      });
+    }
   }
 
   const [updated] = await db
@@ -575,6 +658,7 @@ export async function startNewContextPackRevision(pack: ContextPackRecord) {
       body: item.body,
       blocking: item.blocking,
       sortOrder: item.sortOrder,
+      boardNumber: item.boardNumber,
     });
   }
   const sources = await listRevisionSources(pack.id, revisionId);
@@ -588,6 +672,7 @@ export async function startNewContextPackRevision(pack: ContextPackRecord) {
       section: source.section,
       reason: source.reason,
       required: source.required,
+      boardNumber: source.boardNumber,
     });
   }
   const criteria = await listRevisionCriteria(pack.id, revisionId);
@@ -597,6 +682,7 @@ export async function startNewContextPackRevision(pack: ContextPackRecord) {
       workspaceId: pack.workspaceId,
       description: criterion.description,
       sortOrder: criterion.sortOrder,
+      boardNumber: criterion.boardNumber,
     });
   }
   const [plan] = await db

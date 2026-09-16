@@ -11,6 +11,7 @@ import {
   deleteAgentIdentityAction,
   getAgentGuidePreview,
   reactivateAgentIdentityAction,
+  updateAgentIdentityAction,
 } from "@/app/dev-context-actions";
 import {
   AlertDialog,
@@ -192,6 +193,19 @@ export function McpKeysPanel({
                               </li>
                             ))}
                           </ul>
+                        </section>
+                      ) : null}
+
+                      {canManage && !isInactive ? (
+                        <section className="agent-identity__section">
+                          <div className="agent-identity__section-head">
+                            <h4 className="agent-identity__section-title">Permissões MCP</h4>
+                            <EditAgentPermissionsDialog identity={identity} />
+                          </div>
+                          <p className="agent-identity__permissions-note">
+                            {identity.allowedMcpTools.length} de {MCP_TOOL_COUNT} ferramentas habilitadas.
+                            Alterações valem para todas as chaves deste agente.
+                          </p>
                         </section>
                       ) : null}
 
@@ -379,6 +393,68 @@ function CreateMcpKeyDialog({
               </Button>
             </>
           )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditAgentPermissionsDialog({ identity }: { identity: AgentIdentityRecord }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [allowedTools, setAllowedTools] = useState<Set<string>>(
+    () => new Set(identity.allowedMcpTools),
+  );
+  const [pending, start] = useTransition();
+
+  useEffect(() => {
+    if (open) {
+      setAllowedTools(new Set(identity.allowedMcpTools));
+    }
+  }, [open, identity.allowedMcpTools]);
+
+  function save() {
+    if (allowedTools.size === 0) {
+      toast.error("Escolha ao menos uma ferramenta MCP.");
+      return;
+    }
+    start(async () => {
+      const result = await updateAgentIdentityAction(identity.id, {
+        allowedMcpTools: [...allowedTools],
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Permissões atualizadas");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" size="sm" variant="outline">
+          Editar permissões
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="agent-create-dialog">
+        <DialogHeader>
+          <DialogTitle>Permissões — {identity.name}</DialogTitle>
+          <DialogDescription>
+            Ferramentas MCP que este agente pode chamar (RN-111). Chaves existentes passam a respeitar a
+            lista imediatamente.
+          </DialogDescription>
+        </DialogHeader>
+        <AgentToolPicker selected={allowedTools} onChange={setAllowedTools} />
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button type="button" disabled={pending || allowedTools.size === 0} onClick={save}>
+            Salvar permissões
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

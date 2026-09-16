@@ -37,10 +37,11 @@ Regras: RN-86, RN-87, RN-88, RN-107.
 1. Em `/workspace`, capitão ou imediato gera um convite escolhendo papel (imediato ou tripulante), validade (1 dia, 7 dias, 30 dias ou nunca) e limite de usos opcional.
 2. O link `/invite/{token}` é copiado na hora — o token não aparece de novo. Convites ativos ficam listados e podem ser revogados.
 3. Quem recebe abre o link, entra (ou cria conta) e confirma. Convite revogado, expirado, esgotado ou de porto onde já é tripulante é recusado com o motivo.
-4. Na lista de tripulação, capitão e imediato promovem ou rebaixam entre imediato e tripulante e removem pessoas. Ninguém mexe no próprio papel; imediato não mexe em outro imediato.
-5. O capitão transfere a capitania para alguém da tripulação; ele passa a imediato e a outra pessoa assume o comando.
+4. Na lista de tripulação, capitão e imediato promovem ou rebaixam entre imediato e tripulante e removem **pessoas**. Agentes de bordo aparecem na mesma lista com tipo distinto: nome, responsável humano e status — sem papel de tripulação nem ações de desembarque (RN-112). Quem é responsável por um agente abre Instrumentos a partir do atalho na linha.
+5. Ninguém mexe no próprio papel; imediato não mexe em outro imediato.
+6. O capitão transfere a capitania para alguém da tripulação; ele passa a imediato e a outra pessoa assume o comando.
 
-Regras: RN-88, RN-89, RN-107.
+Regras: RN-88, RN-89, RN-107, RN-112.
 
 ## Escolher o papel (tema)
 
@@ -216,34 +217,35 @@ Regras: RN-96, RN-97, RN-98.
 
 1. Na carta, **Iniciar um Rumo a partir desta Carta** (ou criar Rumo avulso na Expedição). Agente MCP cria rascunho via MCP (`propose_context_pack`).
 2. O Rumo nasce `draft`. Fontes formais pedem uma edição publicada imutável; o formulário mostra as edições e exige uma. Publicar carta privada continua privado.
-3. Itens (decisão, regra, contrato, risco, suposição, pergunta), escopo, não-escopo, Marcos de chegada e, se quiser, Plano de navegação com Manobras. Enquanto o Rumo é rascunho ou está em revisão, dá para trocar ou remover fonte, item e Marco.
+3. No **Contexto**, registra contrato (resultado esperado, escopo, não-escopo, plano), Marcos de chegada, itens (decisão, regra, contrato, risco, suposição, pergunta) e cartas-fonte. Enquanto está em rascunho ou revisão, dá para editar o contrato e trocar ou remover fonte, item e Marco. A vista **Trabalho** lista Manobras e Lances aninhados ou, em Kanban, alterna quadros **Manobras** (cartão com progresso e checklist de Lances) e **Lances** (faixa da Manobra-pai à esquerda do quadro; Lances nas colunas **To do**, **In progress**, **Blocked**, **Done** e **Accepted** da mesma faixa); estado muda na Lista ou no detalhe, remoção e delegação também no Kanban; a vista **Atividade** é o feed do Rumo. Detalhe de Rumo, Manobra, Lance, Expedição e Embarcação traz voltar.
 4. Enviar para revisão. Responsável do Rumo, capitão ou imediato aprova — confirmação explícita. Nasce revisão imutável. A tela mostra Carta viva, edição fixada e o snapshot `/p`.
 5. Se a Carta-fonte ganhar edição nova, o Rumo anterior permanece; a validade passa a `needs_review`. Recuperar o contrato é **Criar nova revisão**: copia o conteúdo para rascunho, preserva o histórico e deixa as Manobras na revisão que as sustentou.
 
-Regras: RN-99, RN-100, RN-101, RN-102.
+Regras: RN-99, RN-100, RN-101, RN-102, RN-116, RN-117.
 
-Funcionalidades: F-rumo, F-rumo-aprovar, F-carta-usada-em-contextos.
+Funcionalidades: F-rumo, F-rumo-aprovar, F-rumo-quadro, F-carta-usada-em-contextos.
 
 ## Assumir Manobra e reportar
 
-1. Agente autenticado chama `get_agent_bootstrap`: identidade, modo, Embarcação da sessão (só se existir no porto), Manobras compatíveis e protocolo. Sem participação no porto, a chave é recusada.
-2. Sem Rumo aprovado e válido, o MCP devolve diagnóstico — não um briefing meio pronto. Listar ou assumir Manobra também exige esse recorte.
-3. **Assumir o comando** cria lease atômico. Renovar exige atividade. Expirado pode ser retomado. Progresso e resultado só pelo detentor do lease ativo.
-4. Conversa de bordo fica no fio do Rumo, da Manobra, do item ou do Marco — separados dos comentários da carta. Ao abrir o fio, o bordo escolhe o tipo **Conversa** ou **Maré contrária** (RN-109). Agentes leem o corpo das mensagens. Várias Marés só liberam a Manobra quando a última for resolvida.
-5. O Registro de bordo descreve o resultado com evidências, lacunas e cobertura dos Marcos. Reportado não é aceito sozinho: o revisor vê esses campos antes de aceitar. Resumo em branco não registra; mensagem em branco não envia o fio.
-6. Manobra de código só com Embarcação do porto compatível com a Manobra. Ausência não é reconhecida automaticamente. Agente não aprova Rumo nem aceita resultado.
+1. Agente autenticado chama `get_agent_bootstrap`: identidade, Embarcação da sessão (só se existir no porto), folhas compatíveis (Lances, ou Manobras sem Lances), menções e protocolo. Sem participação no porto, a chave é recusada.
+2. Sem Rumo aprovado e válido, o MCP devolve diagnóstico — não um briefing meio pronto. Listar ou assumir folha também exige esse recorte.
+3. **Assumir o comando** cria lease atômico na folha. Pai com Lances não se assume. Renovar exige atividade. Expirado pode ser retomado. Progresso e resultado só pelo detentor do lease ativo. Resultado da Manobra só com todos os Lances `reported` ou `accepted`.
+4. A tripulação **delega** responsável (humano ou agente) na UI ou via MCP. Se a Manobra não tem responsável, os Lances sem dono herdam; Lance com dono fica. Delegar não assume o comando.
+5. Conversa de bordo no feed do Rumo, da Manobra ou do Lance. Comentário comum entra no fio de discussão; Maré contrária é tipo de fio (RN-109, RN-114). Agentes leem o corpo. Várias Marés só liberam quando a última for resolvida.
+6. O Registro de bordo descreve o resultado com evidências, lacunas e cobertura dos Marcos. Reportado não é aceito sozinho. Aceite humano é na Manobra e promove Lances `reported`. Resumo em branco não registra; mensagem em branco não envia.
+7. Manobra de código só com Embarcação do porto compatível. Ausência não é reconhecida automaticamente.
+8. **Cartas-fonte e conclusão:** na Manobra ou Lance, a tripulação vincula cartas-fonte (referências ou entregáveis). Quando a folha fica finalizada (`reported`/`accepted`, ou Manobra com todos os Lances finalizados), o agente cria ou atualiza uma **Carta de conclusão** (objetivo, o que foi feito, decisões, links de código/PR) e a vincula como carta-fonte da folha — via UI ou MCP (`add_implementation_task_source`).
 
-Regras: RN-101, RN-103, RN-104, RN-105, RN-108, RN-109, RN-110, RN-111.
+Regras: RN-101, RN-103, RN-104, RN-105, RN-108, RN-109, RN-110, RN-111, RN-113, RN-114, RN-115, RN-116, RN-117, RN-118.
 
-Funcionalidades: F-manobra, F-conversa-bordo, F-mcp-dev-context, F-agente-bordo.
+Funcionalidades: F-manobra, F-manobra-cartas-fonte, F-delegar, F-conversa-bordo, F-mcp-dev-context, F-agente-bordo.
 
 ## Setup do agente (humano + agente)
 
-1. **Humano:** gera **chave MCP** em Instrumentos (passo 02) no porto correto (`https://portulan.vercel.app`) e entrega `ptl_…` ao agente (ou configura `mcp.json` / env).
-2. **Agente:** com a chave recebida, configura MCP (`.cursor/mcp.json` com Bearer) e, para dev-context, `PORTULAN_TOKEN` + `portulan init` na raiz do checkout.
-3. **Agente:** `portulan doctor` confirma vínculo; `get_agent_bootstrap` com `repository_id` do config.
+1. **Humano:** gera chave em Instrumentos (passo 02) e cola o **Guia do Agente** no chat (com `ptl_…` na mesma mensagem). Só isso.
+2. **Agente:** configura MCP local (modelos `.cursor/mcp.json.example` / `.codex/config.toml.example`), `export PORTULAN_TOKEN`, teste curl, `portulan init`/`doctor`, `get_agent_bootstrap`. As rotas `/api/cli/*` não exigem sessão de navegador: chegam ao handler para validar o mesmo Bearer MCP; sem chave válida, retornam 401.
 
-O agente **não** gera chave na UI. A skill **portulan-mcp** e o **Guia do Agente** (copiado em Instrumentos) documentam papéis e passos.
+O humano **não** configura terminal nem arquivos MCP. A skill **portulan-mcp** e o **Guia do Agente** documentam a checklist do agente.
 
 Regras: RN-50, RN-55, RN-106, RN-111.
 

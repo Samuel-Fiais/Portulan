@@ -10,7 +10,10 @@ import {
   addContextPackSource,
   addCoordinationMessage,
   addImplementationTask,
+  addImplementationTaskSource,
   addProgressReport,
+  assignImplementationTask,
+  acceptReportedChildren,
   approveContextPack,
   countOpenBlockerThreads,
   createAgentIdentity,
@@ -23,6 +26,8 @@ import {
   deleteAgentIdentity,
   deleteContextPackItem,
   deleteContextPackSource,
+  deleteImplementationTask,
+  deleteImplementationTaskSource,
   deleteProject,
   getAgentIdentity,
   getContextPack,
@@ -38,12 +43,14 @@ import {
   listDraftItems,
   listDraftSources,
   listDraftTasks,
+  listChildTasks,
   recordAuditEvent,
   resolveCoordinationThread,
   revokeMcpTokensForAgentIdentity,
   setAgentIdentityStatus,
   setTaskStatus,
   startNewContextPackRevision,
+  updateImplementationTaskStatus,
   unlinkProjectRepository,
   updateAgentIdentity,
   updateContextPack,
@@ -55,6 +62,7 @@ import { getUserById } from "@/lib/users";
 import {
   agentIdentityInputSchema,
   contextPackInputSchema,
+  contextPackRecorteInputSchema,
   mcpKeyCreateSchema,
   mcpTokenInputSchema,
   projectInputSchema,
@@ -81,7 +89,13 @@ import {
   isLeaseActive,
   nextStatusAfterLastBlockerResolved,
   validateAcceptTaskResult,
+  validateAssignTask,
+  validateLanceObjective,
+  validateManualTaskStatusChange,
+  validateParentResult,
+  validateParentTask,
   validateProgressReportSummary,
+  validateTaskDeletion,
   validateTaskObjective,
 } from "@/lib/implementation-task-policy";
 import {
@@ -90,7 +104,14 @@ import {
   validateRepositoryMutation,
   validateWorkspaceScope,
 } from "@/lib/project-policy";
-import { documentSourceRoles, type AgentWorkMode, type ContextItemType, type ContextItemStrength } from "@/lib/dev-context";
+import {
+  documentSourceRoles,
+  implementationTaskStatuses,
+  type AgentWorkMode,
+  type ContextItemStrength,
+  type ContextItemType,
+  type ImplementationTaskStatus,
+} from "@/lib/dev-context";
 import { documentAccessContext } from "@/lib/access-context";
 
 function revalidateDev() {
@@ -451,6 +472,59 @@ export async function deleteContextPackSourceAction(packId: string, sourceId: st
   return { ok: true as const };
 }
 
+export async function addImplementationTaskSourceAction(
+  taskId: string,
+  input: {
+    documentId: string;
+    releaseId?: string | null;
+    sourceRole: (typeof documentSourceRoles)[number];
+    section?: string | null;
+    reason: string;
+    required?: boolean;
+  },
+) {
+  const ctx = await requireActiveMembership();
+  if (!ctx.ok) return ctx;
+  const task = await getImplementationTask(taskId, ctx.workspaceId);
+  if (!task) return { ok: false as const, error: "Manobra não encontrada." };
+  const sourceCheck = validateContextPackSourceDraft({
+    documentId: input.documentId,
+    releaseId: input.releaseId ?? null,
+    role: input.sourceRole,
+    required: input.required ?? false,
+    reason: input.reason,
+  });
+  if (!sourceCheck.ok) return { ok: false as const, error: sourceCheck.error };
+  if (input.releaseId) {
+    const release = await getDocumentRelease(input.releaseId);
+    if (!release || release.documentId !== input.documentId) {
+      return { ok: false as const, error: "A edição escolhida não pertence a esta Carta." };
+    }
+  }
+  const source = await addImplementationTaskSource({
+    taskId,
+    workspaceId: ctx.workspaceId,
+    documentId: input.documentId,
+    releaseId: input.releaseId ?? null,
+    sourceRole: input.sourceRole,
+    section: input.section ?? null,
+    reason: input.reason,
+    required: input.required ?? false,
+  });
+  revalidateDev();
+  return { ok: true as const, source };
+}
+
+export async function deleteImplementationTaskSourceAction(taskId: string, sourceId: string) {
+  const ctx = await requireActiveMembership();
+  if (!ctx.ok) return ctx;
+  const task = await getImplementationTask(taskId, ctx.workspaceId);
+  if (!task) return { ok: false as const, error: "Manobra não encontrada." };
+  await deleteImplementationTaskSource(sourceId, taskId);
+  revalidateDev();
+  return { ok: true as const };
+}
+
 export async function deleteContextPackItemAction(packId: string, itemId: string) {
   const ctx = await requireActiveMembership();
   if (!ctx.ok) return ctx;
@@ -501,9 +575,39 @@ export async function savePlanAction(packId: string, summary: string) {
   return { ok: true as const, plan };
 }
 
+export async function saveContextPackRecorteAction(packId: string, input: unknown) {
+  const ctx = await requireActiveMembership();
+  if (!ctx.ok) return ctx;
+  const parsed = contextPackRecorteInputSchema.safeParse(input ?? {});
+  if (!parsed.success) return { ok: false as const, error: "Dados do recorte inválidos." };
+  const pack = await getContextPack(packId, ctx.workspaceId);
+  if (!pack) return { ok: false as const, error: "Rumo não encontrado." };
+  const editable = validateContextPackEditable(pack.status);
+  if (!editable.ok) return { ok: false as const, error: editable.error };
+
+  const updatedPack = await updateContextPack(packId, ctx.workspaceId, {
+    expectedOutcome: parsed.data.expectedOutcome,
+    scope: parsed.data.scope,
+    outOfScope: parsed.data.outOfScope,
+  });
+  if (!updatedPack) return { ok: false as const, error: "Não foi possível atualizar o Recorte." };
+  const plan = await upsertDraftPlan({
+    packId,
+    workspaceId: ctx.workspaceId,
+    summary: parsed.data.planSummary,
+  });
+  revalidateDev();
+  return { ok: true as const, pack: updatedPack, plan };
+}
+
 export async function addImplementationTaskAction(
   packId: string,
-  input: { objective: string; repositoryId?: string | null; pathScopes?: string[] },
+  input: {
+    objective: string;
+    repositoryId?: string | null;
+    pathScopes?: string[];
+    parentTaskId?: string | null;
+  },
 ) {
   const ctx = await requireActiveMembership();
   if (!ctx.ok) return ctx;
@@ -511,15 +615,82 @@ export async function addImplementationTaskAction(
   if (!pack) return { ok: false as const, error: "Rumo não encontrado." };
   const editable = validateContextPackEditable(pack.status);
   if (!editable.ok) return { ok: false as const, error: editable.error };
-  const validated = validateTaskObjective(input.objective);
+  const validated = input.parentTaskId
+    ? validateLanceObjective(input.objective)
+    : validateTaskObjective(input.objective);
   if (!validated.ok) return { ok: false as const, error: validated.error };
+  if (input.parentTaskId) {
+    const parent = await getImplementationTask(input.parentTaskId, ctx.workspaceId);
+    const parentCheck = validateParentTask({
+      parent: parent ? { id: parent.id, parentTaskId: parent.parentTaskId, packId: parent.packId } : null,
+      packId,
+    });
+    if (!parentCheck.ok) return { ok: false as const, error: parentCheck.error };
+  }
   const task = await addImplementationTask({
     packId,
     workspaceId: ctx.workspaceId,
     objective: input.objective,
     repositoryId: input.repositoryId ?? null,
     pathScopes: input.pathScopes,
+    parentTaskId: input.parentTaskId ?? null,
   });
+  revalidateDev();
+  return { ok: true as const, task };
+}
+
+export async function updateImplementationTaskStatusAction(taskId: string, status: ImplementationTaskStatus) {
+  const ctx = await requireActiveMembership();
+  if (!ctx.ok) return ctx;
+  if (!(implementationTaskStatuses as readonly string[]).includes(status)) {
+    return { ok: false as const, error: "Estado inválido." };
+  }
+  const task = await getImplementationTask(taskId, ctx.workspaceId);
+  if (!task) return { ok: false as const, error: "Manobra não encontrada." };
+  const pack = await getContextPack(task.packId, ctx.workspaceId);
+  if (!pack) return { ok: false as const, error: "Rumo não encontrado." };
+  const validated = validateManualTaskStatusChange({
+    current: task.status,
+    next: status,
+    packEditable: validateContextPackEditable(pack.status).ok,
+  });
+  if (!validated.ok) return { ok: false as const, error: validated.error };
+  const updated = await updateImplementationTaskStatus(taskId, ctx.workspaceId, status);
+  if (!updated) return { ok: false as const, error: "Não foi possível atualizar o estado." };
+  revalidateDev();
+  return { ok: true as const, task: updated };
+}
+
+export async function deleteImplementationTaskAction(taskId: string) {
+  const ctx = await requireActiveMembership();
+  if (!ctx.ok) return ctx;
+  const task = await getImplementationTask(taskId, ctx.workspaceId);
+  if (!task) return { ok: false as const, error: "Manobra não encontrada." };
+  const pack = await getContextPack(task.packId, ctx.workspaceId);
+  if (!pack) return { ok: false as const, error: "Rumo não encontrado." };
+  const validated = validateTaskDeletion({ packEditable: validateContextPackEditable(pack.status).ok });
+  if (!validated.ok) return { ok: false as const, error: validated.error };
+  const deleted = await deleteImplementationTask(taskId, ctx.workspaceId);
+  if (!deleted) return { ok: false as const, error: "Não foi possível remover." };
+  revalidateDev();
+  return { ok: true as const, task: deleted };
+}
+
+export async function assignImplementationTaskAction(
+  taskId: string,
+  input: { assigneeUserId?: string | null; assigneeAgentIdentityId?: string | null },
+) {
+  const ctx = await requireActiveMembership();
+  if (!ctx.ok) return ctx;
+  const assigned = validateAssignTask(input);
+  if (!assigned.ok) return { ok: false as const, error: assigned.error };
+  const task = await assignImplementationTask({
+    taskId,
+    workspaceId: ctx.workspaceId,
+    assigneeUserId: input.assigneeUserId ?? null,
+    assigneeAgentIdentityId: input.assigneeAgentIdentityId ?? null,
+  });
+  if (!task) return { ok: false as const, error: "Manobra não encontrada." };
   revalidateDev();
   return { ok: true as const, task };
 }
@@ -534,6 +705,12 @@ export async function acceptTaskResultAction(taskId: string) {
   const canAccept = canApproveContextPack({ actorId: ctx.userId, ownerUserId: pack.ownerUserId, role: ctx.role });
   const validated = validateAcceptTaskResult({ status: task.status, canAccept });
   if (!validated.ok) return { ok: false as const, error: validated.error };
+  if (!task.parentTaskId) {
+    const children = await listChildTasks(task.id, ctx.workspaceId);
+    const parentResult = validateParentResult({ children });
+    if (!parentResult.ok) return { ok: false as const, error: parentResult.error };
+    await acceptReportedChildren(task.id, ctx.workspaceId);
+  }
   await setTaskStatus(taskId, ctx.workspaceId, "accepted");
   revalidateDev();
   return { ok: true as const };
@@ -545,6 +722,8 @@ export async function createCoordinationMessageAction(input: {
   subjectId: string;
   body: string;
   isBlocker?: boolean;
+  mentionedUserIds?: string[];
+  mentionedAgentIdentityIds?: string[];
 }) {
   const ctx = await requireActiveMembership();
   if (!ctx.ok) return ctx;
@@ -565,6 +744,8 @@ export async function createCoordinationMessageAction(input: {
       workspaceId: ctx.workspaceId,
       userId: ctx.userId,
       body: input.body,
+      mentionedUserIds: input.mentionedUserIds,
+      mentionedAgentIdentityIds: input.mentionedAgentIdentityIds,
     });
     if (!message) return { ok: false as const, error: "Conversa de bordo não encontrada neste porto." };
     revalidateDev();
@@ -577,6 +758,8 @@ export async function createCoordinationMessageAction(input: {
     isBlocker: input.isBlocker,
     createdBy: ctx.userId,
     body: input.body,
+    mentionedUserIds: input.mentionedUserIds,
+    mentionedAgentIdentityIds: input.mentionedAgentIdentityIds,
   });
   if (input.isBlocker && input.subjectType === "task") {
     await setTaskStatus(input.subjectId, ctx.workspaceId, "blocked");
@@ -825,6 +1008,11 @@ export async function addProgressReportAction(
   }
   if (kind === "result" && !canRegisterTaskResult(task.status)) {
     return { ok: false as const, error: "O resultado desta Manobra já foi registrado." };
+  }
+  if (kind === "result" && !task.parentTaskId) {
+    const children = await listChildTasks(task.id, ctx.workspaceId);
+    const parentResult = validateParentResult({ children });
+    if (!parentResult.ok) return { ok: false as const, error: parentResult.error };
   }
   if (!task.leaseHolderUserId || task.leaseHolderUserId !== ctx.userId || !isLeaseActive(task.leaseExpiresAt)) {
     return { ok: false as const, error: "Só quem tem o comando ativo registra nesta Manobra." };

@@ -9,6 +9,11 @@ export type BriefSource = {
   reason: string;
 };
 
+export type BriefTaskSource = BriefSource & {
+  id: string;
+  sourceRole: string;
+};
+
 export function buildImplementationBrief(input: {
   pack: {
     id: string;
@@ -24,6 +29,7 @@ export function buildImplementationBrief(input: {
   task?: { id: string; objective: string; pathScopes: string[] } | null;
   mode: "brief" | "full";
   sources?: readonly BriefSource[];
+  taskSources?: readonly BriefTaskSource[];
   repository?: { id: string; name: string } | null;
   taskFull?: unknown;
 }) {
@@ -53,6 +59,7 @@ export function buildImplementationBrief(input: {
     ...brief,
     items: input.items,
     sources: input.sources ?? [],
+    taskSources: input.taskSources ?? [],
     repository: input.repository ?? null,
     taskFull: input.taskFull ?? input.task ?? null,
   };

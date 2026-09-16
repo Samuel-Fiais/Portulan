@@ -203,6 +203,13 @@ export const contextPackInputSchema = z.object({
   releaseId: z.string().min(1).optional(),
 });
 
+export const contextPackRecorteInputSchema = z.object({
+  expectedOutcome: z.string().trim().max(8_000).default(""),
+  scope: z.string().trim().max(8_000).default(""),
+  outOfScope: z.string().trim().max(8_000).default(""),
+  planSummary: z.string().trim().max(8_000).default(""),
+});
+
 export const agentIdentityInputSchema = z.object({
   name: z.string().trim().min(2).max(80),
   workMode: z
@@ -220,4 +227,3 @@ export const mcpKeyCreateSchema = mcpTokenInputSchema.extend({
   allowedMcpTools: z.array(z.string().trim().min(1)).min(1).optional(),
   agentIdentityId: z.string().uuid().optional(),
 });
-

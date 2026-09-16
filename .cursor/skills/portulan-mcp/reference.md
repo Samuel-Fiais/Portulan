@@ -5,13 +5,13 @@
 | Item | Caminho |
 |---|---|
 | Handler MCP | `app/api/mcp/route.ts` |
-| Catálogo (49 ferramentas, grupos Instrumentos) | `lib/mcp-tool-catalog.ts` |
+| Catálogo (69 ferramentas, grupos Instrumentos) | `lib/mcp-tool-catalog.ts` |
 | Dev-context (Agente de Bordo) | `lib/mcp-dev-context-tools.ts` |
 | Banco (PostgreSQL / Drizzle) | `lib/db/` (`schema.ts`, `documents.ts`, `templates.ts`, `workspaces.ts`, …) |
 | Tipos e templates editoriais | `lib/documents.ts` |
 | Portos (workspaces) | `lib/workspace-policy.ts`, `lib/active-workspace.ts` |
 | Validação Zod | `lib/validation.ts` |
-| Config Cursor | `.cursor/mcp.json` |
+| Config MCP do cliente | `mcp.json` (caminho varia por ambiente) |
 | Páginas públicas | `app/d/[slug]/page.tsx`, `app/p/[releaseId]/page.tsx` |
 
 Variáveis de ambiente (`.env.example`):
@@ -56,8 +56,7 @@ npm run portulan -- init [--yes] [--endpoint=https://portulan.vercel.app]
 |---|---|
 | `.portulan/config.json` | `workspaceId`, `repositoryId`, `projectIds`, `endpoint`, `remoteUrl` — sem token, sem path absoluto |
 | `.portulan/AGENT.md` | Protocolo deste checkout |
-| `AGENTS.md`, `CLAUDE.md` | Bloco `BEGIN:portulan-dev-context` |
-| `.cursor/rules/portulan-dev-context.mdc` | Mesmo bloco, se `.cursor/` existir |
+| Arquivos de regras do checkout | Bloco `BEGIN:portulan-dev-context` (ex.: `AGENTS.md` e equivalentes locais) |
 
 **API interna:** `POST /api/cli/repositories`, `GET /api/cli/projects`, `GET /api/cli/doctor`.
 
@@ -71,7 +70,7 @@ Verifica: token presente, `config.json` válido (sem segredo/path absoluto), ví
 
 ### Depois do `init`
 
-1. Humano entrega `ptl_…`; agente configura `.cursor/mcp.json` ou env.
+1. Humano entrega `ptl_…`; agente configura config MCP (`mcp.json`) ou env.
 2. Chame `get_agent_bootstrap` com `repository_id` de `.portulan/config.json`.
 
 ---
@@ -828,9 +827,9 @@ Serve só revisão `approved` + validade `current`. Senão:
 
 `mode`: `brief` | `full`. Sempre inclui `packId` e `revisionId`.
 
-### Manobras
+### Manobras e Lances
 
-`claim_implementation_task`, `renew_implementation_task_lease`, `release_implementation_task` — lease atômico (RN-103). `report_implementation_progress` e `report_implementation_result` exigem resumo não vazio (RN-108). Resultado reportado não é aceite humano. Manobra de código exige Embarcação reconhecida na sessão (RN-105).
+`create_implementation_task` aceita `parent_task_id` (Lance, um nível). `assign_implementation_task` delega responsável sem criar lease (RN-115). `claim_implementation_task`, `renew_implementation_task_lease`, `release_implementation_task` — lease atômico na **folha** (RN-103, RN-113). `pack_id` e `task_id` aceitam inteiro do porto (`42` ou `#42`). `report_implementation_progress` e `report_implementation_result` exigem resumo não vazio (RN-108). Resultado reportado não é aceite humano. Manobra de código exige Embarcação reconhecida na sessão (RN-105).
 
 ### Conversas de bordo (RN-109)
 

@@ -1,8 +1,10 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { coordinationMessages, coordinationThreads } from "@/lib/db/schema";
+import { parseJsonArray, stringifyJsonArray } from "@/lib/db/json-text";
+import { ensureEntityBoardNumber, ensureRowBoardNumbers, resolveBoardId } from "@/lib/db/board-numbers";
 import type { CoordinationSubjectType } from "@/lib/dev-context";
 
 export type CoordinationThreadRecord = {
@@ -13,6 +15,7 @@ export type CoordinationThreadRecord = {
   isBlocker: boolean;
   resolvedAt: string | null;
   createdBy: string | null;
+  boardNumber: number;
   createdAt: string;
 };
 
@@ -23,6 +26,9 @@ export type CoordinationMessageRecord = {
   agentIdentityId: string | null;
   body: string;
   parentId: string | null;
+  mentionedUserIds: string[];
+  mentionedAgentIdentityIds: string[];
+  boardNumber: number;
   createdAt: string;
 };
 
@@ -35,6 +41,7 @@ function mapThread(row: typeof coordinationThreads.$inferSelect): CoordinationTh
     isBlocker: row.isBlocker,
     resolvedAt: row.resolvedAt,
     createdBy: row.createdBy,
+    boardNumber: row.boardNumber,
     createdAt: row.createdAt,
   };
 }
@@ -47,6 +54,9 @@ function mapMessage(row: typeof coordinationMessages.$inferSelect): Coordination
     agentIdentityId: row.agentIdentityId,
     body: row.body,
     parentId: row.parentId,
+    mentionedUserIds: parseJsonArray(row.mentionedUserIds),
+    mentionedAgentIdentityIds: parseJsonArray(row.mentionedAgentIdentityIds),
+    boardNumber: row.boardNumber,
     createdAt: row.createdAt,
   };
 }
@@ -64,15 +74,16 @@ export async function listCoordinationThreads(
     .from(coordinationThreads)
     .where(and(...conditions))
     .orderBy(desc(coordinationThreads.createdAt));
-  return rows.map(mapThread);
+  return (await ensureRowBoardNumbers(rows, "thread")).map(mapThread);
 }
 
 export async function getCoordinationThread(id: string, workspaceId: string) {
+  const resolvedId = (await resolveBoardId(workspaceId, id, "thread")) ?? id;
   const db = await getDb();
   const [row] = await db
     .select()
     .from(coordinationThreads)
-    .where(and(eq(coordinationThreads.id, id), eq(coordinationThreads.workspaceId, workspaceId)))
+    .where(and(eq(coordinationThreads.id, resolvedId), eq(coordinationThreads.workspaceId, workspaceId)))
     .limit(1);
   return row ? mapThread(row) : null;
 }
@@ -84,9 +95,32 @@ export async function listCoordinationMessages(threadId: string, workspaceId: st
   const rows = await db
     .select()
     .from(coordinationMessages)
-    .where(and(eq(coordinationMessages.threadId, threadId), eq(coordinationMessages.workspaceId, workspaceId)))
+    .where(and(eq(coordinationMessages.threadId, thread.id), eq(coordinationMessages.workspaceId, workspaceId)))
     .orderBy(coordinationMessages.createdAt);
-  return rows.map(mapMessage);
+  return (await ensureRowBoardNumbers(rows, "message")).map(mapMessage);
+}
+
+export async function findOpenDiscussionThread(
+  workspaceId: string,
+  subjectType: CoordinationSubjectType,
+  subjectId: string,
+) {
+  const db = await getDb();
+  const [row] = await db
+    .select()
+    .from(coordinationThreads)
+    .where(
+      and(
+        eq(coordinationThreads.workspaceId, workspaceId),
+        eq(coordinationThreads.subjectType, subjectType),
+        eq(coordinationThreads.subjectId, subjectId),
+        eq(coordinationThreads.isBlocker, false),
+        isNull(coordinationThreads.resolvedAt),
+      ),
+    )
+    .orderBy(coordinationThreads.createdAt)
+    .limit(1);
+  return row ? mapThread(row) : null;
 }
 
 export async function createCoordinationThread(input: {
@@ -97,7 +131,24 @@ export async function createCoordinationThread(input: {
   createdBy: string;
   body: string;
   agentIdentityId?: string | null;
+  mentionedUserIds?: string[];
+  mentionedAgentIdentityIds?: string[];
 }) {
+  if (!input.isBlocker) {
+    const existing = await findOpenDiscussionThread(input.workspaceId, input.subjectType, input.subjectId);
+    if (existing) {
+      const message = await addCoordinationMessage({
+        threadId: existing.id,
+        workspaceId: input.workspaceId,
+        userId: input.createdBy,
+        agentIdentityId: input.agentIdentityId,
+        body: input.body,
+        mentionedUserIds: input.mentionedUserIds,
+        mentionedAgentIdentityIds: input.mentionedAgentIdentityIds,
+      });
+      return { thread: existing, message: message! };
+    }
+  }
   const db = await getDb();
   const [thread] = await db
     .insert(coordinationThreads)
@@ -109,6 +160,11 @@ export async function createCoordinationThread(input: {
       createdBy: input.createdBy,
     })
     .returning();
+  const threadNumber = await ensureEntityBoardNumber({
+    workspaceId: input.workspaceId,
+    kind: "thread",
+    targetId: thread.id,
+  });
   const [message] = await db
     .insert(coordinationMessages)
     .values({
@@ -117,9 +173,19 @@ export async function createCoordinationThread(input: {
       userId: input.createdBy,
       agentIdentityId: input.agentIdentityId ?? null,
       body: input.body.trim(),
+      mentionedUserIds: stringifyJsonArray(input.mentionedUserIds),
+      mentionedAgentIdentityIds: stringifyJsonArray(input.mentionedAgentIdentityIds),
     })
     .returning();
-  return { thread: mapThread(thread), message: mapMessage(message) };
+  const messageNumber = await ensureEntityBoardNumber({
+    workspaceId: input.workspaceId,
+    kind: "message",
+    targetId: message.id,
+  });
+  return {
+    thread: mapThread({ ...thread, boardNumber: threadNumber }),
+    message: mapMessage({ ...message, boardNumber: messageNumber }),
+  };
 }
 
 export async function addCoordinationMessage(input: {
@@ -129,6 +195,8 @@ export async function addCoordinationMessage(input: {
   agentIdentityId?: string | null;
   body: string;
   parentId?: string | null;
+  mentionedUserIds?: string[];
+  mentionedAgentIdentityIds?: string[];
 }) {
   const thread = await getCoordinationThread(input.threadId, input.workspaceId);
   if (!thread) return null;
@@ -142,9 +210,16 @@ export async function addCoordinationMessage(input: {
       agentIdentityId: input.agentIdentityId ?? null,
       body: input.body.trim(),
       parentId: input.parentId ?? null,
+      mentionedUserIds: stringifyJsonArray(input.mentionedUserIds),
+      mentionedAgentIdentityIds: stringifyJsonArray(input.mentionedAgentIdentityIds),
     })
     .returning();
-  return mapMessage(row);
+  const boardNumber = await ensureEntityBoardNumber({
+    workspaceId: input.workspaceId,
+    kind: "message",
+    targetId: row.id,
+  });
+  return mapMessage({ ...row, boardNumber });
 }
 
 export async function countOpenBlockerThreads(
@@ -179,4 +254,29 @@ export async function resolveCoordinationThread(
     .where(and(eq(coordinationThreads.id, id), eq(coordinationThreads.workspaceId, workspaceId)))
     .returning();
   return row ? mapThread(row) : null;
+}
+
+export async function listMentionsForActor(input: {
+  workspaceId: string;
+  userId: string;
+  agentIdentityId?: string | null;
+  limit?: number;
+}) {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(coordinationMessages)
+    .where(eq(coordinationMessages.workspaceId, input.workspaceId))
+    .orderBy(desc(coordinationMessages.createdAt))
+    .limit(200);
+  return rows
+    .map(mapMessage)
+    .filter((message) => {
+      const mentionedUser = message.mentionedUserIds.includes(input.userId);
+      const mentionedAgent = input.agentIdentityId
+        ? message.mentionedAgentIdentityIds.includes(input.agentIdentityId)
+        : false;
+      return mentionedUser || mentionedAgent;
+    })
+    .slice(0, input.limit ?? 20);
 }

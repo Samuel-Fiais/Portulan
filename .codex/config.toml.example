@@ -1,0 +1,5 @@
+# Copie para .codex/config.toml (gitignored). O agente preenche Bearer — nunca commite ptl_… (RN-106).
+
+[mcp_servers.portulan]
+url = "http://localhost:3000/api/mcp"
+http_headers = { Authorization = "Bearer ptl_SUBSTITUA_PELA_CHAVE" }

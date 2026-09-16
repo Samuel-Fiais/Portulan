@@ -37,7 +37,8 @@ A copy em pt-BR usa o vocabulário náutico; o código mantém os nomes técnico
 | Gabarito | `template` · `/templates` |
 | Instrumentos | `/integrations` |
 | Porto · Tripulação | `workspace` · `/workspace` · `workspaceMembers` |
-| Expedição · Rumo · Embarcação · Manobra | `/projects` · `/context-packs` · `/repositories` · `/context-packs/{id}/tasks/{taskId}` |
+| Expedição · Rumo · Embarcação · Manobra · Lance | `/projects` · `/context-packs` · `/repositories` · `/context-packs/{id}/tasks/{taskId}` |
+| Responsável | `assigneeUserId` / `assigneeAgentIdentityId` (não é o lease / comando) |
 | Cartógrafo · Frota | `author` · `team` |
 | Camarote · Porto · Mar aberto | `visibility`: `private` · `workspace` · `public` |
 
@@ -62,3 +63,18 @@ Quando a tarefa for levantar, pontuar ou priorizar melhorias (ICE, backlog, “o
 A descrição de negócio (entidades, regras `RN-xx`, funcionalidades `F-…`, fluxos) vive em `docs/product/`. **Leia esses arquivos em vez de redescobrir o sistema no código.** Qualquer mudança de comportamento atualiza `docs/product/` na mesma sessão — ver `.cursor/rules/portulan-product.mdc`.
 
 <!-- END:portulan-agent-rules -->
+
+<!-- BEGIN:portulan-dev-context -->
+## Portulan — contexto de desenvolvimento
+
+Setup: skill `portulan-mcp` (seção **Setup com chave do responsável**) ou Guia do Agente.
+
+1. O **humano** gera `ptl_…` e cola o **Guia do Agente** no chat (só isso).
+2. O **agente** configura MCP, `export PORTULAN_TOKEN`, roda `portulan init` / `doctor` neste checkout.
+3. Leia `.portulan/AGENT.md` e `.portulan/config.json`.
+4. Chame `get_agent_bootstrap` com `repository_id` do config **antes** de assumir trabalho.
+5. Não assuma Manobra sem Rumo aprovado e válido (`current`).
+6. Registre Maré contrária e reporte o resultado; aceite humano é separado.
+7. Ao finalizar Manobra/Lance, crie Carta de conclusão e vincule como carta-fonte (RN-118).
+8. Nunca grave token, segredo ou path absoluto neste repositório (RN-106).
+<!-- END:portulan-dev-context -->

@@ -4,6 +4,7 @@ import "./dev-workspace.css";
 
 import Link from "next/link";
 import { PackStatusBadge, PackValidityBadge } from "@/components/dev-status-badge";
+import { BoardId } from "@/components/board-id";
 import type { ContextPackRecord } from "@/lib/db/context-packs";
 
 export function RumosPanel({ packs }: { packs: ContextPackRecord[] }) {
@@ -32,7 +33,8 @@ export function RumosPanel({ packs }: { packs: ContextPackRecord[] }) {
           ) : (
             <ul className="dev-index-list">
               {packs.map((pack) => (
-                <li key={pack.id}>
+                <li key={pack.id} className="rumo-index-item">
+                  <BoardId number={pack.boardNumber} />
                   <Link href={`/context-packs/${pack.id}`} className="dev-index-link">
                     <div className="dev-badge-row">
                       <PackStatusBadge status={pack.status} />

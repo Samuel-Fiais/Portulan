@@ -1,6 +1,8 @@
+import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type AvatarSize = "sm" | "md";
+type AvatarKind = "human" | "agent";
 
 const avatarSizeClasses: Record<AvatarSize, string> = {
   sm: "size-7 text-[10px]",
@@ -15,6 +17,7 @@ type UserAvatarProps = {
   className?: string;
   title?: string;
   size?: AvatarSize;
+  kind?: AvatarKind;
 };
 
 function initials(name?: string | null, login?: string | null, email?: string | null) {
@@ -32,9 +35,25 @@ export function UserAvatar({
   className,
   title,
   size = "md",
+  kind = "human",
 }: UserAvatarProps) {
-  const label = title ?? name ?? login ?? email ?? "Colaborador";
+  const label = title ?? name ?? login ?? email ?? (kind === "agent" ? "Agente de bordo" : "Colaborador");
   const sizeClass = avatarSizeClasses[size];
+
+  if (kind === "agent") {
+    return (
+      <span
+        title={label}
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center rounded-none border border-primary/25 bg-primary/8 text-primary",
+          sizeClass,
+          className,
+        )}
+      >
+        <Bot className="size-3.5" aria-hidden="true" />
+      </span>
+    );
+  }
 
   if (imageUrl) {
     return (

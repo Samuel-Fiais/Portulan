@@ -10,6 +10,9 @@ Pedido avulso (14 set. 2026), fora da leva 2.
 
 | # | ID | Melhoria | Superfície | I | C | E | Score | Estado |
 |---|---|---|---|---|---|---|---|---|
+| — | rumo-lances | Rumo como Feature: Lances, Kanban, identificador inteiro, Contexto unificado | Rumo | 8 | 8 | 4 | 25.6 | entregue |
+| — | bordo-feed | Feed único de Conversas de bordo com fio de discussão e menção sem e-mail | Rumo | 7 | 8 | 5 | 28.0 | entregue |
+| — | delegar-manobra | Delegar responsável (humano ou agente) com cascata em Lances sem dono | Rumo | 8 | 8 | 6 | 38.4 | entregue |
 | — | auth-password | Cadastro com senha, mescla GitHub e modal da conta | Conta | 8 | 9 | 5 | 36.0 | entregue |
 | — | portos | Portos (workspaces) com tripulação, convite por link, visibilidade em três níveis, tema do porto e léxico náutico | Workspace | 9 | 9 | 4 | 32.4 | entregue |
 | — | dev-context | Contexto de desenvolvimento: Expedições, Rumos versionados, Manobras com lease, Agentes de Bordo, MCP e CLI `portulan init` | Expedição / MCP | 9 | 8 | 2 | 14.4 | entregue (correção 15 set. 2026) |
@@ -26,6 +29,17 @@ Pedido avulso (14 set. 2026), fora da leva 2.
 - CLI `portulan init` / `doctor`: config sem segredo, `AGENT.md`, blocos gerenciados idempotentes.
 
 Fora: Kanban/sprints/prazos/alocação; execução de código no servidor; sync contínuo de Git; validação automática de PR; aprovação por IA; grafo visual; CRDT; e-mail; gravar token, segredo ou path absoluto no repositório.
+
+## Escopo (rumo-lances / bordo-feed / delegar-manobra)
+
+- Identificador inteiro único no porto (`#42`) para Rumo, Manobra, Lance, item, fonte, Marco, fio e recado.
+- Lance: um nível sob Manobra; lease na folha; aceite na Manobra.
+- Kanban por estado (faixa = Manobra, cartão = Lance); sem drag de estado, prazo, pontos ou sprint.
+- Contexto unificado: contrato, Marcos, itens, fontes. Vistas Trabalho / Contexto / Atividade.
+- Delegar responsável (humano ou agente) com cascata só se pai e filhos estão sem dono. Delegar ≠ lease.
+- Feed de bordo: fio de discussão reutilizado; Maré própria; menção sem e-mail.
+
+Fora: nested Lances; prefixo `POR-123`; e-mail/inbox; Markdown rico no recado; comentários da carta; drag que muda estado.
 
 ## Escopo (auth-password)
 

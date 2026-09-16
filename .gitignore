@@ -13,3 +13,7 @@ data/blob-cache/
 tmp/
 output/
 .vercel
+
+# Config MCP local com Bearer — o agente grava; nunca commitar (RN-106)
+.codex/config.toml
+.cursor/mcp.json

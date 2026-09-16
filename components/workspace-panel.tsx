@@ -2,6 +2,7 @@
 
 import "./workspace-panel.css";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -62,6 +63,11 @@ import {
   type WorkspaceMembership,
   type WorkspaceRole,
 } from "@/lib/workspaces";
+import {
+  workspaceRosterNote,
+  workspaceRosterStats,
+  type WorkspaceRosterEntry,
+} from "@/lib/workspace-roster";
 
 const INVITE_EXPIRATION_LABELS = {
   "1d": "1 dia",
@@ -78,7 +84,7 @@ function memberLabel(member: WorkspaceMemberRecord) {
 
 export function WorkspacePanel({
   workspace,
-  members,
+  roster,
   invites,
   currentUserId,
   documentCount,
@@ -86,7 +92,7 @@ export function WorkspacePanel({
   origin,
 }: {
   workspace: WorkspaceMembership;
-  members: WorkspaceMemberRecord[];
+  roster: WorkspaceRosterEntry[];
   invites: WorkspaceInviteRecord[];
   currentUserId: string;
   documentCount: number;
@@ -152,6 +158,8 @@ export function WorkspacePanel({
   const activeInvites = invites.filter((invite) => !invite.revokedAt);
   const convitesStep = "03";
   const zarparStep = manageCrew ? "04" : "03";
+  const rosterStats = workspaceRosterStats(roster);
+  const rosterNote = workspaceRosterNote(rosterStats);
 
   return (
     <main className="page-wrap workspace-page workspace-page--porto">
@@ -168,7 +176,7 @@ export function WorkspacePanel({
           </div>
           <div className="split-row__actions porto-header-stats">
             <div className="fp-stat-grid porto-header-stats__grid" aria-label="Resumo do porto">
-              <StatCard label="Tripulação" value={members.length} note="tripulantes" />
+              <StatCard label="Tripulação" value={rosterStats.total} note={rosterNote} />
               <StatCard label="Cartas" value={documentCount} note="no porto" />
             </div>
           </div>
@@ -226,16 +234,17 @@ export function WorkspacePanel({
               <div className="integration-step-body">
                 <h2>Tripulação</h2>
                 <p>
-                  Capitão e imediato cuidam das pessoas. Tripulante cria as próprias cartas e lê o
-                  que o porto abriu.
+                  Humanos e agentes de bordo compõem o porto. Capitão e imediato cuidam das pessoas;
+                  agentes têm responsável e configuração própria em Instrumentos.
                 </p>
 
                 <div className="mcp-token-table-wrap">
                   <table className="mcp-token-table porto-crew-table">
                         <thead>
                           <tr>
-                            <th scope="col">Tripulante</th>
-                            <th scope="col">Papel</th>
+                            <th scope="col">Membro</th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col">Papel / responsável</th>
                             {showCrewActions ? (
                               <th scope="col">
                                 <span className="sr-only">Ações</span>
@@ -244,10 +253,53 @@ export function WorkspacePanel({
                           </tr>
                         </thead>
                         <tbody>
-                          {members.map((member) => {
+                          {roster.map((entry) => {
+                            if (entry.kind === "agent") {
+                              const { agent, ownerName } = entry;
+                              const isOwner = agent.ownerUserId === currentUserId;
+                              const inactive = agent.status === "inactive";
+                              return (
+                                <tr
+                                  key={`agent-${agent.id}`}
+                                  className={cn(inactive && "porto-crew-row--inactive")}
+                                >
+                                  <td>
+                                    <div className="porto-crew-person">
+                                      <UserAvatar name={agent.name} kind="agent" size="md" />
+                                      <div className="porto-crew-meta">
+                                        <strong>
+                                          {agent.name}
+                                          {isOwner ? <span className="porto-tag">seu agente</span> : null}
+                                        </strong>
+                                        <span>
+                                          Agente de bordo
+                                          {inactive ? " · inativo" : ""}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span className="porto-kind porto-kind--agent">Agente</span>
+                                  </td>
+                                  <td>
+                                    <div className="porto-agent-role">
+                                      <span className="porto-role">Responsável: {ownerName}</span>
+                                      {isOwner ? (
+                                        <Link href="/integrations#chaves-mcp" className="porto-agent-link">
+                                          Gerenciar em Instrumentos
+                                        </Link>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                  {showCrewActions ? <td /> : null}
+                                </tr>
+                              );
+                            }
+
+                            const member = entry.member;
                             const isSelf = member.userId === currentUserId;
                             return (
-                              <tr key={member.id}>
+                              <tr key={`human-${member.id}`}>
                                 <td>
                                   <div className="porto-crew-person">
                                     <UserAvatar
@@ -265,6 +317,9 @@ export function WorkspacePanel({
                                       <span>{member.email ?? member.login}</span>
                                     </div>
                                   </div>
+                                </td>
+                                <td>
+                                  <span className="porto-kind porto-kind--human">Humano</span>
                                 </td>
                                 <td>
                                   {manageCrew && member.role !== "owner" && !isSelf ? (

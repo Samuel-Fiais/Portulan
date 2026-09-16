@@ -55,6 +55,24 @@ export const agentActions = [
   "create_project",
   "create_repository",
   "propose_context_pack",
+  "update_context_pack",
+  "update_repository",
+  "link_project_repository",
+  "list_repositories",
+  "add_context_pack_item",
+  "add_context_pack_source",
+  "delete_context_pack_item",
+  "delete_context_pack_source",
+  "add_implementation_task_source",
+  "delete_implementation_task_source",
+  "add_acceptance_criterion",
+  "delete_acceptance_criterion",
+  "save_implementation_plan",
+  "create_implementation_task",
+  "assign_implementation_task",
+  "submit_context_pack_review",
+  "approve_context_pack",
+  "start_new_context_pack_revision",
   "claim_non_code_task",
   "claim_code_task",
   "create_coordination_message",
@@ -62,7 +80,6 @@ export const agentActions = [
   "report_local_test",
   "report_own_commit",
   "accept_task_result",
-  "approve_context_pack",
 ] as const;
 export type AgentAction = (typeof agentActions)[number];
 
@@ -86,12 +103,12 @@ export const CONTEXT_PACK_VALIDITY_LABELS: Record<ContextPackValidity, string> =
 };
 
 export const TASK_STATUS_LABELS: Record<ImplementationTaskStatus, string> = {
-  available: "Disponível",
-  claimed: "Comando assumido",
-  in_progress: "Em curso",
-  blocked: "Maré contrária",
-  reported: "Registrada",
-  accepted: "Aceita",
+  available: "To do",
+  claimed: "Doing",
+  in_progress: "In progress",
+  blocked: "Blocked",
+  reported: "Done",
+  accepted: "Accepted",
 };
 
 export const PROJECT_REPOSITORY_ROLE_LABELS: Record<ProjectRepositoryRole, string> = {

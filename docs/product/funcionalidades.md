@@ -18,7 +18,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 |---|---|---|
 | F-porto | Criar portos, alternar o porto ativo e ganhar o porto inicial na primeira entrada (RN-86) | existe |
 | F-porto-identidade | Renomear o porto (capitão e imediato) e escolher papel pessoal na tela `/workspace` (RN-94) | existe |
-| F-tripulacao | Listar a tripulação, mudar papéis, remover pessoas e transferir a capitania (RN-88) | existe |
+| F-tripulacao | Listar a tripulação (humanos + agentes de bordo como tipos distintos), mudar papéis humanos, remover pessoas e transferir a capitania (RN-88, RN-112) | existe |
 | F-porto-convite | Convite por link com papel, validade e limite de usos; listar, revogar e resgatar em `/invite/{token}` (RN-89, RN-107) | existe |
 | F-porto-sair | Deixar o porto (com as travas de RN-90) e excluir um porto vazio (RN-91) | existe |
 
@@ -97,7 +97,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | F-cadastro | Criar conta com handle, e-mail, nome e senha | existe |
 | F-auth-mescla | Ligar GitHub e senha na mesma conta; desligar um método só se o outro existir | existe |
 | F-conta | Clique na foto abre modal: dados, métodos, seletor de tema (RN-85), atalho Instrumentos e sair | existe |
-| F-mcp-token | Gerar e revogar chaves MCP na tela Instrumentos (passo 02: identidade nomeada + validade + ferramentas; preso ao porto ativo, RN-55, RN-111) (rumos 01 endpoint → 02 chaves → 03 skill; cópia de endpoint/header/config; revogação com confirmação; catálogo completo de ferramentas agrupado) | existe |
+| F-mcp-token | Gerar e revogar chaves MCP na tela Instrumentos (passo 02: identidade nomeada + validade + ferramentas; preso ao porto ativo, RN-55, RN-111) (rumos 01 endpoint → 02 chaves → 03 skill; cópia de endpoint/header/config; revogação com confirmação; catálogo completo de ferramentas agrupado; Rumo/Manobra editáveis via MCP — itens, fontes, Marcos, plano, criar Manobra, revisão e aprovação — RN-105) | existe |
 
 ## Agentes
 
@@ -119,12 +119,15 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 |---|---|---|
 | F-expedicao | Criar, listar e abrir Expedições do porto ativo, com objetivo, Embarcações vinculadas e Rumos; nome 2–80 (RN-108) | existe |
 | F-embarcacao | Listar, abrir e registrar Embarcações (Git, local ou ambos) e vínculo N:N com Expedições, papel e paths relativos; nome 2–80 (RN-108) | existe |
-| F-rumo | Criar Rumo a partir de cartas ou do zero, com itens tipados, escopo, fontes e Marcos de chegada; título 3–180, item e Marco não vazios (RN-108) | existe |
+| F-rumo | Criar Rumo e editar o **Contexto** unificado (contrato: resultado, escopo, fora de escopo e plano; Marcos; itens tipados; cartas-fonte) nas vistas Trabalho, Contexto e Atividade, enquanto estiver em rascunho ou revisão; título 3–180; item e Marco não vazios; identificador `#` (RN-108, RN-99, RN-116) | existe |
 | F-rumo-aprovar | Enviar para revisão e aprovar, gerando revisão imutável; validade `needs_review` quando Carta-fonte ganha edição nova; ação explícita de nova revisão copia para rascunho (RN-99, RN-100) | existe |
+| F-rumo-quadro | Lista aninhada de Manobras e Lances; Kanban com alternância **Manobras** (só raízes, cartão rico: responsável, progresso e checklist compacta de Lances com ação **+ Lance** em painel inseto) e **Lances** (faixa por Manobra-pai à esquerda do quadro, à esquerda da coluna To do: `#` e objetivo truncado; cartões de Lance nas colunas de estado da mesma faixa), colunas **To do**, **In progress**, **Blocked**, **Done** e **Accepted**, cartões visualmente distintos por tipo; estado legível só no cabeçalho da coluna — seletor de estado só na **Lista** e no detalhe; remoção e delegação no Kanban enquanto o Rumo está editável; sem arrastar estado, prazo, pontos ou sprint (RN-113, RN-117) | existe |
 | F-carta-usada-em-contextos | Na carta, listar Rumos que a usam e iniciar um Rumo a partir dela | existe |
-| F-manobra | Plano opcional, Manobras com lease atômico, relatório com evidências visíveis e aceite humano informado (sem Kanban, prazo ou alocação); tela da Manobra com contrato, registros e aceite (RN-103, RN-108) | existe |
-| F-conversa-bordo | Fios de coordenação em Rumo, Manobra, item ou Marco; ao abrir, o tipo é Conversa ou Maré contrária (RN-109); agentes leem o corpo das mensagens; vários bloqueios só liberam na última resolução; corpo em branco não envia (RN-108) | existe |
-| F-agente-bordo | Identidade nomeada do agente MCP — gestão de chaves, ferramentas, desativar/reativar/excluir (RN-110), Guia do Agente e Diário de bordo; unificado com F-mcp-token em Instrumentos; paridade humana via MCP (RN-105) | existe |
+| F-manobra | Plano opcional; Manobras (PBI) e Lances (um nível) com lease atômico na folha, relatório e aceite humano na Manobra; tela de issue com responsável, comando, estado editável, remoção, cartas-fonte vinculadas e voltar (RN-103, RN-108, RN-113, RN-117, RN-118) | existe |
+| F-manobra-cartas-fonte | Vincular e remover cartas-fonte na Manobra ou Lance (UI e MCP); tripulação do porto; inclui Carta de conclusão ao finalizar (RN-118) | existe |
+| F-delegar | Atribuir responsável (tripulante ou agente) a Manobra ou Lance, com cascata só se pai e filhos estão sem dono; não cria lease (RN-115) | existe |
+| F-conversa-bordo | Feed único no Rumo, Manobra ou Lance: comentário reutiliza o fio de discussão, Maré é fio próprio (RN-109, RN-114); menção sem notificação; vários bloqueios só liberam na última resolução; corpo em branco não envia (RN-108) | existe |
+| F-agente-bordo | Identidade nomeada do agente MCP — gestão de chaves, **editar permissões (ferramentas MCP)** a qualquer momento (RN-111), desativar/reativar/excluir (RN-110), Guia do Agente e Diário de bordo; unificado com F-mcp-token em Instrumentos; paridade humana via MCP (RN-105) | existe |
 | F-mcp-dev-context | Ferramentas MCP de bootstrap, contexto, brief, Manobras, leases, relatórios e Conversas de bordo; chave sem participação no porto é recusada (RN-104) | existe |
 | F-cli-init | CLI `portulan init` / `doctor` idempotente: reusa Embarcação e vincula a Expedição escolhida, sem gravar segredo (RN-106); roteiro ponta a ponta na skill portulan-mcp e no Guia do Agente | existe |
 | F-diario-bordo | Auditoria imutável “Nome via Agente de Bordo”, com `clientInfo` observado persistido no token (RN-104) | existe |

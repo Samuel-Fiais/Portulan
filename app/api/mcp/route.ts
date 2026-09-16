@@ -22,6 +22,9 @@ import {
   publishDocument,
   restoreDocumentRelease,
   revokeDocumentShare,
+  updateDocumentShareRole,
+  listDocumentComments,
+  setDocumentCommentResolved,
   listUserWorkspaces,
   setDocumentDisabled,
   setDocumentReleaseDisabled,
@@ -41,7 +44,15 @@ import {
   deleteDocumentCommentForAccess,
   listDocumentCommentThreadsForAccess,
 } from "@/lib/document-comment-ops";
-import { documentShareInputSchema, documentVisibilitySchema, workspaceNameSchema } from "@/lib/validation";
+import { validateDocumentCommentResolveInput } from "@/lib/document-comment-resolve-policy";
+import { canReadDocument } from "@/lib/db/documents";
+import {
+  documentCommentResolveInputSchema,
+  documentShareInputSchema,
+  documentShareUpdateSchema,
+  documentVisibilitySchema,
+  workspaceNameSchema,
+} from "@/lib/validation";
 import { documentStatuses } from "@/lib/documents";
 import { explainMarkdownComponent, listMarkdownComponentsForMcp } from "@/lib/markdown-components";
 import { buildSystemGuide, getMcpServerVersion } from "@/lib/system-guide";
@@ -670,6 +681,33 @@ const mcpHandler = createMcpHandler((server) => {
   );
 
   server.registerTool(
+    "update_document_share",
+    {
+      title: "Alterar papel do convidado",
+      description: "Muda leitor/editor de um convite por e-mail (apenas o cartógrafo).",
+      inputSchema: z.object({
+        document_id: z.string().min(1),
+        share_id: z.string().uuid(),
+        role: z.enum(["viewer", "editor"]),
+      }),
+    },
+    async ({ document_id, share_id, role }) => {
+      const parsed = documentShareUpdateSchema.safeParse({ role });
+      if (!parsed.success) return { ...textResult({ error: "Papel inválido." }), isError: true };
+      const ctx = await requireAccessContext();
+      const document = await getDocument(document_id, ctx);
+      if (!document) return { ...textResult({ error: "Documento não encontrado" }), isError: true };
+      if (!isDocumentOwner(document, ctx)) {
+        return { ...textResult({ error: "Apenas o responsável pode alterar compartilhamentos." }), isError: true };
+      }
+      const share = await updateDocumentShareRole(share_id, document.id, parsed.data.role);
+      return share.ok
+        ? textResult({ share: share.share })
+        : { ...textResult({ error: share.error }), isError: true };
+    },
+  );
+
+  server.registerTool(
     "revoke_document_share",
     {
       title: "Revogar compartilhamento",
@@ -764,6 +802,36 @@ const mcpHandler = createMcpHandler((server) => {
       return result.ok
         ? textResult({ documentId: result.documentId, comment: result.comment })
         : { ...textResult({ error: result.error }), isError: true };
+    },
+  );
+
+  server.registerTool(
+    "resolve_document_comment",
+    {
+      title: "Resolver comentário de revisão",
+      description: "Marca o fio como resolvido ou reabre (RN-61).",
+      inputSchema: z.object({
+        document_id: z.string().min(1),
+        comment_id: z.string().uuid().describe("ID do comentário-raiz do fio"),
+        resolved: z.boolean(),
+      }),
+    },
+    async ({ document_id, comment_id, resolved }) => {
+      const parsed = documentCommentResolveInputSchema.safeParse({ resolved });
+      if (!parsed.success) return { ...textResult({ error: "Estado inválido." }), isError: true };
+      const ctx = await requireAccessContext();
+      const document = await getDocument(document_id, ctx);
+      if (!document || !(await canReadDocument(document, ctx))) {
+        return { ...textResult({ error: "Documento não encontrado ou sem permissão." }), isError: true };
+      }
+      const existing = await listDocumentComments(document.id);
+      const comment = existing.find((item) => item.id === comment_id);
+      const validated = validateDocumentCommentResolveInput({ comment, resolved: parsed.data.resolved });
+      if (!validated.ok) return { ...textResult({ error: validated.error }), isError: true };
+      const updated = await setDocumentCommentResolved(comment_id, document.id, parsed.data.resolved);
+      return updated
+        ? textResult({ comment: updated })
+        : { ...textResult({ error: "Não foi possível atualizar o fio." }), isError: true };
     },
   );
 
