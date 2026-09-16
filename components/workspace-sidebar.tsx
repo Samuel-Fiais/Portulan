@@ -1,18 +1,20 @@
 "use client";
 
-import { Fragment, useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Anchor,
   Compass,
-  Library,
   Map,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Ruler,
+  Sailboat,
+  Ship,
   Telescope,
+  Waypoints,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -21,13 +23,6 @@ import { AuthControls } from "@/components/auth-controls";
 import type { PublicAccount } from "@/lib/account-types";
 import { BrandMark } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -45,41 +40,26 @@ type NavLeaf = {
   icon: LucideIcon;
 };
 
-type NavGroup = {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  children: readonly NavLeaf[];
-};
-
-type NavEntry = NavLeaf | NavGroup;
-
-const NAV: readonly NavEntry[] = [
-  { href: "/", label: "Ponte", icon: Compass },
-  {
-    id: "acervo",
-    label: "Acervo",
-    icon: Library,
-    children: [
-      { href: "/biblioteca", label: "Cartoteca", icon: Map },
-      { href: "/templates", label: "Gabaritos", icon: Ruler },
-    ],
-  },
-  { href: "/integrations", label: "Instrumentos", icon: Telescope },
-  { href: "/porto", label: "Porto", icon: Anchor },
+const NAV_GROUPS: readonly (readonly NavLeaf[])[] = [
+  [
+    { href: "/", label: "Ponte", icon: Compass },
+    { href: "/library", label: "Cartoteca", icon: Map },
+    { href: "/templates", label: "Gabaritos", icon: Ruler },
+  ],
+  [
+    { href: "/projects", label: "Expedições", icon: Ship },
+    { href: "/repositories", label: "Embarcações", icon: Sailboat },
+    { href: "/context-packs", label: "Rumos", icon: Waypoints },
+  ],
+  [
+    { href: "/integrations", label: "Instrumentos", icon: Telescope },
+    { href: "/workspace", label: "Porto", icon: Anchor },
+  ],
 ];
-
-function isGroup(entry: NavEntry): entry is NavGroup {
-  return "children" in entry;
-}
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function isGroupActive(pathname: string, group: NavGroup) {
-  return group.children.some((child) => isActive(pathname, child.href));
 }
 
 function readNavExpanded() {
@@ -93,14 +73,11 @@ function writeNavExpanded(expanded: boolean) {
 
 function RailTooltip({
   label,
-  expanded,
   children,
 }: {
   label: string;
-  expanded: boolean;
   children: React.ReactNode;
 }) {
-  if (expanded) return children;
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -132,85 +109,21 @@ function RailLeafLink({
   );
 }
 
-function RailNavLinks({ pathname, expanded }: { pathname: string; expanded: boolean }) {
-  const router = useRouter();
-
+function RailNavLinks({ pathname }: { pathname: string }) {
   return (
     <>
-      {NAV.map((entry) => {
-        if (!isGroup(entry)) {
-          return (
-            <RailTooltip key={entry.href} label={entry.label} expanded={expanded}>
+      {NAV_GROUPS.map((group, index) => (
+        <div
+          key={group[0]?.href ?? index}
+          className={cn("workspace-rail-group", index > 0 && "workspace-rail-group--ruled")}
+        >
+          {group.map((entry) => (
+            <RailTooltip key={entry.href} label={entry.label}>
               <RailLeafLink item={entry} pathname={pathname} />
             </RailTooltip>
-          );
-        }
-
-        const groupActive = isGroupActive(pathname, entry);
-        const GroupIcon = entry.icon;
-
-        if (expanded) {
-          return (
-            <Fragment key={entry.id}>
-              {entry.children.map((child) => (
-                <RailTooltip key={child.href} label={child.label} expanded={expanded}>
-                  <RailLeafLink item={child} pathname={pathname} />
-                </RailTooltip>
-              ))}
-            </Fragment>
-          );
-        }
-
-        return (
-          <div key={entry.id} className="workspace-rail-group">
-            <div className="workspace-rail-group-head">
-              <div className="workspace-rail-group-head-inner">
-                <DropdownMenu>
-                  <RailTooltip label={entry.label} expanded={expanded}>
-                    <DropdownMenuTrigger
-                      className={cn(
-                        "workspace-rail-link workspace-rail-group-trigger",
-                        !expanded && groupActive && "active",
-                      )}
-                      aria-label={entry.label}
-                      aria-haspopup="menu"
-                      tabIndex={expanded ? -1 : undefined}
-                    >
-                      <GroupIcon />
-                      <span className="workspace-rail-link-label">{entry.label}</span>
-                    </DropdownMenuTrigger>
-                  </RailTooltip>
-                  <DropdownMenuContent align="start" side="right" sideOffset={10} className="workspace-rail-flyout">
-                    <DropdownMenuLabel>{entry.label}</DropdownMenuLabel>
-                    {entry.children.map((child) => {
-                      const ChildIcon = child.icon;
-                      const active = isActive(pathname, child.href);
-                      return (
-                        <DropdownMenuItem
-                          key={child.href}
-                          className={cn("workspace-rail-flyout-item", active && "active")}
-                          onSelect={() => router.push(child.href)}
-                        >
-                          <ChildIcon />
-                          {child.label}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-            <div className="workspace-rail-group-body" aria-hidden={!expanded}>
-              <div className="workspace-rail-group-body-inner">
-                <p className="workspace-rail-group-caption">{entry.label}</p>
-                {entry.children.map((child) => (
-                  <RailLeafLink key={child.href} item={child} pathname={pathname} />
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      ))}
     </>
   );
 }
@@ -218,44 +131,28 @@ function RailNavLinks({ pathname, expanded }: { pathname: string; expanded: bool
 function MobileNavLinks({ pathname }: { pathname: string }) {
   return (
     <>
-      {NAV.map((entry) => {
-        if (!isGroup(entry)) {
-          const Icon = entry.icon;
-          const active = isActive(pathname, entry.href);
-          return (
-            <Link
-              key={entry.href}
-              href={entry.href}
-              className={cn("workspace-mobile-link", active && "active")}
-              aria-current={active ? "page" : undefined}
-            >
-              <Icon />
-              <span>{entry.label}</span>
-            </Link>
-          );
-        }
-
-        return (
-          <div key={entry.id} className="workspace-mobile-group">
-            <p className="workspace-mobile-section">{entry.label}</p>
-            {entry.children.map((child) => {
-              const Icon = child.icon;
-              const active = isActive(pathname, child.href);
-              return (
-                <Link
-                  key={child.href}
-                  href={child.href}
-                  className={cn("workspace-mobile-link", active && "active")}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <Icon />
-                  <span>{child.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        );
-      })}
+      {NAV_GROUPS.map((group, index) => (
+        <div
+          key={group[0]?.href ?? index}
+          className={cn("workspace-mobile-group", index > 0 && "workspace-mobile-group--ruled")}
+        >
+          {group.map((entry) => {
+            const Icon = entry.icon;
+            const active = isActive(pathname, entry.href);
+            return (
+              <Link
+                key={entry.href}
+                href={entry.href}
+                className={cn("workspace-mobile-link", active && "active")}
+                aria-current={active ? "page" : undefined}
+              >
+                <Icon />
+                <span>{entry.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </>
   );
 }
@@ -345,10 +242,10 @@ export function WorkspaceSidebar({
             </div>
           ) : null}
           <div className="workspace-rail-nav">
-            <RailNavLinks pathname={pathname} expanded={expanded} />
+            <RailNavLinks pathname={pathname} />
           </div>
           <div className="workspace-rail-footer">
-            <RailTooltip label={expanded ? "Recolher menu" : "Mostrar menus"} expanded={expanded}>
+            <RailTooltip label={expanded ? "Recolher menu" : "Mostrar menus"}>
               <button
                 type="button"
                 className="workspace-rail-link workspace-rail-toggle"

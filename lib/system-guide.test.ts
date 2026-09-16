@@ -4,7 +4,7 @@ import { buildSystemGuide, getMcpServerVersion } from "./system-guide.ts";
 
 test("buildSystemGuide inclui catálogo, testcase e avoidErrors", () => {
   const guide = buildSystemGuide();
-  assert.equal(getMcpServerVersion(), "0.9.0");
+  assert.equal(getMcpServerVersion(), "0.10.0");
   assert.ok(guide.markdownCatalog.total > 50);
   assert.ok(guide.markdownCatalog.summary.some((component) => component.id === "testcase"));
   assert.ok(guide.livingBehavior.components.some((component) => component.id === "testcase"));

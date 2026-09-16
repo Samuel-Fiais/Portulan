@@ -142,7 +142,7 @@ export function WorkspacePanel({
         toast.error(result.error);
         return;
       }
-      const url = `${origin}/convite/${result.token}`;
+      const url = `${origin}/invite/${result.token}`;
       setLastInviteUrl(url);
       await copyInvite(url);
       router.refresh();

@@ -13,28 +13,38 @@ Caminhos que o produto promete. Se a jornada mudar, atualize aqui e as `RN-xx` e
 
 Regras: RN-80 a RN-86.
 
+## Percorrer o trilho
+
+1. Depois de entrar, a pessoa cai na Ponte do porto ativo.
+2. O trilho (compacto, expandido e drawer estreito) lista os destinos nesta ordem: Ponte → Cartoteca → Gabaritos → Expedições → Embarcações → Rumos → Instrumentos → Porto. Cartoteca e Gabaritos são itens próprios; não há menu Acervo (RN-70).
+3. Trabalho editorial: da Ponte ou da Cartoteca abre a carta; carta nova começa por um gabarito.
+4. Trabalho de desenvolvimento: cria a Expedição, registra e vincula Embarcações, depois abre ou cria Rumos (na Expedição ou a partir de uma Carta).
+5. Instrumentos liga agentes e tokens; Porto cuida da identidade e da tripulação.
+
+Regra: RN-70.
+
 ## Criar e trocar de porto
 
 1. No topo do trilho, o seletor mostra o porto ativo. Clicar lista os outros portos da pessoa.
 2. Escolher outro porto grava a preferência na sessão e recarrega a Cartoteca, a Ponte e os Gabaritos naquele acervo (RN-87).
 3. **Novo porto** pede só o nome. Quem cria entra como capitão, e o porto novo já vira o ativo.
-4. **Abrir o porto** leva a `/porto`: identidade (nome do porto e papel pessoal), tripulação, convites e zona de risco.
+4. **Abrir o porto** leva a `/workspace`: identidade (nome do porto e papel pessoal), tripulação, convites e zona de risco.
 
-Regras: RN-86, RN-87, RN-88.
+Regras: RN-86, RN-87, RN-88, RN-107.
 
 ## Convidar e organizar a tripulação
 
-1. Em `/porto`, capitão ou imediato gera um convite escolhendo papel (imediato ou tripulante), validade (1 dia, 7 dias, 30 dias ou nunca) e limite de usos opcional.
-2. O link `/convite/{token}` é copiado na hora — o token não aparece de novo. Convites ativos ficam listados e podem ser revogados.
+1. Em `/workspace`, capitão ou imediato gera um convite escolhendo papel (imediato ou tripulante), validade (1 dia, 7 dias, 30 dias ou nunca) e limite de usos opcional.
+2. O link `/invite/{token}` é copiado na hora — o token não aparece de novo. Convites ativos ficam listados e podem ser revogados.
 3. Quem recebe abre o link, entra (ou cria conta) e confirma. Convite revogado, expirado, esgotado ou de porto onde já é tripulante é recusado com o motivo.
 4. Na lista de tripulação, capitão e imediato promovem ou rebaixam entre imediato e tripulante e removem pessoas. Ninguém mexe no próprio papel; imediato não mexe em outro imediato.
 5. O capitão transfere a capitania para alguém da tripulação; ele passa a imediato e a outra pessoa assume o comando.
 
-Regras: RN-88, RN-89.
+Regras: RN-88, RN-89, RN-107.
 
 ## Escolher o papel (tema)
 
-1. No trilho **Tema**, em `/porto` (**Seu papel**) ou no modal da conta, a pessoa escolhe um dos cinco papéis (claro/escuro) ou **Personalizado**.
+1. No trilho **Tema**, em `/workspace` (**Seu papel**) ou no modal da conta, a pessoa escolhe um dos cinco papéis (claro/escuro) ou **Personalizado**.
 2. A escolha pinta a tela **na hora** e fica gravada neste navegador — por porto quando há porto ativo, ou global na tela de acesso e leitura pública.
 3. Cada tripulante pode ter um papel diferente no mesmo porto; ninguém impõe tema para os outros.
 
@@ -43,7 +53,7 @@ Regras: RN-85, RN-94.
 ## Deixar ou afundar um porto
 
 1. Tripulante e imediato usam **Deixar o porto**. O capitão precisa transferir a capitania antes; o porto inicial e o último porto da pessoa não podem ser deixados.
-2. Só o capitão exclui um porto, e só quando ele está **sem cartas**: mover as cartas para outro porto (metadados do editor) ou excluí-las vem primeiro. O porto inicial não é excluído.
+2. Só o capitão exclui um porto, e só quando ele está **sem cartas, Expedições, Embarcações e Rumos**: mover esse acervo para outro porto ou excluí-lo vem primeiro. O porto inicial não é excluído.
 3. Ao sair ou excluir, a pessoa cai no primeiro porto que ainda lhe resta.
 
 Regras: RN-90, RN-91.
@@ -179,7 +189,7 @@ Regras: RN-10, RN-20, RN-21.
 ## Agente (MCP)
 
 1. Usuário abre Instrumentos, confere em que porto está e copia endpoint + header (ou snippet de config).
-2. Gera token pessoal, copia na hora (exibido uma vez) e revoga com confirmação se necessário. O token fica preso ao porto ativo daquele momento (RN-55); para operar em outro porto, trocar de porto e gerar outro token.
+2. Cria chave MCP: nome do agente, validade e ferramentas (todas habilitadas por padrão, RN-111). A chave é exibida uma vez e copiada na hora; revogação com confirmação quando necessário. A chave fica presa ao porto ativo daquele momento (RN-55); para operar em outro porto, trocar de porto e gerar outra chave.
 3. Cliente envia o Bearer em toda chamada.
 4. O agente lista/lê/edita/publica como aquele usuário, no recorte do porto do token — o mesmo recorte de permissão da UI. `list_workspaces` mostra os portos e qual deles o token opera.
 5. Para restaurar uma versão publicada no rascunho: `list_document_releases` → `restore_document` (RN-09); releases existentes permanecem; publicar depois se quiser registrar o rascunho restaurado.
@@ -193,3 +203,51 @@ Regras: RN-09, RN-45, RN-46, RN-50 a RN-55, RN-61, RN-65.
 Cartógrafo confirma. Remove a carta e as releases. Irreversível. Agente precisa do UUID.
 
 Regra: RN-06.
+
+## Criar Expedição e vincular Embarcações
+
+1. Na tela Expedições, a tripulação cria uma Expedição no porto ativo (nome e objetivo). Agente MCP pode criar via MCP (`create_project`).
+2. Registra Embarcações na tela Embarcações (ou a partir da Expedição) — Git, local ou ambos — e vincula com papel e paths relativos. Agente MCP pode registrar via MCP (`create_repository`, com vínculo opcional à Expedição).
+3. Path absoluto de checkout não é gravado no servidor; o CLI informa o checkout na máquina.
+
+Regras: RN-96, RN-97, RN-98.
+
+## Transformar Carta em Rumo
+
+1. Na carta, **Iniciar um Rumo a partir desta Carta** (ou criar Rumo avulso na Expedição). Agente MCP cria rascunho via MCP (`propose_context_pack`).
+2. O Rumo nasce `draft`. Fontes formais pedem uma edição publicada imutável; o formulário mostra as edições e exige uma. Publicar carta privada continua privado.
+3. Itens (decisão, regra, contrato, risco, suposição, pergunta), escopo, não-escopo, Marcos de chegada e, se quiser, Plano de navegação com Manobras. Enquanto o Rumo é rascunho ou está em revisão, dá para trocar ou remover fonte, item e Marco.
+4. Enviar para revisão. Responsável do Rumo, capitão ou imediato aprova — confirmação explícita. Nasce revisão imutável. A tela mostra Carta viva, edição fixada e o snapshot `/p`.
+5. Se a Carta-fonte ganhar edição nova, o Rumo anterior permanece; a validade passa a `needs_review`. Recuperar o contrato é **Criar nova revisão**: copia o conteúdo para rascunho, preserva o histórico e deixa as Manobras na revisão que as sustentou.
+
+Regras: RN-99, RN-100, RN-101, RN-102.
+
+Funcionalidades: F-rumo, F-rumo-aprovar, F-carta-usada-em-contextos.
+
+## Assumir Manobra e reportar
+
+1. Agente autenticado chama `get_agent_bootstrap`: identidade, modo, Embarcação da sessão (só se existir no porto), Manobras compatíveis e protocolo. Sem participação no porto, a chave é recusada.
+2. Sem Rumo aprovado e válido, o MCP devolve diagnóstico — não um briefing meio pronto. Listar ou assumir Manobra também exige esse recorte.
+3. **Assumir o comando** cria lease atômico. Renovar exige atividade. Expirado pode ser retomado. Progresso e resultado só pelo detentor do lease ativo.
+4. Conversa de bordo fica no fio do Rumo, da Manobra, do item ou do Marco — separados dos comentários da carta. Ao abrir o fio, o bordo escolhe o tipo **Conversa** ou **Maré contrária** (RN-109). Agentes leem o corpo das mensagens. Várias Marés só liberam a Manobra quando a última for resolvida.
+5. O Registro de bordo descreve o resultado com evidências, lacunas e cobertura dos Marcos. Reportado não é aceito sozinho: o revisor vê esses campos antes de aceitar. Resumo em branco não registra; mensagem em branco não envia o fio.
+6. Manobra de código só com Embarcação do porto compatível com a Manobra. Ausência não é reconhecida automaticamente. Agente não aprova Rumo nem aceita resultado.
+
+Regras: RN-101, RN-103, RN-104, RN-105, RN-108, RN-109, RN-110, RN-111.
+
+Funcionalidades: F-manobra, F-conversa-bordo, F-mcp-dev-context, F-agente-bordo.
+
+## Auto-configuração do agente (ponta a ponta)
+
+1. Tripulante ou agente gera **chave MCP** em Instrumentos (passo 02) no porto correto, conectando ao Portulan na cloud (`https://portulan.vercel.app`).
+2. Configura o cliente MCP (`.cursor/mcp.json` com Bearer `ptl_…`).
+3. Exporta `PORTULAN_TOKEN` / `PORTULAN_ENDPOINT` para o terminal — nunca no repositório (RN-106).
+4. Na raiz do checkout de código: `portulan init` registra ou reusa Embarcação, vincula Expedição(ões), escreve `.portulan/config.json` e `.portulan/AGENT.md`, e acrescenta blocos gerenciados.
+5. `portulan doctor` confirma token, vínculo e blocos.
+6. Primeira chamada MCP de dev-context: `get_agent_bootstrap` com `repository_id` do config.
+
+A skill **portulan-mcp** e o **Guia do Agente** (copiado em Instrumentos) documentam este roteiro para auto-configuração sem instruções humanas adicionais.
+
+Regras: RN-50, RN-55, RN-106, RN-111.
+
+Funcionalidades: F-mcp-token, F-cli-init, F-agente-bordo.

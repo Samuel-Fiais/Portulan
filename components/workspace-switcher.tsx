@@ -66,7 +66,7 @@ export function WorkspaceSwitcher({
       setCreateOpen(false);
       setName("");
       toast.success(`Porto ${result.workspace.name} fundado`);
-      router.push("/porto");
+      router.push("/workspace");
       router.refresh();
     });
   }
@@ -124,7 +124,7 @@ export function WorkspaceSwitcher({
             <Plus />
             Fundar porto
           </DropdownMenuItem>
-          <DropdownMenuItem className="workspace-porto-action" onSelect={() => router.push("/porto")}>
+          <DropdownMenuItem className="workspace-porto-action" onSelect={() => router.push("/workspace")}>
             <Settings2 />
             Administrar porto
           </DropdownMenuItem>

@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import {
   countWorkspaceDocuments,
+  countWorkspacePacks,
+  countWorkspaceProjects,
+  countWorkspaceRepositories,
   createWorkspace,
   createWorkspaceInvite,
   deleteWorkspace,
@@ -14,6 +17,7 @@ import {
   listWorkspaceMembers,
   redeemWorkspaceInvite,
   removeWorkspaceMember,
+  revokeMcpTokensForWorkspaceUser,
   revokeWorkspaceInvite,
   setWorkspaceMemberRole,
   transferWorkspaceCaptaincy,
@@ -54,7 +58,7 @@ async function requireMembership(workspaceId: string) {
 
 function revalidateWorkspaceSurfaces() {
   revalidatePath("/", "layout");
-  revalidatePath("/porto");
+  revalidatePath("/workspace");
 }
 
 export async function switchWorkspaceAction(workspaceId: string) {
@@ -166,6 +170,7 @@ export async function removeWorkspaceMemberAction(workspaceId: string, targetUse
   if (!validated.ok) return { ok: false as const, error: validated.error };
 
   await removeWorkspaceMember(workspaceId, targetUserId);
+  await revokeMcpTokensForWorkspaceUser(workspaceId, targetUserId);
   revalidateWorkspaceSurfaces();
   return { ok: true as const };
 }
@@ -183,6 +188,7 @@ export async function leaveWorkspaceAction(workspaceId: string) {
   if (!validated.ok) return { ok: false as const, error: validated.error };
 
   await removeWorkspaceMember(workspaceId, context.userId);
+  await revokeMcpTokensForWorkspaceUser(workspaceId, context.userId);
   const remaining = memberships.find((item) => item.id !== workspaceId);
   if (remaining) await setActiveWorkspaceCookie(remaining.id);
   revalidateWorkspaceSurfaces();
@@ -213,11 +219,19 @@ export async function deleteWorkspaceAction(workspaceId: string) {
   const context = await requireMembership(workspaceId);
   if (!context.ok) return context;
 
-  const documentCount = await countWorkspaceDocuments(workspaceId);
+  const [documentCount, projectCount, repositoryCount, packCount] = await Promise.all([
+    countWorkspaceDocuments(workspaceId),
+    countWorkspaceProjects(workspaceId),
+    countWorkspaceRepositories(workspaceId),
+    countWorkspacePacks(workspaceId),
+  ]);
   const validated = validateWorkspaceDeletion({
     role: context.membership.role,
     isPersonal: context.membership.isPersonal,
     documentCount,
+    projectCount,
+    repositoryCount,
+    packCount,
   });
   if (!validated.ok) return { ok: false as const, error: validated.error };
 

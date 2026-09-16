@@ -14,7 +14,7 @@ const messages = {
     title: "Você não tem acesso a esta carta.",
     description:
       "Peça ao cartógrafo para compartilhar a carta com o e-mail da sua conta. Convites pendentes só funcionam após login com o mesmo e-mail.",
-    action: { href: "/biblioteca", label: "Voltar à cartoteca", icon: ArrowLeft },
+    action: { href: "/library", label: "Voltar à cartoteca", icon: ArrowLeft },
   },
 } as const;
 

@@ -62,10 +62,10 @@ export function buildBibliotecaUrl(filters?: {
     params.set("ownership", filters.ownership);
   }
   const query = params.toString();
-  return query ? `/biblioteca?${query}` : "/biblioteca";
+  return query ? `/library?${query}` : "/library";
 }
 
 export function bibliotecaUrl(status?: DocumentStatus): string {
-  if (!status) return "/biblioteca";
+  if (!status) return "/library";
   return buildBibliotecaUrl({ status });
 }

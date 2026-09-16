@@ -49,13 +49,28 @@ export const PORTULAN_TABLE_COLUMNS = {
     "is_builtin",
     "created_at",
   ],
+  agent_identities: [
+    "id",
+    "workspace_id",
+    "owner_user_id",
+    "name",
+    "work_mode",
+    "allowed_mcp_tools",
+    "status",
+    "deactivated_at",
+    "created_at",
+    "updated_at",
+  ],
   mcp_tokens: [
     "id",
     "user_id",
     "workspace_id",
+    "agent_identity_id",
     "name",
     "token_hash",
     "token_prefix",
+    "scopes",
+    "last_client_info",
     "created_at",
     "last_used_at",
     "expires_at",
@@ -102,6 +117,144 @@ export const PORTULAN_TABLE_COLUMNS = {
   ],
   document_shares: ["id", "document_id", "email", "role", "invited_by", "user_id", "created_at"],
   document_comments: ["id", "document_id", "user_id", "body", "section_anchor", "quoted_text", "parent_id", "resolved_at", "created_at"],
+  projects: ["id", "workspace_id", "name", "objective", "created_by", "created_at", "updated_at"],
+  repositories: [
+    "id",
+    "workspace_id",
+    "name",
+    "kind",
+    "remote_url",
+    "notes",
+    "created_by",
+    "created_at",
+    "updated_at",
+  ],
+  project_repositories: ["id", "project_id", "repository_id", "role", "path_scopes", "notes", "created_at"],
+  context_packs: [
+    "id",
+    "workspace_id",
+    "project_id",
+    "title",
+    "objective",
+    "expected_outcome",
+    "scope",
+    "out_of_scope",
+    "status",
+    "validity",
+    "owner_user_id",
+    "current_revision_id",
+    "created_at",
+    "updated_at",
+  ],
+  context_pack_revisions: [
+    "id",
+    "pack_id",
+    "workspace_id",
+    "revision_number",
+    "snapshot",
+    "approved_by",
+    "approved_at",
+    "created_at",
+  ],
+  context_pack_items: [
+    "id",
+    "pack_id",
+    "workspace_id",
+    "revision_id",
+    "type",
+    "strength",
+    "body",
+    "blocking",
+    "sort_order",
+    "created_at",
+  ],
+  context_pack_sources: [
+    "id",
+    "pack_id",
+    "workspace_id",
+    "revision_id",
+    "document_id",
+    "release_id",
+    "source_role",
+    "section",
+    "reason",
+    "required",
+    "created_at",
+  ],
+  acceptance_criteria: ["id", "pack_id", "workspace_id", "revision_id", "description", "sort_order", "created_at"],
+  implementation_plans: ["id", "pack_id", "workspace_id", "revision_id", "summary", "created_at"],
+  implementation_tasks: [
+    "id",
+    "pack_id",
+    "workspace_id",
+    "plan_id",
+    "pack_revision_id",
+    "objective",
+    "repository_id",
+    "path_scopes",
+    "required_item_ids",
+    "criterion_ids",
+    "depends_on_task_ids",
+    "status",
+    "lease_holder_token_id",
+    "lease_holder_identity_id",
+    "lease_holder_user_id",
+    "lease_expires_at",
+    "sort_order",
+    "created_at",
+    "updated_at",
+  ],
+  progress_reports: [
+    "id",
+    "task_id",
+    "workspace_id",
+    "pack_revision_id",
+    "kind",
+    "summary",
+    "changed_scopes",
+    "evidence",
+    "commit_ref",
+    "pull_request_ref",
+    "covered_criterion_ids",
+    "gaps",
+    "user_id",
+    "agent_identity_id",
+    "created_at",
+  ],
+  coordination_threads: [
+    "id",
+    "workspace_id",
+    "subject_type",
+    "subject_id",
+    "is_blocker",
+    "resolved_at",
+    "created_by",
+    "created_at",
+  ],
+  coordination_messages: [
+    "id",
+    "thread_id",
+    "workspace_id",
+    "user_id",
+    "agent_identity_id",
+    "body",
+    "parent_id",
+    "created_at",
+  ],
+  audit_events: [
+    "id",
+    "workspace_id",
+    "user_id",
+    "agent_identity_id",
+    "mcp_token_id",
+    "action",
+    "target_type",
+    "target_id",
+    "correlation_id",
+    "client_info",
+    "payload",
+    "created_at",
+  ],
 } as const;
 
 type PortulanTable = keyof typeof PORTULAN_TABLE_COLUMNS;
@@ -147,22 +300,13 @@ export function isIdempotentSchemaError(error: unknown): boolean {
 }
 
 async function loadTableColumns(db: Db): Promise<Map<string, Set<string>>> {
+  const tableNames = Object.keys(PORTULAN_TABLE_COLUMNS);
+  const inList = sql.raw(tableNames.map((name) => `'${name.replace(/'/g, "''")}'`).join(", "));
   const rows = await db.execute<{ table_name: string; column_name: string }>(sql`
     SELECT table_name, column_name
     FROM information_schema.columns
     WHERE table_schema = ${PORTULAN_PG_SCHEMA}
-      AND table_name IN (
-        'users',
-        'workspaces',
-        'workspace_members',
-        'workspace_invites',
-        'templates',
-        'mcp_tokens',
-        'documents',
-        'document_releases',
-        'document_shares',
-        'document_comments'
-      )
+      AND table_name IN (${inList})
   `);
 
   const byTable = new Map<string, Set<string>>();
@@ -427,6 +571,34 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       await executeSchemaStatement(
         db,
         `ALTER TABLE ${PORTULAN_PG_SCHEMA}.mcp_tokens ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`,
+      );
+    }
+    if (!columns.has("last_client_info")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.mcp_tokens ADD COLUMN IF NOT EXISTS last_client_info TEXT`,
+      );
+    }
+  }
+
+  if (await portulanTableExists(db, "agent_identities")) {
+    const identityColumns = (await loadTableColumns(db)).get("agent_identities") ?? new Set<string>();
+    if (!identityColumns.has("allowed_mcp_tools")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.agent_identities ADD COLUMN IF NOT EXISTS allowed_mcp_tools TEXT NOT NULL DEFAULT '[]'`,
+      );
+    }
+    if (!identityColumns.has("status")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.agent_identities ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'`,
+      );
+    }
+    if (!identityColumns.has("deactivated_at")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.agent_identities ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ`,
       );
     }
   }

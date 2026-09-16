@@ -6,12 +6,26 @@ Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para
 
 ## Ranking atual
 
-Pedido avulso (11 set. 2026), fora da leva 2.
+Pedido avulso (14 set. 2026), fora da leva 2.
 
 | # | ID | Melhoria | Superfície | I | C | E | Score | Estado |
 |---|---|---|---|---|---|---|---|---|
 | — | auth-password | Cadastro com senha, mescla GitHub e modal da conta | Conta | 8 | 9 | 5 | 36.0 | entregue |
 | — | portos | Portos (workspaces) com tripulação, convite por link, visibilidade em três níveis, tema do porto e léxico náutico | Workspace | 9 | 9 | 4 | 32.4 | entregue |
+| — | dev-context | Contexto de desenvolvimento: Expedições, Rumos versionados, Manobras com lease, Agentes de Bordo, MCP e CLI `portulan init` | Expedição / MCP | 9 | 8 | 2 | 14.4 | entregue (correção 15 set. 2026) |
+
+## Escopo (dev-context)
+
+- Expedição no porto, Embarcação lógica (N:N com papel e paths relativos), sem path absoluto no servidor.
+- Rumo com ciclo `draft/review/approved/superseded`, validade à parte, revisão imutável na aprovação.
+- Cartas-fonte com release imutável; nova edição da carta sinaliza `needs_review` sem invalidar o Rumo antigo.
+- Plano opcional e Manobras com lease atômico, relatório e aceite humano. Sem Kanban, prazo, pontos ou alocação.
+- Conversas de bordo (domínio separado dos comentários de carta) e Diário de bordo.
+- Agente de Bordo com modos `context_and_coordination`, `local_implementation` e `review`; chave ligada a humano + identidade + porto.
+- MCP: bootstrap, contexto, brief, claim/renew/release, relatórios e coordenação. Chaves MCP unificadas em Instrumentos (identidade + validade + ferramentas); catálogo completo de 49 ferramentas.
+- CLI `portulan init` / `doctor`: config sem segredo, `AGENT.md`, blocos gerenciados idempotentes.
+
+Fora: Kanban/sprints/prazos/alocação; execução de código no servidor; sync contínuo de Git; validação automática de PR; aprovação por IA; grafo visual; CRDT; e-mail; gravar token, segredo ou path absoluto no repositório.
 
 ## Escopo (auth-password)
 
@@ -55,7 +69,7 @@ Fora: e-mail de convite, cobrança/plano por porto, domínio verificado, papéis
 
 ## Já existe (não listar de novo)
 
-Editor Markdown + prévia, catálogo de diretivas `:::`, gabaritos com paleta/logo, duplicar gabarito na UI, publicar com `/d/{slug}` e `/p/{id}`, visibilidade em três níveis (camarote / porto / mar aberto), compartilhar leitor/editor com selo de externo, MCP (cartas/gabaritos/componentes/shares/upload/portos), PDF do rascunho, PDF de versão publicada no Histórico, download do Markdown fonte (`.md`), duplicar carta na UI e no MCP, desativar carta/versão, upload de imagem (Blob), checklist living em localStorage, card `:::report`, diagramas Mermaid (` ```mermaid `), workspace autenticado com trilho (Ponte, Cartoteca, Gabaritos, Instrumentos, Porto) e seletor de porto, portos com tripulação e convite por link, tema do porto no servidor com sobrescrita local, mover carta entre portos, salvar rascunho (botão ou Cmd/Ctrl+S), slug UUID estável, filtro de status, busca no corpo, atalhos B/I/K, Tab/Shift+Tab para indentar, índice com âncoras, diff de versões, restaurar release no rascunho, comentários na prévia com respostas, login GitHub ou handle/e-mail + senha, cadastro com senha, mescla de métodos na mesma conta, modal da conta.
+Editor Markdown + prévia, catálogo de diretivas `:::`, gabaritos com paleta/logo, duplicar gabarito na UI, publicar com `/d/{slug}` e `/p/{id}`, visibilidade em três níveis (camarote / porto / mar aberto), compartilhar leitor/editor com selo de externo, MCP (cartas/gabaritos/componentes/shares/upload/portos/contexto de desenvolvimento), CLI `portulan init`, Expedições e Rumos versionados com Manobras e Agentes de Bordo, PDF do rascunho, PDF de versão publicada no Histórico, download do Markdown fonte (`.md`), duplicar carta na UI e no MCP, desativar carta/versão, upload de imagem (Blob), checklist living em localStorage, card `:::report`, diagramas Mermaid (` ```mermaid `), workspace autenticado com trilho (Ponte, Cartoteca, Gabaritos, Expedições, Embarcações, Rumos, Instrumentos, Porto) e seletor de porto, portos com tripulação e convite por link, tema do porto no servidor com sobrescrita local, mover carta entre portos, salvar rascunho (botão ou Cmd/Ctrl+S), slug UUID estável, filtro de status, busca no corpo, atalhos B/I/K, Tab/Shift+Tab para indentar, índice com âncoras, diff de versões, restaurar release no rascunho, comentários na prévia com respostas, login GitHub ou handle/e-mail + senha, cadastro com senha, mescla de métodos na mesma conta, modal da conta.
 
 ## Leva 1 — entregue (4 set. 2026)
 

@@ -8,7 +8,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 
 | ID | Capacidade | Estado |
 |---|---|---|
-| F-navegacao | Trilho desktop com toggle compacto (ícones + tooltips) ou expandido (rótulos); Cartoteca e Gabaritos no menu Acervo; drawer no viewport estreito com o mesmo agrupamento | existe |
+| F-navegacao | Trilho desktop com toggle compacto (ícones + tooltips) ou expandido (rótulos); destinos irmãos nesta ordem: Ponte, Cartoteca, Gabaritos, Expedições, Embarcações, Rumos, Instrumentos e Porto; drawer no viewport estreito com a mesma lista (RN-70) | existe |
 | F-porto-switcher | Seletor de porto no topo do trilho: porto ativo, trocar, criar novo e abrir a tela do porto | existe |
 | F-dashboard | Ponte: resumo da cartoteca do porto ativo, cartas recentes, nova carta e atalhos para as outras telas | existe |
 
@@ -17,9 +17,9 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | ID | Capacidade | Estado |
 |---|---|---|
 | F-porto | Criar portos, alternar o porto ativo e ganhar o porto inicial na primeira entrada (RN-86) | existe |
-| F-porto-identidade | Renomear o porto (capitão e imediato) e escolher papel pessoal na tela `/porto` (RN-94) | existe |
+| F-porto-identidade | Renomear o porto (capitão e imediato) e escolher papel pessoal na tela `/workspace` (RN-94) | existe |
 | F-tripulacao | Listar a tripulação, mudar papéis, remover pessoas e transferir a capitania (RN-88) | existe |
-| F-porto-convite | Convite por link com papel, validade e limite de usos; listar, revogar e resgatar em `/convite/{token}` (RN-89) | existe |
+| F-porto-convite | Convite por link com papel, validade e limite de usos; listar, revogar e resgatar em `/invite/{token}` (RN-89, RN-107) | existe |
 | F-porto-sair | Deixar o porto (com as travas de RN-90) e excluir um porto vazio (RN-91) | existe |
 
 ## Cartoteca
@@ -69,7 +69,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 |---|---|---|
 | F-publico | `/d/{uuid}` última versão; `/p/{id}` versão fixa. Visitante anônimo só entra em mar aberto | existe |
 | F-tema | Escolher um dos cinco papéis claros ou cinco escuros, ou Personalizado com cor livre, no workspace, no acesso e na vista pública (RN-85) | existe |
-| F-tema-porto | Papel por pessoa e por porto: escolha aplica na hora e grava neste navegador (trilho Tema, `/porto`, modal da conta) (RN-94) | existe |
+| F-tema-porto | Papel por pessoa e por porto: escolha aplica na hora e grava neste navegador (trilho Tema, `/workspace`, modal da conta) (RN-94) | existe |
 | F-indice | TOC com âncoras em `##` / `###` na prévia do editor, prévia de rascunho, `/d`, `/p` e PDF | existe |
 | F-mermaid | Renderizar fence ` ```mermaid ` com paleta do gabarito (flowchart, sequência, estado) na prévia, leitura pública e PDF | existe |
 | F-living | Checklist, testcase, gráficos e blocos interativos na leitura | existe |
@@ -97,7 +97,7 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | F-cadastro | Criar conta com handle, e-mail, nome e senha | existe |
 | F-auth-mescla | Ligar GitHub e senha na mesma conta; desligar um método só se o outro existir | existe |
 | F-conta | Clique na foto abre modal: dados, métodos, seletor de tema (RN-85), atalho Instrumentos e sair | existe |
-| F-mcp-token | Gerar e revogar token pessoal MCP na tela Instrumentos (token preso ao porto ativo, RN-55) (rumos 01 endpoint → 02 token → 03 skill; cópia de endpoint/header/config; revogação com confirmação; catálogo completo de ferramentas agrupado) | existe |
+| F-mcp-token | Gerar e revogar chaves MCP na tela Instrumentos (passo 02: identidade nomeada + validade + ferramentas; preso ao porto ativo, RN-55, RN-111) (rumos 01 endpoint → 02 chaves → 03 skill; cópia de endpoint/header/config; revogação com confirmação; catálogo completo de ferramentas agrupado) | existe |
 
 ## Agentes
 
@@ -112,3 +112,19 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | F-mcp-catalogo | listar e explicar componentes Markdown | existe |
 | F-mcp-guia | get_system_guide — guia completo gerado do catálogo e do produto, incluindo seção **Como evitar erros** (armadilhas de sintaxe) e avoidErrors por componente via explain_markdown_component | existe |
 | F-mcp-upload | upload_image e upload_file — enviar imagens e anexos ao Blob (base64) e obter URL pública para `:::figure` / `:::file` | existe |
+
+## Contexto de desenvolvimento
+
+| ID | Capacidade | Estado |
+|---|---|---|
+| F-expedicao | Criar, listar e abrir Expedições do porto ativo, com objetivo, Embarcações vinculadas e Rumos; nome 2–80 (RN-108) | existe |
+| F-embarcacao | Listar, abrir e registrar Embarcações (Git, local ou ambos) e vínculo N:N com Expedições, papel e paths relativos; nome 2–80 (RN-108) | existe |
+| F-rumo | Criar Rumo a partir de cartas ou do zero, com itens tipados, escopo, fontes e Marcos de chegada; título 3–180, item e Marco não vazios (RN-108) | existe |
+| F-rumo-aprovar | Enviar para revisão e aprovar, gerando revisão imutável; validade `needs_review` quando Carta-fonte ganha edição nova; ação explícita de nova revisão copia para rascunho (RN-99, RN-100) | existe |
+| F-carta-usada-em-contextos | Na carta, listar Rumos que a usam e iniciar um Rumo a partir dela | existe |
+| F-manobra | Plano opcional, Manobras com lease atômico, relatório com evidências visíveis e aceite humano informado (sem Kanban, prazo ou alocação); tela da Manobra com contrato, registros e aceite (RN-103, RN-108) | existe |
+| F-conversa-bordo | Fios de coordenação em Rumo, Manobra, item ou Marco; ao abrir, o tipo é Conversa ou Maré contrária (RN-109); agentes leem o corpo das mensagens; vários bloqueios só liberam na última resolução; corpo em branco não envia (RN-108) | existe |
+| F-agente-bordo | Identidade nomeada do agente MCP — gestão de chaves, ferramentas, desativar/reativar/excluir (RN-110), Guia do Agente e Diário de bordo; unificado com F-mcp-token em Instrumentos; paridade humana via MCP (RN-105) | existe |
+| F-mcp-dev-context | Ferramentas MCP de bootstrap, contexto, brief, Manobras, leases, relatórios e Conversas de bordo; chave sem participação no porto é recusada (RN-104) | existe |
+| F-cli-init | CLI `portulan init` / `doctor` idempotente: reusa Embarcação e vincula a Expedição escolhida, sem gravar segredo (RN-106); roteiro ponta a ponta na skill portulan-mcp e no Guia do Agente | existe |
+| F-diario-bordo | Auditoria imutável “Nome via Agente de Bordo”, com `clientInfo` observado persistido no token (RN-104) | existe |

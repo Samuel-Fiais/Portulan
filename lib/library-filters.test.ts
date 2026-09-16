@@ -94,8 +94,8 @@ test("filterDocumentsByStatus keeps all or one status", () => {
 });
 
 test("bibliotecaUrl builds library links", () => {
-  assert.equal(bibliotecaUrl(), "/biblioteca");
-  assert.equal(bibliotecaUrl("review"), "/biblioteca?status=review");
+  assert.equal(bibliotecaUrl(), "/library");
+  assert.equal(bibliotecaUrl("review"), "/library?status=review");
 });
 
 test("parseOwnershipFilter accepts mine and shared and falls back to all", () => {
@@ -118,11 +118,11 @@ test("filterDocumentsByOwnership keeps all, mine or shared", () => {
 });
 
 test("buildBibliotecaUrl combines status and ownership params", () => {
-  assert.equal(buildBibliotecaUrl(), "/biblioteca");
-  assert.equal(buildBibliotecaUrl({ status: "draft" }), "/biblioteca?status=draft");
-  assert.equal(buildBibliotecaUrl({ ownership: "mine" }), "/biblioteca?ownership=mine");
+  assert.equal(buildBibliotecaUrl(), "/library");
+  assert.equal(buildBibliotecaUrl({ status: "draft" }), "/library?status=draft");
+  assert.equal(buildBibliotecaUrl({ ownership: "mine" }), "/library?ownership=mine");
   assert.equal(
     buildBibliotecaUrl({ status: "review", ownership: "shared" }),
-    "/biblioteca?status=review&ownership=shared",
+    "/library?status=review&ownership=shared",
   );
 });

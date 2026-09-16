@@ -86,7 +86,7 @@ export function HomeDashboard({
       <section className="doc-section">
         <div className="section-header split-row">
           <h2 className="section-title">Recentes</h2>
-          <Link href="/biblioteca" className="section-desc section-link">
+          <Link href="/library" className="section-desc section-link">
             Ver cartoteca
             <ArrowRight />
           </Link>

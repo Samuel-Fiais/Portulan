@@ -43,7 +43,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
-  max-width: 420px;
+  width: 100%;
+  max-width: none;
 }
 
 .porto-setting-row > [data-slot="input"] {
@@ -52,7 +53,7 @@
 }
 
 .porto-setting--theme .porto-setting-control {
-  max-width: 520px;
+  max-width: none;
 }
 
 .porto-header-stats__grid {

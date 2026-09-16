@@ -1,105 +1,224 @@
 ---
 name: portulan-mcp
-description: Operates the Portulan MCP server (portulan) to list, read, create, update, publish, and delete technical documents in SQLite. Use when the user mentions Portulan MCP, /api/mcp, document library agents, publishing share links, or maintaining Markdown docs via MCP in Cursor or Claude Code.
+description: Operates the Portulan MCP server (portulan) for editorial cartas/gabaritos and for development context (Expedições, Rumos, Manobras, Conversas de bordo). Covers end-to-end self-setup — chave MCP, mcp.json, portulan init/doctor, get_agent_bootstrap. Use when the user mentions Portulan MCP, /api/mcp, Instrumentos, portulan init, list_documents, get_agent_bootstrap, publishing /d or /p links, or coordinating work via MCP in Cursor or Claude Code.
 ---
 
 # Portulan MCP
 
-Guia para agentes operarem a cartoteca técnica **Portulan** via MCP Streamable HTTP. Na UI o produto chama documento de **carta**, template de **gabarito** e workspace de **porto**; as ferramentas MCP mantêm os nomes técnicos.
+Guia para agentes operarem o **Portulan** via MCP Streamable HTTP — cartoteca editorial **e** coordenação de desenvolvimento. Na UI: **carta** (`document`), **gabarito** (`template`), **porto** (`workspace`), **Expedição** (`project`), **Rumo** (`contextPack`), **Embarcação** (`repository`), **Manobra** (`implementationTask`). As ferramentas MCP mantêm os nomes técnicos em inglês.
+
+**Não substitui** `docs/product/` (regras `RN-xx`, fluxos) nem a skill **portulan-ice** (backlog). Use esta skill para *como* chamar o MCP; use o modelo de produto para *o que* é permitido.
 
 ## Pré-requisitos
 
-1. App rodando: `npm run dev` (Node 20+) no repo Portulan
-2. Endpoint: `http://localhost:3000/api/mcp`
-3. Servidor MCP: `portulan` v0.9.0
+1. Portulan acessível na **cloud**: `https://portulan.vercel.app` (produção)
+2. Endpoint MCP: `https://portulan.vercel.app/api/mcp`
+3. Servidor MCP: `portulan` v0.10.0
+4. Chave MCP (`ptl_…`) gerada em **Instrumentos** no porto correto
 
-Sem o dev server, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
+**Localhost** (`npm run dev` → `http://localhost:3000/api/mcp`) só para quem desenvolve o repositório Portulan — agentes em outros checkouts usam a cloud.
 
-## Conectar o cliente MCP
+Sem instância acessível ou chave válida, conexões falham (`CONNECTION_CLOSED`, timeout ou 401).
 
-### Cursor
+## Chaves MCP (RN-55, RN-111, F-mcp-token)
 
-No projeto Portulan Docs, use `.cursor/mcp.json`. Em outros workspaces, adicione ao MCP global ou ao `mcp.json` do projeto:
+O catálogo em Instrumentos agrupa **49 ferramentas** (`lib/mcp-tool-catalog.ts`). Toda chave nova cria uma identidade nomeada no passo **02 — Chaves MCP**: nome do agente, validade e ferramentas (todas habilitadas por padrão; desmarque por segurança, RN-111).
+
+O token fica preso ao **porto ativo** no momento da geração. Para operar em outro porto, troque na UI e gere chave nova.
+
+Chaves legadas sem identidade continuam válidas até revogação, com catálogo completo.
+
+## Auto-configuração de ponta a ponta
+
+Use este roteiro para se configurar **sem depender de instruções humanas**. O **Guia do Agente** (Instrumentos → card do agente → Copiar Guia do Agente) repete o mesmo fluxo personalizado.
+
+### Escopo
+
+| Objetivo | Passos mínimos |
+|---|---|
+| Só cartas/gabaritos (editorial) | 1 → 2 → 3 → operar com `get_system_guide` |
+| Expedição, Rumo, Manobra (dev-context) | 1 → 2 → 3 → 4 → 5 → 6 → `get_agent_bootstrap` |
+
+### 1. Confirmar o endpoint (cloud)
+
+Produção: `https://portulan.vercel.app/api/mcp`.
+
+Override opcional: `PORTULAN_ENDPOINT=https://…` ou `--endpoint=` no CLI.
+
+Desenvolvimento do Portulan (só mantenedores): `npm run dev` no repo Portulan → `http://localhost:3000/api/mcp`.
+
+### 2. Gerar chave MCP
+
+1. Abra **Instrumentos** no **porto** onde vai trabalhar.
+2. Passo **02 — Chaves MCP** → **Nova chave MCP**.
+3. Nome do agente, validade, ferramentas (todas marcadas por padrão).
+4. Copie `ptl_…` na hora — **nunca** commite no repositório (RN-106).
+
+### 3. Conectar o cliente MCP
+
+`.cursor/mcp.json` (ou equivalente no Claude):
 
 ```json
 {
   "mcpServers": {
     "portulan": {
-      "url": "http://localhost:3000/api/mcp"
+      "url": "https://portulan.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ptl_SUA_CHAVE"
+      }
     }
   }
 }
 ```
 
-Recarregue MCPs em Settings → MCP após subir o app.
+Recarregue MCPs após salvar (Cursor: Settings → MCP).
 
-### Claude Code / Claude Desktop (HTTP)
+**Dev local:** se `MCP_API_KEY` estiver em `.env.local` do Portulan, pode usar essa chave no header em vez de `ptl_`.
 
-```json
-{
-  "mcpServers": {
-    "portulan": {
-      "url": "http://localhost:3000/api/mcp"
-    }
-  }
-}
+**Stdio (`mcp-remote`):** prefira HTTP com header quando possível. Com stdio, exporte `PORTULAN_TOKEN` e verifique se o wrapper repassa o Bearer.
+
+### 4. Token para o CLI
+
+Para `portulan init` / `portulan doctor`, exporte na sessão de terminal:
+
+```bash
+export PORTULAN_TOKEN=ptl_SUA_CHAVE
+export PORTULAN_ENDPOINT=https://portulan.vercel.app
 ```
 
-Se o cliente só suporta stdio, use `mcp-remote`:
+macOS keychain (opcional, RN-106):
 
-```json
-{
-  "mcpServers": {
-    "portulan": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:3000/api/mcp"]
-    }
-  }
-}
+```bash
+security add-generic-password -s portulan-mcp -a portulan -w 'ptl_SUA_CHAVE'
 ```
 
-### Autenticação (opcional)
+### 5. Preparar o checkout (`portulan init`)
 
-Se `MCP_API_KEY` estiver em `.env.local`, envie em **toda** requisição:
+Na **raiz Git** do repositório que será a Embarcação:
 
-```http
-Authorization: Bearer <MCP_API_KEY>
+```bash
+# no repo Portulan:
+npm run portulan -- init --yes
+
+# ou de qualquer lugar (endpoint default = cloud):
+node /caminho/para/Portulan/cli/portulan.mjs init --yes --endpoint=https://portulan.vercel.app
 ```
 
-No JSON do cliente, adicione `"headers": { "Authorization": "Bearer ..." }` quando suportado.
+O `init` (RN-106, F-cli-init):
 
-## Ferramentas (30)
+- Detecta remoto Git (se houver) e registra ou reusa a Embarcação no porto.
+- Vincula a Embarcação à(s) Expedição(ões) — interativo se houver várias; `--yes` aceita padrões.
+- Escreve `.portulan/config.json` (sem segredo, sem path absoluto).
+- Escreve `.portulan/AGENT.md` com protocolo deste checkout.
+- Acrescenta blocos `BEGIN:portulan-dev-context` em `AGENTS.md`, `CLAUDE.md` e `.cursor/rules/portulan-dev-context.mdc` (confirma se arquivo já existir; `--yes` pula confirmação).
+
+### 6. Verificar (`portulan doctor`)
+
+```bash
+npm run portulan -- doctor
+```
+
+Deve imprimir `portulan doctor: ok`. Corrija token, config ou blocos antes de assumir Manobras.
+
+### 7. Operar
+
+**Dev-context:** leia `.portulan/AGENT.md`, depois `get_agent_bootstrap` com `repository_id` de `.portulan/config.json`.
+
+**Editorial:** `get_system_guide` antes de escrever cartas.
+
+## Ferramentas (49)
+
+Agrupamento igual à tela **Instrumentos** (`F-mcp-token`). Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
+
+### Porto (F-mcp-portos)
 
 | Ferramenta | Quando usar |
 |---|---|
-| `get_system_guide` | **Primeiro** quando não souber como escrever conteúdo — guia completo gerado do catálogo (inclui seção **Como evitar erros**) |
-| `upload_image` | Enviar imagem (base64) para um documento; usar a `url` retornada em `:::figure{src=...}` |
-| `upload_file` | Enviar anexo (base64) para um documento; usar `url` e `name` em `:::file{url=... name=...}` |
-| `list_workspaces` | Portos (workspaces) da pessoa e qual deles este token opera (RN-55) |
-| `create_workspace` | Abrir um porto novo, com a pessoa como capitão (RN-86); o token continua no porto de origem |
-| `list_documents` | Descobrir o que existe no porto do token (mais os compartilhados nominalmente); buscar por título, tag, conteúdo, template ou status |
-| `get_document` | Ler conteúdo completo antes de editar |
-| `create_document` | Assunto novo, sem documento equivalente. Nasce privado, no porto do token |
-| `duplicate_document` | Clonar documento como rascunho novo (apenas responsável; releases não copiadas) |
-| `update_document` | Editar rascunho/revisão; não cria versão publicada; `workspace_id` move a carta de porto (RN-19) |
-| `publish_document` | Gerar versão imutável; a visibilidade não muda |
-| `restore_document` | Copiar uma release publicada para o rascunho; não publica nem apaga versões (RN-09) |
-| `list_document_releases` | Recuperar links `/d/{slug}` (estável) e `/p/{id}` (versão fixa) já publicados |
-| `delete_document` | Remover definitivamente (só UUID) |
-| `list_templates` | Descobrir os templates disponíveis e seus conteúdos-base |
-| `get_template` | Ler um template completo (cores + conteúdo-base) |
-| `create_template` | Criar um template no porto do token, com paleta e Markdown inicial |
-| `update_template` | Alterar nome, cores ou conteúdo-base de um template |
-| `duplicate_template` | Clonar um template acessível para o porto do token |
-| `preview_template` | Resumo leve de um template (títulos + trecho inicial) |
-| `delete_template` | Remover definitivamente um template do porto |
-| `list_markdown_components` | Catálogo de diretivas `:::` e Markdown do editor |
-| `explain_markdown_component` | Sintaxe, atributos, armadilhas (`avoidErrors`) e exemplos de um componente |
-| `list_document_comments` | Listar fios de revisão de um documento (RN-61) |
-| `create_document_comment` | Criar comentário-raiz (âncora/trecho opcionais) ou responder com `parent_id` (RN-65) |
-| `delete_document_comment` | Remover o próprio comentário; remover o raiz encerra o fio (RN-65) |
+| `list_workspaces` | Portos da pessoa e qual deles este token opera (RN-55) |
+| `create_workspace` | Abrir porto novo como capitão (RN-86); token continua no porto de origem |
 
-Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
+### Cartas (F-mcp-docs)
+
+| Ferramenta | Quando usar |
+|---|---|
+| `list_documents` | Descobrir cartas do porto do token (+ compartilhadas nominalmente); busca por título, tag, conteúdo, template ou status |
+| `get_document` | Ler conteúdo completo antes de editar |
+| `create_document` | Assunto novo, sem equivalente; nasce privado no porto do token |
+| `update_document` | Editar rascunho; `visibility` e `workspace_id` (RN-17, RN-18, RN-19) |
+| `duplicate_document` | Clonar carta como rascunho (releases não copiadas) |
+| `delete_document` | Remover definitivamente (**só UUID**) |
+| `publish_document` | Gerar release imutável; visibilidade não muda |
+| `list_document_releases` | Links `/d/{uuid}` e `/p/{releaseId}` já publicados |
+| `update_document_release` | Ativar/desativar uma versão fixa `/p/{id}` |
+| `restore_document` | Copiar release para o rascunho (RN-09); não publica |
+
+### Gabaritos (F-mcp-templates)
+
+| Ferramenta | Quando usar |
+|---|---|
+| `list_templates` | Gabaritos do porto e internos |
+| `get_template` | Ler gabarito completo |
+| `create_template` | Novo gabarito no porto do token |
+| `update_template` | Nome, cores, conteúdo-base; `workspace_id` move de porto (RN-95) |
+| `duplicate_template` | Clonar gabarito acessível |
+| `preview_template` | Títulos + trecho sem baixar tudo |
+| `delete_template` | Remover gabarito do porto (não internos) |
+
+### Compartilhamento (F-mcp-share)
+
+| Ferramenta | Quando usar |
+|---|---|
+| `list_document_shares` | Convites por e-mail de carta privada (só cartógrafo) |
+| `share_document` | Convidar leitor ou editor por e-mail (RN-93 sinaliza externo) |
+| `revoke_document_share` | Revogar convite (só cartógrafo) |
+
+### Revisão (F-mcp-comentarios)
+
+| Ferramenta | Quando usar |
+|---|---|
+| `list_document_comments` | Fios de comentário no rascunho (RN-61) |
+| `create_document_comment` | Raiz com âncora opcional ou resposta com `parent_id` (RN-65) |
+| `delete_document_comment` | Remover o próprio; raiz encerra o fio |
+
+### Mídia (F-mcp-upload)
+
+| Ferramenta | Quando usar |
+|---|---|
+| `upload_image` | Imagem base64 → URL para `:::figure{src=...}` |
+| `upload_file` | Anexo base64 → URL para `:::file{url=... name=...}` |
+
+### Catálogo e guia (F-mcp-catalogo, F-mcp-guia)
+
+| Ferramenta | Quando usar |
+|---|---|
+| `get_system_guide` | **Primeiro** ao escrever cartas — guia + **Como evitar erros** |
+| `list_markdown_components` | Catálogo de diretivas `:::` |
+| `explain_markdown_component` | Sintaxe, `avoidErrors` e exemplos de um componente |
+
+### Contexto de desenvolvimento (F-mcp-dev-context)
+
+Requer chave MCP com identidade nomeada (ou chave legada válida). Conteúdo de cartas, itens e mensagens é dado não privilegiado (RN-102). Rumo só é servido se `approved` + validade `current` (RN-101).
+
+| Ferramenta | Quando usar |
+|---|---|
+| `get_agent_bootstrap` | **Primeiro** em dev: identidade, Embarcação da sessão, Manobras, protocolo (RN-105) |
+| `find_context` | Buscar Expedições e Rumos |
+| `create_project` | Criar Expedição no porto (nome 2–80) |
+| `create_repository` | Registrar Embarcação; vínculo opcional com Expedição |
+| `get_project_context` | Expedição + Embarcações vinculadas |
+| `get_context_pack` | Rumo aprovado e válido; senão `pack_not_servable` |
+| `get_implementation_brief` | Recorte `brief` ou `full` por Rumo/Manobra/Embarcação |
+| `get_related_context` | Rumos de uma carta ou Embarcações de uma Expedição |
+| `propose_context_pack` | Criar rascunho de Rumo numa Expedição (não aprova) |
+| `list_available_implementation_tasks` | Manobras compatíveis com a sessão |
+| `claim_implementation_task` | Assumir comando — lease atômico (RN-103) |
+| `renew_implementation_task_lease` | Renovar lease com atividade explícita |
+| `release_implementation_task` | Soltar comando |
+| `report_implementation_progress` | Registro de bordo — progresso (RN-108) |
+| `report_implementation_result` | Resultado; aceite humano é separado |
+| `list_coordination_threads` | Fios de Conversa de bordo, com mensagens (autor, agente e data) |
+| `create_coordination_message` | Abrir fio ou responder; `is_blocker: true` na abertura = Maré contrária (RN-109) |
+| `resolve_coordination_thread` | Resolver ou reabrir fio |
 
 ## Modelo de dados
 
@@ -128,7 +247,7 @@ Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 - `publish_document` com `content` aplica a mesma preservação antes de criar o snapshot.
 - `publish_document` cria um novo snapshot imutável em `document_releases`, avança a versão e retorna `stablePublicPath: "/d/{uuid}"` (UUID fixo na criação; não muda ao renomear título) e `publicPath: "/p/{releaseId}"` (versão fixa). **Não** muda a visibilidade: o documento nasce e permanece privado até `update_document` com `visibility: "workspace"` ou `"public"`.
 - Links antigos `/p/...` **não mudam** quando o documento é editado depois; nova publicação = novo link de versão fixa. O link `/d/{uuid}` passa a apontar para a versão mais recente.
-- Links `/d` e `/p`: `http://localhost:3000/d/{uuid}` (última versão) e `http://localhost:3000/p/{releaseId}` (versão fixa). Visitante sem login só vê se a visibilidade for `public`.
+- Links `/d` e `/p`: `https://portulan.vercel.app/d/{uuid}` (última versão) e `https://portulan.vercel.app/p/{releaseId}` (versão fixa). Visitante sem login só vê se a visibilidade for `public`.
 
 ### Porto (workspace) e visibilidade
 
@@ -243,6 +362,42 @@ Irreversível. Confirme com o usuário antes.
 ```
 
 Comentários seguem RN-61 e RN-65: só no editor autenticado, para quem tem acesso ao documento. Sem comentário anônimo em `/d` ou `/p`. `section_anchor` deve existir na prévia atual (ex.: `cover-title`, ids de `##`/`###`, `block-{section}-{index}`).
+
+### Compartilhar carta privada (convite nominal)
+
+```
+1. get_document(id) → confirmar que você é o cartógrafo
+2. list_document_shares(document_id) → convites atuais
+3. share_document(document_id, email, role: "viewer" | "editor")
+4. revoke_document_share(document_id, share_id) → quando necessário
+```
+
+Alternativa para a tripulação inteira: `update_document` com `visibility: "workspace"`. Link público: publicar + `visibility: "public"`.
+
+### Assumir Manobra e reportar (F-manobra, F-mcp-dev-context)
+
+```
+1. get_agent_bootstrap(repository_id?) → Manobras compatíveis, protocolo
+2. get_context_pack(pack_id) ou get_implementation_brief → Rumo válido (RN-101)
+3. list_available_implementation_tasks → escolher Manobra
+4. claim_implementation_task(task_id) → lease atômico (RN-103)
+5. report_implementation_progress / report_implementation_result → resumo obrigatório (RN-108)
+6. renew_implementation_task_lease enquanto trabalha; release_implementation_task ao soltar
+```
+
+Manobra de código exige Embarcação reconhecida na sessão (RN-105). Aceite humano não vem do MCP.
+
+### Conversa de bordo e Maré contrária (F-conversa-bordo, RN-109)
+
+```
+1. list_coordination_threads(subject_type, subject_id) → fios existentes
+2. create_coordination_message(subject_type, subject_id, body) → Conversa normal
+3. create_coordination_message(..., is_blocker: true) → Maré contrária (só ao abrir fio)
+4. create_coordination_message(thread_id, body) → responder (tipo não muda)
+5. resolve_coordination_thread(thread_id, resolved: true) → encerrar
+```
+
+Maré contrária em Manobra (`subject_type: "task"`) põe status `blocked` até resolver o fio. Corpo vazio não envia (RN-108).
 
 ### Escolher componente Markdown
 
@@ -372,7 +527,7 @@ Informação relevante.
 
 | Sintoma | Causa provável | Ação |
 |---|---|---|
-| `CONNECTION_CLOSED` | App parado | `npm run dev` |
+| `CONNECTION_CLOSED` | Cloud inacessível ou URL errada | Confirme `https://portulan.vercel.app/api/mcp` |
 | `401 Não autorizado` | `MCP_API_KEY` ativa | Header Bearer ou remova a chave em dev |
 | `Documento não encontrado` | ID/slug errado | `list_documents` |
 | Ferramentas não aparecem | MCP desconectado | Reiniciar cliente / refresh MCP |
@@ -381,17 +536,17 @@ Informação relevante.
 Teste manual:
 
 ```bash
-curl -sS -X POST http://localhost:3000/api/mcp \
+curl -sS -X POST https://portulan.vercel.app/api/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Deve listar 30 ferramentas.
+Deve listar **49** ferramentas.
 
 ## API HTTP (alternativa ao MCP)
 
-Mesma base SQLite, sem MCP:
+Mesmo banco (PostgreSQL via Drizzle), sem MCP:
 
 - `GET /api/documents?q=&type=&status=`
 - `POST /api/documents`
@@ -404,5 +559,6 @@ Use MCP quando o agente precisa de ferramentas tipadas; use HTTP para integraç�
 ## Referência detalhada
 
 - Schemas e exemplos: [reference.md](reference.md)
-- Guia completo (download): [portulan-mcp-skill.md](../../../portulan-mcp-skill.md)
+- Catálogo no código (fonte de verdade dos nomes): `lib/mcp-tool-catalog.ts`
+- Handler: `app/api/mcp/route.ts` · dev-context: `lib/mcp-dev-context-tools.ts`
 - Índice da skill: [INDEX.md](INDEX.md)

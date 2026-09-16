@@ -14,14 +14,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Este projeto inclui a skill **portulan-mcp** em `.cursor/skills/portulan-mcp/`.
 
-Quando a tarefa envolver documentos da biblioteca, MCP, publicação com link `/p/{id}`, ou ferramentas `list_documents` / `create_document` / `publish_document`, **leia e siga** `.cursor/skills/portulan-mcp/SKILL.md` antes de agir.
+Quando a tarefa envolver MCP do Portulan — cartas, gabaritos, publicação (`/d`, `/p`), compartilhamento, ou contexto de desenvolvimento (`get_agent_bootstrap`, Rumos, Manobras, Conversas de bordo) — **leia e siga** `.cursor/skills/portulan-mcp/SKILL.md` antes de agir.
 
 | Recurso | Caminho |
 |---|---|
 | Skill (agente) | `.cursor/skills/portulan-mcp/SKILL.md` |
 | Referência MCP | `.cursor/skills/portulan-mcp/reference.md` |
 | Config MCP Cursor | `.cursor/mcp.json` |
-| Endpoint (dev) | `http://localhost:3000/api/mcp` |
+| Endpoint (cloud) | `https://portulan.vercel.app/api/mcp` |
+| Endpoint (dev local) | `http://localhost:3000/api/mcp` |
 
 Requisito: `npm run dev` rodando para o MCP responder.
 
@@ -32,10 +33,11 @@ A copy em pt-BR usa o vocabulário náutico; o código mantém os nomes técnico
 | UI | Código |
 |---|---|
 | Carta | `document` |
-| Cartoteca | `/biblioteca` |
-| Gabarito | `template` |
+| Cartoteca | `/library` |
+| Gabarito | `template` · `/templates` |
 | Instrumentos | `/integrations` |
-| Porto · Tripulação | `workspace` · `workspaceMembers` |
+| Porto · Tripulação | `workspace` · `/workspace` · `workspaceMembers` |
+| Expedição · Rumo · Embarcação · Manobra | `/projects` · `/context-packs` · `/repositories` · `/context-packs/{id}/tasks/{taskId}` |
 | Cartógrafo · Frota | `author` · `team` |
 | Camarote · Porto · Mar aberto | `visibility`: `private` · `workspace` · `public` |
 

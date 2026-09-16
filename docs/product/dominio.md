@@ -4,24 +4,39 @@ Vocabulário estável do Portulan. Se um termo mudar de significado, atualize es
 
 ## O que é
 
-Workspace editorial para criar, revisar, publicar e imprimir **cartas técnicas** (documentos) em Markdown, com a mesma cartoteca operável por pessoas (UI) e por agentes (MCP). O trabalho acontece dentro de um **porto**: um espaço com tripulação e acervo próprios.
+Workspace editorial para criar, revisar, publicar e imprimir **cartas técnicas** (documentos) em Markdown, com a mesma cartoteca operável por pessoas (UI) e por agentes (MCP). O trabalho acontece dentro de um **porto**: um espaço com tripulação e acervo próprios. Dentro do porto, uma **Expedição** reúne o conhecimento de desenvolvimento (Embarcações, Rumos e Manobras) sem substituir o porto.
 
 ## Léxico
 
-A copy da UI usa o vocabulário náutico; o código e as APIs (MCP, rotas JSON) mantêm os termos técnicos.
+A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as APIs (MCP) mantêm os termos técnicos.
 
 | UI | Código / API |
 |---|---|
 | Carta | documento (`document`) |
-| Cartoteca | biblioteca (`/biblioteca`) |
-| Gabarito | template |
+| Cartoteca | biblioteca (`/library`) |
+| Gabarito | template (`/templates`) |
 | Instrumentos | integrações (`/integrations`) |
-| Porto | workspace |
+| Porto | workspace (`/workspace`) |
 | Tripulação | membros do workspace |
 | Cartógrafo | responsável / dono da carta (`userId`) |
 | Frota | time (`team`, metadado da carta) |
 | Ponte | dashboard (`/`) |
 | Camarote · Porto · Mar aberto | `visibility` = `private` · `workspace` · `public` |
+| Expedição | projeto (`project`, `/projects`) |
+| Embarcação | repositório lógico (`repository`, `/repositories`) |
+| Rumo | Context Pack (`contextPack`, `/context-packs`)
+| Rumo de execução | projeção (`devContext`) |
+| Plano de navegação | plano (`implementationPlan`) |
+| Manobra | tarefa de implementação (`implementationTask`, `/context-packs/{id}/tasks/{taskId}`) |
+| Assumir o comando | lease da Manobra (`claimTask`) |
+| Agente MCP | identidade nomeada (`agentIdentity`) |
+| Chave de bordo | token MCP (`mcpToken`) |
+| Diário de bordo | auditoria (`auditEvent`) |
+| Conversa de bordo | fio de coordenação (`coordinationThread`) |
+| Registro de bordo | relatório de progresso (`progressReport`) |
+| Marcos de chegada | critério de aceite (`acceptanceCriterion`) |
+| Carta-fonte | fonte documental (`documentSource`) |
+| Maré contrária | bloqueio (`blocker`) |
 
 ## Atores
 
@@ -35,14 +50,14 @@ A copy da UI usa o vocabulário náutico; o código e as APIs (MCP, rotas JSON) 
 | Leitor | Convidado com papel `viewer` naquela carta. Lê rascunho e prévia; não edita. |
 | Externo | Convidado nominal que **não** faz parte do porto da carta. Mesmo papel de editor/leitor, marcado como externo na UI. |
 | Visitante público | Quem abre `/d/{slug}` ou `/p/{id}` sem login. Só vê versão publicada e habilitada de carta em mar aberto. |
-| Agente | Cliente MCP autenticado com token pessoal. Opera como aquele usuário, dentro do porto do token. |
+| Agente MCP | Cliente MCP autenticado com chave válida. Toda chave nova cria uma identidade nomeada (ex.: Claude Code) ligada a um responsável humano. Opera como aquele usuário, dentro do porto da chave. Não tem Embarcação fixa. |
 | Legado | Carta sem `userId` ou sem porto (pré-autenticação / pré-portos). Tratamento especial de acesso. |
 
 ## Entidades
 
 ### Porto (workspace)
 
-Espaço de trabalho. Toda conta tem pelo menos um. Reúne tripulação, cartas, gabaritos e tokens MCP.
+Espaço de trabalho. Toda conta tem pelo menos um. Reúne tripulação, cartas, gabaritos, Expedições, Embarcações, Rumos, agentes MCP e chaves MCP.
 
 | Campo | Papel |
 |---|---|
@@ -65,7 +80,7 @@ Vínculo entre uma conta e um porto, com um papel.
 
 ### Convite de porto
 
-Link de entrada (`/convite/{token}`), não convite por e-mail. Token exibido uma única vez, guardado com hash.
+Link de entrada (`/invite/{token}`), não convite por e-mail. Token exibido uma única vez, guardado com hash.
 
 | Campo | Papel |
 |---|---|
@@ -171,13 +186,133 @@ Preferência visual **por pessoa** (RN-94): escolher um swatch pinta na hora e g
 
 Cada papel tem modo claro e escuro. **Personalizado** é a sexta opção: a pessoa escolhe qualquer cor no seletor; essa tinta vira a ação do chrome naquele modo. A marca de três barras permanece Carta.
 
-### Token MCP
+### Chave MCP
 
-Credencial pessoal (`ptl_…`). Expira em 30d, 60d, 1 ano ou nunca. Autentica o agente como o usuário **e** fixa o porto em que ele opera: o porto ativo no momento da geração. Cartas criadas pelo agente nascem nesse porto.
+Credencial (`ptl_…`) ligada a uma identidade nomeada no porto. Expira em 30d, 60d, 1 ano ou nunca. Autentica o agente como o usuário **e** fixa o porto em que ele opera: o porto ativo no momento da geração. Cartas criadas pelo agente nascem nesse porto. Na criação, o responsável escolhe validade e quais ferramentas MCP ficam habilitadas (RN-111). Chaves legadas sem identidade continuam válidas até revogação. O servidor nunca guarda a chave em texto puro; afirma só qual credencial foi usada. `clientInfo` do handshake MCP é dado observado, não autenticação.
 
 ### Componente Markdown
 
 Bloco do catálogo (alerta, gráfico, checklist, …). A modal **Adicionar componente** e o MCP leem o mesmo catálogo. Novo bloco = uma entrada no catálogo, não uma lista paralela no editor.
+
+### Expedição (project)
+
+Iniciativa ou produto **dentro de um porto**. Agrupa Embarcações e Rumos. Não substitui o porto: acervo, tripulação, permissões e tokens continuam no porto.
+
+| Campo | Papel |
+|---|---|
+| `id` | UUID. Identidade estável. |
+| `workspaceId` | Porto a que pertence. |
+| `name` | Nome da Expedição (2–80). |
+| `objective` | O que esta Expedição cobre. |
+| `createdBy` | Quem criou. |
+
+### Embarcação (repository)
+
+Identidade **lógica** de código no porto. Pode ser Git, local ou ambos. Um path de checkout é da máquina do cliente, nunca verdade global do servidor.
+
+| Campo | Papel |
+|---|---|
+| `id` | UUID. Identidade estável. |
+| `workspaceId` | Porto a que pertence. |
+| `name` | Nome da Embarcação (2–80). |
+| `kind` | `git` · `local` · `both`. |
+| `remoteUrl` | URL remota opcional. Não é path absoluto. |
+| `notes` | Observações. |
+
+### Vínculo Expedição–Embarcação (`ProjectRepository`)
+
+Relação N:N. Uma Expedição tem várias Embarcações; uma Embarcação participa de várias Expedições.
+
+| Campo | Papel |
+|---|---|
+| `role` | `primary` · `dependency` · `consumer` · `infrastructure`. |
+| `pathScopes` | Paths relativos cobertos pelo vínculo. |
+| `notes` | Observações do vínculo. |
+
+### Rumo (contextPack)
+
+Objeto persistente, curado, revisado e versionado. Uma carta pode ser fonte de zero, um ou vários Rumos; um Rumo pode usar várias cartas e também itens escritos nele.
+
+| Campo | Papel |
+|---|---|
+| `status` | Ciclo: `draft` · `review` · `approved` · `superseded`. |
+| `validity` | Independente do ciclo: `current` · `needs_review` · `expired`. |
+| `ownerUserId` | Responsável humano do Rumo. |
+| `projectId` | Expedição a que pertence. |
+| título | 3–180. |
+| objetivo, resultado, escopo, não-escopo | Contrato operacional (objetivo opcional na criação). |
+
+### Revisão do Rumo (`contextPackRevision`)
+
+Snapshot **imutável** criado ao aprovar. A revisão anterior permanece auditável. MCP serve por padrão só uma revisão `approved` e validade `current`.
+
+### Rumo de execução (`devContext`)
+
+Projeção consumida na hora de implementar — **não** é entidade persistida. Junta o objetivo da Expedição + revisão aprovada do Rumo + recorte de Embarcação/Manobra + dados observados da sessão.
+
+### Item de contexto
+
+Bloco tipado do Rumo.
+
+| Campo | Papel |
+|---|---|
+| `type` | `decision` · `rule` · `contract` · `risk` · `assumption` · `question`. |
+| `strength` | `required` · `recommended` · `reference`. |
+| `blocking` | Em pergunta: se aberta, impede servir o Rumo. |
+| `body` | Texto do item; não vazio (RN-108). |
+
+### Carta-fonte (`documentSource`)
+
+Relação entre Rumo e carta. Fonte formal de aprovação aponta para **release imutável**. Publicar uma carta privada continua privado.
+
+| Campo | Papel |
+|---|---|
+| carta + `releaseId` | Release específica. A UI distingue Carta viva e snapshot da edição fixada. |
+| papel da fonte | Como a carta entra no Rumo. |
+| seção | Trecho opcional. |
+| razão | Por que foi incluída. |
+| obrigatória | Se a fonte é exigida para aprovação — neste caso a edição publicada é obrigatória. |
+
+### Marcos de chegada (`acceptanceCriterion`)
+
+Critérios de aceite verificáveis do Rumo (e cobertos por Manobras).
+
+### Plano de navegação e Manobra
+
+O plano é **opcional** e pertence a uma revisão do Rumo. Não é fonte de verdade paralela.
+
+Cada Manobra tem objetivo, Embarcação e paths alvo (se for de código), itens obrigatórios que a governam, Marcos que cobre, dependências simples e a revisão exata do Rumo. Sem responsável humano, prazo, pontos, sprint ou quadro.
+
+| Estado | Significado |
+|---|---|
+| `available` | Livre para assumir. |
+| `claimed` | Com lease ativo. |
+| `in_progress` | Em trabalho. |
+| `blocked` | Com Maré contrária. |
+| `reported` | Resultado enviado; ainda não aceito. |
+| `accepted` | Aceite humano. |
+
+Manobra **de código** tem `repositoryId`; sem isso é Manobra de contexto.
+
+### Lease da Manobra
+
+Um lease ativo por Manobra. Expira. Renovar exige atividade explícita. Expirado pode ser retomado.
+
+### Registro de bordo (`progressReport`)
+
+Relatório de progresso ou resultado: resumo, arquivos/escopos, testes/evidências, commit/PR opcional, critérios cobertos e lacunas. Reportado não é automaticamente aceito. Resumo em branco não entra na lista (RN-108).
+
+### Conversa de bordo
+
+Fios de coordenação, separados dos comentários de revisão das cartas. Âncora: Rumo, Manobra, item ou Marco. Mensagem tem autor humano, identidade delegada opcional, horário e aberto/resolvido. O tipo do fio — Conversa ou Maré contrária — é escolhido ao abrir (RN-109). Corpo não vazio, até 2000 caracteres (RN-108). Conversa, mensagens e sujeito pertencem ao mesmo Porto.
+
+### Identidade de agente MCP (`agentIdentity`)
+
+Identidade nomeada criada junto com toda chave MCP nova. Responsável humano único (RN-110). Só o responsável edita, desativa, reativa ou exclui e emite chaves adicionais. Status: `active` ou `inactive` (`deactivatedAt` quando inativo). A Embarcação, o checkout e o `clientInfo` pertencem à **sessão**, não ao perfil. Paridade com o humano via MCP (RN-105), com lista `allowedMcpTools` — padrão catálogo completo; o responsável desmarca o que quiser restringir (RN-111). Manobra de código exige Embarcação reconhecida de verdade na sessão.
+
+### Diário de bordo (`auditEvent`)
+
+Evento imutável: principal humano, identidade do agente, chave, ação, alvo, data, correlação e `clientInfo` observado. A UI mostra “Nome via Agente”.
 
 ## Identificadores públicos
 
@@ -187,19 +322,26 @@ Bloco do catálogo (alerta, gráfico, checklist, …). A modal **Adicionar compo
 | `/p/{releaseId}` | Aquela versão, para sempre, até ser desativada. Mesma regra de acesso que `/d`. |
 | `/documents/{id\|uuid}` | Editor autenticado. |
 | `/documents/{id}/preview` | Prévia do rascunho (quem tem acesso). |
-| `/convite/{token}` | Resgate de convite de porto. Exige login. |
+| `/invite/{token}` | Resgate de convite de porto. Exige login. |
 
 ## Workspace autenticado
 
-Chrome com trilho compacto ou expandido (RN-70) e, no topo, o seletor de porto. Cartoteca e Gabaritos entram pelo menu Acervo. Não vale para leitura pública nem para o editor.
+Chrome com trilho compacto ou expandido (RN-70) e, no topo, o seletor de porto. Destinos irmãos no trilho, nesta ordem: Ponte, Cartoteca, Gabaritos, Expedições, Embarcações, Rumos, Instrumentos e Porto. Não vale para leitura pública nem para o editor.
 
 | URL | Significado |
 |---|---|
 | `/` | Ponte (dashboard): resumo da cartoteca, cartas recentes, atalhos. |
-| `/biblioteca` | Cartoteca: lista do porto ativo, busca (título, resumo, tags e corpo), filtro por origem (minhas / compartilhadas), filtro por status e filtro por gabarito. |
+| `/library` | Cartoteca: lista do porto ativo, busca (título, resumo, tags e corpo), filtro por origem (minhas / compartilhadas), filtro por status e filtro por gabarito. |
 | `/templates` | Gabaritos do porto ativo. |
-| `/integrations` | Instrumentos: rumos de conexão MCP (endpoint, token, skill), catálogo agrupado de ferramentas e tokens pessoais. |
-| `/porto` | Porto: identidade (nome e papel pessoal), tripulação, convites por link e zona de risco. |
+| `/projects` | Expedições do porto ativo: lista, detalhe, Embarcações vinculadas e Rumos. |
+| `/projects/{id}` | Detalhe de uma Expedição. |
+| `/context-packs` | Rumos do porto ativo. |
+| `/context-packs/{id}` | Detalhe de um Rumo. |
+| `/context-packs/{id}/tasks/{taskId}` | Detalhe de uma Manobra. |
+| `/repositories` | Embarcações do porto ativo: lista, detalhe e vínculo com Expedições. |
+| `/repositories/{id}` | Detalhe de uma Embarcação. |
+| `/integrations` | Instrumentos: rumos de conexão MCP, chaves MCP, catálogo de ferramentas e skill. |
+| `/workspace` | Porto: identidade (nome e papel pessoal), tripulação, convites por link e zona de risco. |
 
 ## Componentes living
 

@@ -31,7 +31,7 @@ export function PublicDocumentUnavailable({ reason }: { reason: Exclude<PublicAc
         <p className="mt-2 max-w-md text-muted-foreground">{message.description}</p>
       </div>
       <Button asChild>
-        <Link href="/biblioteca">
+        <Link href="/library">
           <ArrowLeft />
           Voltar à cartoteca
         </Link>

@@ -226,15 +226,15 @@ The picker is a stamp grid (Claro / Escuro × six chips in one row). The sixth s
 
 The spatial model is a sheet on a desk, not a fluid marketing canvas.
 
-Workspace pages sit in a centered column: 1100px for cartoteca, gabaritos, instrumentos, porto, login; 1380px for the ponte. Cartoteca, Gabaritos, Instrumentos, and Porto share one register: padding `sp-7` / `sp-6` (48px / 32px), Seal Wax eyebrow, Headline `h1` (clamp 26–40px), and 14px lead. The ponte is tighter at the top (52px) and uses `clamp(24px, 4vw, 64px)` on the sides. The editor is full-bleed beside the workspace rail; the top chrome is 61px (58px inner + 3px identity rule), solid Paper, no frost. Mobile replaces the rail with a 56px sticky bar and a drawer.
+Operate workspace pages sit in a centered 1380px column (`--workspace-measure`), the same as the ponte. Gazette/index stamps, empty states, and masthead bars fill that column; ledes stay ~66ch (`--lead-measure`). Cartoteca, Gabaritos, Instrumentos, and Porto share one register: padding `sp-7` / `sp-6` (48px / 32px), Seal Wax eyebrow, Headline `h1` (clamp 26–40px), and 14px lead. The ponte is tighter at the top (52px) and uses `clamp(24px, 4vw, 64px)` on the sides. Login chrome remains 1100px. The editor is full-bleed beside the workspace rail; the top chrome is 61px (58px inner + 3px identity rule), solid Paper, no frost. Mobile replaces the rail with a 56px sticky bar and a drawer.
 
-The rail starts with the **porto** switcher: a 32px square mark with the porto initials, above the brand and the nav. Compact mode is icons and tooltips; expanded mode is the same rows with labels. Cartoteca and Gabaritos nest under **Acervo** (a flyout in compact, a labeled section in expanded). The porto switcher is the only top item that opens a menu instead of navigating. In the mobile drawer it becomes a full-width row with the porto name, and Acervo is a labeled group.
+The rail starts with the **porto** switcher: a 32px square mark with the porto initials, above the brand and the nav. Compact mode is icons and tooltips; expanded mode is the same rows with labels. Destinations are sibling rail items in this order: Ponte, Cartoteca, Gabaritos, Expedições, Embarcações, Rumos, Instrumentos, Porto. Hairlines separate editorial, development, and tools clusters; Cartoteca and Gabaritos stay first-class (no Acervo flyout). The porto switcher is the only top item that opens a menu instead of navigating. In the mobile drawer it becomes a full-width row with the porto name, and the same destinations appear as a flat list.
 
 Hairline lists (carta rows) stack as a single ruled column — one 1px border around the list, 1px between rows, 16–24px internal padding. Grids are auto-fit: stats from 180px, shortcuts from 240px, gabaritos four columns collapsing to two at 1100px and one at 480px. Breakpoints in use: 1100px, 760px (the mobile gate: rail hides, editor preview hides, page padding 16px), 480px.
 
 The report on screen is a second geometry: a full-bleed reading sheet in its pane or public shell (Hairline frame, Paper ground — not a muted desk, not a 46rem column). Editor preview, `/d`, `/p`, and draft preview share that sheet. Print and PDF remain A4 (`210mm × 297mm`). Do not put workspace grids on the paper or A4 margins on the cartoteca.
 
-**The Measure Rule.** Workspace content maxes at 1100px (ponte 1380px). Report reading on screen is full-bleed in its pane. Print/PDF maxes at A4. Leads stay inside ~64ch.
+**The Measure Rule.** Workspace content maxes at 1380px, shared with the ponte. Report reading on screen is full-bleed in its pane. Print/PDF maxes at A4. Leads stay inside ~66ch.
 
 ## Elevation & Depth
 
@@ -288,7 +288,7 @@ Controls are **stamped, not drawn**: filled or voided rectangles on paper. The w
 
 ### Navigation
 
-- **Rail (desktop):** Compact 48px or expanded 220px, Rail ground, 36px-tall rows. Icons stay in a 36px column; labels fade in beside them. Compact uses tooltips; expanded uses JetBrains Mono 12px labels. Compact Acervo is one icon with a flyout; expanded Acervo is a 10px uppercase caption with Cartoteca and Gabaritos nested on a hairline. One density motion (ease-out); the choice persists in the browser.
+- **Rail (desktop):** Compact 48px or expanded 220px, Rail ground, 36px-tall rows. Icons stay in a 36px column; labels fade in beside them. Compact uses tooltips; expanded uses JetBrains Mono 12px labels. Cartoteca and Gabaritos are first-class rows with their own icons in both densities. One density motion (ease-out); the choice persists in the browser.
 - **Header:** Sticky Paper; 3px gradient bar Chart Ink 55% → Seal Wax 100% along the bottom. Wordmark ~40px (`2.5rem`). Text nav is JetBrains Mono 11px / 500; hover draws a Hairline box and Chart Ink text.
 - **Mobile:** 56px top bar, Hairline bottom; drawer over a 55% Paper scrim. No floating tab bar.
 - **Editor tabs:** 39px, Hairline between tabs, no radius. Active = inset 2px Chart Ink along the bottom (not a filled pill).
@@ -310,7 +310,7 @@ A full-bleed web sheet in its pane (Paper ground, Plex Sans 14px / 1.68 for pros
 - **Do** use the stock’s single action ink as the only filled primary; keep the 3px header rule as action → accent and the 3px card/panel bars as that action ink.
 - **Do** stamp chrome at 28px (`--control-height`) unless the control is explicitly lg (40px) or xs (24px).
 - **Do** treat Seal Wax as eyebrow/selection/brand, Sounding Teal Ink as enumeration, Compass Brass as identity.
-- **Do** keep workspace measure at 1100px (ponte 1380px), report reading full-bleed in its pane on screen, and A4 only in print/PDF.
+- **Do** keep workspace measure at 1380px (same as ponte), report reading full-bleed in its pane on screen, and A4 only in print/PDF.
 - **Do** write product UI in Portuguese (pt-BR), technical and direct — labels in mono where the chrome already does.
 - **Do** let each paper stock remap action, accent, and paper, and keep the brand bars on Chart Ink / Seal Wax / Compass Brass (lifted in `.dark`).
 

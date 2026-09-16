@@ -1,23 +1,78 @@
-# Portulan Docs MCP — Referência
+# Portulan MCP — Referência
 
 ## Implementação no projeto
 
 | Item | Caminho |
 |---|---|
 | Handler MCP | `app/api/mcp/route.ts` |
-| Banco (PostgreSQL / Drizzle) | `lib/db/` (`schema.ts`, `documents.ts`, `templates.ts`, `workspaces.ts`) |
-| Tipos e templates | `lib/documents.ts` |
-| Portos (workspaces) | `lib/workspaces.ts`, `lib/workspace-policy.ts`, `lib/active-workspace.ts` |
+| Catálogo (49 ferramentas, grupos Instrumentos) | `lib/mcp-tool-catalog.ts` |
+| Dev-context (Agente de Bordo) | `lib/mcp-dev-context-tools.ts` |
+| Banco (PostgreSQL / Drizzle) | `lib/db/` (`schema.ts`, `documents.ts`, `templates.ts`, `workspaces.ts`, …) |
+| Tipos e templates editoriais | `lib/documents.ts` |
+| Portos (workspaces) | `lib/workspace-policy.ts`, `lib/active-workspace.ts` |
 | Validação Zod | `lib/validation.ts` |
 | Config Cursor | `.cursor/mcp.json` |
-| Página pública | `app/p/[releaseId]/page.tsx` |
+| Páginas públicas | `app/d/[slug]/page.tsx`, `app/p/[releaseId]/page.tsx` |
 
 Variáveis de ambiente (`.env.example`):
 
 ```dotenv
-DATABASE_PATH=
+DATABASE_URL=
 MCP_API_KEY=
+BLOB_READ_WRITE_TOKEN=   # upload_image / upload_file
 ```
+
+CLI / checkout (agente):
+
+```dotenv
+PORTULAN_TOKEN=ptl_…       # chave MCP — nunca commitar (RN-106)
+PORTULAN_ENDPOINT=https://portulan.vercel.app
+```
+
+Implementação CLI: `cli/portulan.mjs` · bin `portulan` em `package.json`.
+
+---
+
+## CLI — `portulan init` e `portulan doctor`
+
+Auto-configuração local do checkout (RN-106, F-cli-init). Complementa a seção **Auto-configuração** em `SKILL.md`.
+
+### `portulan init`
+
+```bash
+npm run portulan -- init [--yes] [--endpoint=https://portulan.vercel.app]
+```
+
+| Flag | Efeito |
+|---|---|
+| `--yes` | Aceita editar arquivos existentes e padrões de Expedição sem perguntar |
+| `--endpoint=` | URL base do Portulan (default: `PORTULAN_ENDPOINT` ou `https://portulan.vercel.app`) |
+
+**Pré-requisito:** `PORTULAN_TOKEN` ou `PORTULAN_MCP_TOKEN` (ou keychain macOS `service=portulan-mcp`).
+
+**Cria/atualiza:**
+
+| Artefato | Conteúdo |
+|---|---|
+| `.portulan/config.json` | `workspaceId`, `repositoryId`, `projectIds`, `endpoint`, `remoteUrl` — sem token, sem path absoluto |
+| `.portulan/AGENT.md` | Protocolo deste checkout |
+| `AGENTS.md`, `CLAUDE.md` | Bloco `BEGIN:portulan-dev-context` |
+| `.cursor/rules/portulan-dev-context.mdc` | Mesmo bloco, se `.cursor/` existir |
+
+**API interna:** `POST /api/cli/repositories`, `GET /api/cli/projects`, `GET /api/cli/doctor`.
+
+### `portulan doctor`
+
+```bash
+npm run portulan -- doctor
+```
+
+Verifica: token presente, `config.json` válido (sem segredo/path absoluto), vínculo Embarcação↔Expedição no servidor, `.portulan/AGENT.md`, blocos gerenciados. Saída `portulan doctor: ok` ou lista de problemas (exit 1).
+
+### Depois do `init`
+
+1. Configure `.cursor/mcp.json` com Bearer `ptl_…` (se ainda não fez).
+2. Chame `get_agent_bootstrap` com `repository_id` de `.portulan/config.json`.
 
 ---
 
@@ -263,7 +318,7 @@ Se `content` for enviado, aplica RN-54 (mesmo merge de estado living do rascunho
 }
 ```
 
-URL completa em dev: `http://localhost:3000/d/{slug}` (última versão) ou `http://localhost:3000/p/{release.id}` (versão fixa)
+URL completa: `https://portulan.vercel.app/d/{slug}` (última versão) ou `https://portulan.vercel.app/p/{release.id}` (versão fixa). Localhost só em dev do Portulan.
 
 ---
 
@@ -326,6 +381,73 @@ Use `list_document_releases` para descobrir `release_id` e `version`.
 ```
 
 **Erros:** documento inexistente; release inexistente; sem permissão de edição.
+
+---
+
+### `update_document_release`
+
+**Input:**
+
+```json
+{
+  "document_id": "uuid-ou-slug",
+  "release_id": "uuid-release",
+  "disabled": true
+}
+```
+
+Ativa ou desativa o acesso público de uma versão fixa `/p/{releaseId}` sem apagar o snapshot. `disabled: false` reativa.
+
+**Output:** `{ "release": { ... }, "publicPath": "/p/...", "disabled": true }`
+
+---
+
+### `list_document_shares`
+
+**Input:**
+
+```json
+{ "document_id": "uuid-ou-slug" }
+```
+
+Lista convites por e-mail de carta **privada**. Apenas o cartógrafo (responsável). Convidado fora da tripulação do porto aparece como externo na UI (RN-93).
+
+**Output:** `{ "shares": [ { "id", "email", "role", "createdAt", ... } ] }`
+
+---
+
+### `share_document`
+
+**Input:**
+
+```json
+{
+  "document_id": "uuid-ou-slug",
+  "email": "tripulante@exemplo.com",
+  "role": "viewer"
+}
+```
+
+`role`: `"viewer"` (leitor) ou `"editor"`. Não convide o cartógrafo; não duplique convite idêntico (política de share no servidor).
+
+**Output:** `{ "share": { ... } }`
+
+---
+
+### `revoke_document_share`
+
+**Input:**
+
+```json
+{
+  "document_id": "uuid-ou-slug",
+  "share_id": "uuid-do-convite"
+}
+```
+
+Remove acesso nominal. Apenas o cartógrafo.
+
+**Output:** `{ "revoked": true }`
 
 ---
 
@@ -642,7 +764,7 @@ Formato: `rótulo | atual | meta`.
 - Transporte: Streamable HTTP (POST/GET/DELETE em `/api/mcp`)
 - Spec: MCP SDK v2 via `mcp-handler`
 - Initialize retorna `serverInfo.name: "portulan"`
-- Instruções do servidor: token preso a um porto (RN-55); preferir atualizar documentos existentes; publish_document gera versão; `visibility` controla quem lê
+- Instruções do servidor: token preso a um porto (RN-55); para rumos, chame `get_agent_bootstrap` primeiro; publish_document gera versão; `visibility` controla quem lê
 
 ---
 
@@ -654,3 +776,90 @@ Formato: `rótulo | atual | meta`.
 4. **Slug no delete** — `delete_document` rejeita slug; use UUID.
 5. **Conteúdo sem `##`** — diretivas funcionam, mas seções editoriais ficam melhor com `## 01 — Título`.
 6. **Resetar QA via replace** — enviar `content` com `status="pending"` ou `- [ ]` não apaga marcações já salvas no rascunho (RN-54); use `get_document` para ver o estado real.
+
+---
+
+## Contexto de desenvolvimento
+
+Implementação: `lib/mcp-dev-context-tools.ts`. **18 ferramentas** de dev-context — disponíveis para chaves MCP com identidade nomeada; chaves legadas sem identidade também têm acesso completo até revogação.
+
+Fluxo canônico: `docs/product/fluxos.md` (Assumir Manobra e reportar). Regras: RN-101, RN-103, RN-105, RN-108, RN-109.
+
+### `get_agent_bootstrap`
+
+Input: `repository_id?`. Primeiro passo. Sem Embarcação:
+
+```json
+{
+  "workMode": "local_implementation",
+  "repository": null,
+  "allowedActions": ["find_context", "create_project", "create_repository", "propose_context_pack", "claim_non_code_task", "create_coordination_message", "review_report", "report_local_test"],
+  "unavailableActions": ["claim_code_task"],
+  "agentIdentity": {
+    "allowedMcpTools": ["…"],
+    "disabledMcpTools": ["…"]
+  }
+}
+```
+
+Ferramentas desabilitadas na identidade (RN-111) devolvem erro na chamada MCP antes de executar.
+
+### `create_project`
+
+Input: `name` (2–80), `objective?`. Cria Expedição no porto do token. Retorna `projectId` e `project`.
+
+### `create_repository`
+
+Input: `name` (2–80), `kind?` (`git` | `local` | `both`), `remote_url?`, `notes?`, `project_id?`. Registra Embarcação; com `project_id`, vincula como principal à Expedição.
+
+### `propose_context_pack`
+
+Input: `project_id`, `title` (3–180), `objective?`. Cria Rumo em `draft` numa Expedição existente. Não aprova.
+
+### `get_context_pack`
+
+Serve só revisão `approved` + validade `current`. Senão:
+
+```json
+{ "ok": false, "code": "pack_not_servable", "reasons": ["needs_review"], "packId": "...", "revisionId": null }
+```
+
+### `get_implementation_brief`
+
+`mode`: `brief` | `full`. Sempre inclui `packId` e `revisionId`.
+
+### Manobras
+
+`claim_implementation_task`, `renew_implementation_task_lease`, `release_implementation_task` — lease atômico (RN-103). `report_implementation_progress` e `report_implementation_result` exigem resumo não vazio (RN-108). Resultado reportado não é aceite humano. Manobra de código exige Embarcação reconhecida na sessão (RN-105).
+
+### Conversas de bordo (RN-109)
+
+`create_coordination_message` abre fio ou responde:
+
+**Nova Conversa:**
+
+```json
+{
+  "subject_type": "pack",
+  "subject_id": "uuid-rumo",
+  "body": "Pergunta para o bordo",
+  "is_blocker": false
+}
+```
+
+**Maré contrária** (tipo escolhido **só na abertura**):
+
+```json
+{
+  "subject_type": "task",
+  "subject_id": "uuid-manobra",
+  "body": "Checkout bloqueado até credencial de staging",
+  "is_blocker": true
+}
+```
+
+Em Manobra (`subject_type: "task"`), `is_blocker: true` põe status `blocked` até `resolve_coordination_thread`. Responder fio existente usa `thread_id` + `body` — **sem** `is_blocker`.
+
+`resolve_coordination_thread`: `{ "thread_id": "...", "resolved": true }`.
+
+Instruções do servidor MCP: token preso a um porto (RN-55); em dev, `get_agent_bootstrap` primeiro; `publish_document` gera versão; `visibility` controla quem lê cartas.

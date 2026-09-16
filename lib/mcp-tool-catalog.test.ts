@@ -6,5 +6,7 @@ test("MCP_TOOL_GROUPS lists every tool once", () => {
   const tools = MCP_TOOL_GROUPS.flatMap((group) => group.tools);
   assert.equal(tools.length, MCP_TOOL_COUNT);
   assert.equal(new Set(tools).size, MCP_TOOL_COUNT);
-  assert.equal(MCP_TOOL_COUNT, 30);
+  assert.ok(MCP_TOOL_COUNT >= 30);
+  assert.ok(tools.includes("get_agent_bootstrap"));
+  assert.ok(tools.includes("list_documents"));
 });

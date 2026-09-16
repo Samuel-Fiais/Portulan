@@ -6,7 +6,6 @@ import {
   addDocumentShare,
   canReadDocument,
   createDocument,
-  createMcpToken,
   createTemplate,
   deleteDocument,
   setDocumentCommentResolved,
@@ -317,23 +316,8 @@ export async function duplicateTemplateAction(id: string) {
 }
 
 export async function createMcpTokenAction(input: unknown) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { ok: false as const, error: "Faça login para gerar tokens MCP." };
-  }
-
-  const parsed = mcpTokenInputSchema.safeParse(input ?? {});
-  if (!parsed.success) return { ok: false as const, error: "Dados do token inválidos." };
-
-  const ctx = await accessContext(session.user.id);
-  const result = await createMcpToken(
-    session.user.id,
-    parsed.data.name,
-    parsed.data.expiration,
-    ctx.activeWorkspaceId ?? null,
-  );
-  revalidatePath("/");
-  return { ok: true as const, token: result.token, record: result.record };
+  const { createMcpKeyAction } = await import("@/app/dev-context-actions");
+  return createMcpKeyAction(input);
 }
 
 export async function listMcpTokensAction() {

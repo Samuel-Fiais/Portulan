@@ -9,7 +9,7 @@ import {
 import { buildGlobalAvoidErrorsSection, getComponentAvoidErrors } from "./markdown-pitfalls.ts";
 import { TESTCASE_STATUS_LABELS, TESTCASE_STATUSES } from "./living-document-mutations.ts";
 
-const MCP_SERVER_VERSION = "0.9.0";
+const MCP_SERVER_VERSION = "0.10.0";
 
 const LIVING_COMPONENT_IDS = new Set(["checklist", "testcase"]);
 
@@ -164,7 +164,7 @@ export function buildSystemGuide() {
         fixed: "/p/{releaseId} — versão fixa; conteúdo não muda após publicada. Mesma regra de visibilidade",
       },
       templates: "Paleta, logo e conteúdo-base via list_templates / get_template.",
-      auth: "MCP exige Authorization: Bearer com token pessoal (Instrumentos → MCP). O token fica preso ao porto ativo no momento em que foi gerado.",
+      auth: "MCP exige Authorization: Bearer com chave MCP (Instrumentos → Chaves MCP). A chave fica presa ao porto ativo no momento em que foi gerada.",
       preferredTools: [
         "get_system_guide — visão completa e atualizada (este guia)",
         "list_markdown_components — catálogo resumido",

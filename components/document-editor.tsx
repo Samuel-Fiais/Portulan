@@ -46,6 +46,7 @@ import { applyMarkdownFormat, isMarkdownShortcut } from "@/lib/markdown-shortcut
 import { documentVisibilities, documentVisibilityMeta, type DocumentVisibility } from "@/lib/workspaces";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import { releaseSideId, type VersionDiffSideId } from "@/lib/version-diff";
+import { DocumentContextUsage } from "@/components/document-context-usage";
 
 type LinkableDocument = {
   id: string;
@@ -75,6 +76,8 @@ export function DocumentEditor({
   collaborators = [],
   currentUserId,
   workspaces = [],
+  contextPacks = [],
+  projects = [],
 }: {
   initialDocument: DocumentRecord;
   initialReleases?: DocumentRelease[];
@@ -84,6 +87,8 @@ export function DocumentEditor({
   collaborators?: DocumentCollaborator[];
   currentUserId?: string | null;
   workspaces?: { id: string; name: string }[];
+  contextPacks?: { id: string; title: string }[];
+  projects?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [document, setDocument] = useState(initialDocument);
@@ -722,7 +727,7 @@ export function DocumentEditor({
       <header className="editor-topbar no-print">
         <div className="editor-topbar-inner">
         <div className="editor-context flex min-w-0 items-center gap-2">
-          <Button variant="ghost" size="icon-sm" asChild><Link href="/biblioteca" aria-label="Voltar à cartoteca"><ArrowLeft /></Link></Button>
+          <Button variant="ghost" size="icon-sm" asChild><Link href="/library" aria-label="Voltar à cartoteca"><ArrowLeft /></Link></Button>
           <div className="min-w-0">
             <strong className="block truncate text-sm">{document.title}</strong>
             <small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small>
@@ -943,6 +948,13 @@ export function DocumentEditor({
                 <Field label="Frota"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
                 <Field label="Tags" className="metadata-field--full"><Input value={document.tags.join(", ")} onChange={(event) => patch("tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean))} placeholder="pagamentos, api, arquitetura" readOnly={!canEdit} aria-describedby="metadata-tags-hint" /><p id="metadata-tags-hint">Separe as tags por vírgula.</p></Field>
               </section>
+              <DocumentContextUsage
+                documentId={document.id}
+                documentTitle={document.title}
+                releaseId={releases[0]?.id ?? null}
+                packs={contextPacks}
+                projects={projects}
+              />
               {isOwner ? (
                 <section className="metadata-actions" aria-label="Ações da carta">
                   <div className="metadata-action-panel">
