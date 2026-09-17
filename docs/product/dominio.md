@@ -406,7 +406,7 @@ Quem está no assunto **agora**. Uma presença por sessão, não por conta: a me
 
 Presença carrega o mínimo: identidade, intenção, estado e foco. Não carrega conteúdo, token nem trecho de Markdown (RN-122).
 
-### Intenção (`presenceIntent`)
+### Intenção (`intention`)
 
 O que aquela presença veio fazer. Torna leitura, edição e trabalho de agente distinguíveis antes de qualquer mudança.
 
@@ -437,7 +437,7 @@ Unidade que a sala transmite. Imutável, ordenada por `seq` dentro da sala.
 
 O log é gravado em Postgres por sala; o canal transporta (RN-124). Evento é derivado: quem chegou depois, ou perdeu a janela, reconstrói do snapshot em Postgres e volta a seguir a sequência.
 
-### Operação colaborativa (`collabOperation`)
+### Operação colaborativa (`collabEvent` de tipo `content.operation`)
 
 Mutação de conteúdo mutável. É o único caminho ao vivo para conteúdo (RN-120).
 
