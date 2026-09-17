@@ -648,6 +648,79 @@ export const auditEvents = portulanSchema.table(
   ],
 );
 
+export const collabRooms = portulanSchema.table(
+  "collab_rooms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    subjectType: text("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    policyVersion: integer("policy_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("collab_rooms_subject").on(table.workspaceId, table.subjectType, table.subjectId),
+    index("idx_collab_rooms_workspace_id").on(table.workspaceId),
+    index("idx_collab_rooms_subject").on(table.subjectType, table.subjectId),
+  ],
+);
+
+export const collabEvents = portulanSchema.table(
+  "collab_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => collabRooms.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    type: text("type").notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    agentIdentityId: uuid("agent_identity_id").references(() => agentIdentities.id, { onDelete: "set null" }),
+    mcpTokenId: uuid("mcp_token_id").references(() => mcpTokens.id, { onDelete: "set null" }),
+    intention: text("intention"),
+    baseVersion: integer("base_version"),
+    payload: text("payload"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("collab_events_room_seq").on(table.roomId, table.seq),
+    unique("collab_events_room_idempotency_key").on(table.roomId, table.idempotencyKey),
+    index("idx_collab_events_room_seq").on(table.roomId, table.seq),
+    index("idx_collab_events_workspace_id").on(table.workspaceId),
+  ],
+);
+
+export const presenceSessions = portulanSchema.table(
+  "presence_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => collabRooms.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    agentIdentityId: uuid("agent_identity_id").references(() => agentIdentities.id, { onDelete: "set null" }),
+    mcpTokenId: uuid("mcp_token_id").references(() => mcpTokens.id, { onDelete: "set null" }),
+    intention: text("intention").notNull().default("viewing"),
+    clientInfo: text("client_info"),
+    joinedAt: timestamp("joined_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "string" }),
+  },
+  (table) => [
+    index("idx_presence_sessions_room_id").on(table.roomId),
+    index("idx_presence_sessions_last_seen_at").on(table.lastSeenAt),
+  ],
+);
+
 export const workspaceBoardCounters = portulanSchema.table("workspace_board_counters", {
   workspaceId: uuid("workspace_id")
     .primaryKey()

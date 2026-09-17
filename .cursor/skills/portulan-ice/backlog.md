@@ -16,7 +16,7 @@ Pedido avulso (14 set. 2026), fora da leva 2. Rumo #1 (16 set. 2026): `realtime-
 | — | auth-password | Cadastro com senha, mescla GitHub e modal da conta | Conta | 8 | 9 | 5 | 36.0 | entregue |
 | — | portos | Portos (workspaces) com tripulação, convite por link, visibilidade em três níveis, tema do porto e léxico náutico | Workspace | 9 | 9 | 4 | 32.4 | entregue |
 | — | dev-context | Contexto de desenvolvimento: Expedições, Rumos versionados, Manobras com lease, Agentes de Bordo, MCP e CLI `portulan init` | Expedição / MCP | 9 | 8 | 2 | 14.4 | entregue (correção 15 set. 2026) |
-| — | realtime-transversal | Colaboração ao vivo transversal (presença, operações em conteúdo mutável, atividade) e auditoria completa de MCP sem segredos | Colaboração / MCP | 9 | 8 | 2 | 14.4 | planejado (contrato escrito) |
+| — | realtime-transversal | Colaboração ao vivo transversal (presença, operações em conteúdo mutável, atividade) e auditoria completa de MCP sem segredos | Colaboração / MCP | 9 | 8 | 2 | 14.4 | planejado (contrato escrito; fase 1 em andamento) |
 
 ## Escopo (realtime-transversal)
 
@@ -27,7 +27,7 @@ Pedido avulso (14 set. 2026), fora da leva 2. Rumo #1 (16 set. 2026): `realtime-
 
 Fora: CRDT como fonte de verdade; editar release ou Rumo aprovado ao vivo; realtime que contorne permissão, lease, aprovação, publicação ou aceite; gravar segredo no Diário.
 
-Contrato de produto (não re-explorar o repo para recriar): domínio de sala, presença, intenção, evento versionado, operação, comando atômico, idempotência, revogação, atividade e handoff em `docs/product/dominio.md`; invariantes `RN-119` a `RN-124`; capacidades `F-presenca`, `F-coedicao`, `F-atividade-viva`, `F-handoff` e `F-mcp-auditoria`; jornadas, fases de migração e plano de verificação em `docs/product/fluxos.md`.
+Contrato de produto (não re-explorar o repo para recriar): domínio de sala, presença, intenção, evento versionado, operação, comando atômico, idempotência, revogação, atividade e handoff em `docs/product/dominio.md`; invariantes `RN-119` a `RN-125`; capacidades `F-presenca`, `F-coedicao`, `F-atividade-viva`, `F-handoff` e `F-mcp-auditoria`; jornadas, fases de migração e plano de verificação em `docs/product/fluxos.md`.
 
 Entrega por fases (ordem obrigatória: autorização → presença → atividade → coedição → auditoria completa). Cada fase é desligável: sem canal, a superfície cai para leitura e comando normais.
 
@@ -35,6 +35,7 @@ Entrega por fases (ordem obrigatória: autorização → presença → atividade
 |---|---|---|
 | 0 | Contrato de produto | escrito |
 | 1 | Sala + presença com intenção; revogação encerra presença | `F-presenca` parcial |
+| 1a | Base durável da sala no servidor (Manobra #9 / Lance #61): assunto único por porto, log de eventos com posição e `opId` idempotente por sala, sessão de presença com intenção e revogação, redaction de payload. Sem canal, rota nem UI | entregue |
 | 2 | Atividade ao vivo e linha do tempo correlacionada ao Diário | `F-atividade-viva` parcial |
 | 3 | Coedição de carta e gabarito (`opId`, `baseVersion`, reconexão por `seq`) | `F-coedicao` parcial |
 | 4 | Coedição de Rumo, plano, Manobra e Lance + handoff | `F-coedicao`, `F-handoff` |

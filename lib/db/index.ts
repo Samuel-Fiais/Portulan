@@ -194,4 +194,19 @@ export {
 
 export { listAuditEvents, listAuditEventsForIdentity, recordAuditEvent } from "@/lib/db/audit-events";
 
+export {
+  ensureCollabRoom,
+  getCollabRoom,
+  getCollabRoomById,
+  listCollabRooms,
+} from "@/lib/db/collab-rooms";
+
+export {
+  appendCollabEvent,
+  collabEventStore,
+  getCollabEventByIdempotencyKey,
+  getLatestCollabSeq,
+  listCollabEvents,
+} from "@/lib/db/collab-events";
+
 export { isDatabaseConfigured } from "@/lib/db/client";
