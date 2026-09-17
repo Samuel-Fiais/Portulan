@@ -546,6 +546,56 @@ CREATE TABLE IF NOT EXISTS portulan.audit_events (
 CREATE INDEX IF NOT EXISTS idx_audit_events_workspace_id ON portulan.audit_events (workspace_id);
 CREATE INDEX IF NOT EXISTS idx_audit_events_created_at ON portulan.audit_events (created_at);
 
+CREATE TABLE IF NOT EXISTS portulan.collab_rooms (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
+  subject_type TEXT NOT NULL CHECK (subject_type IN ('document', 'template', 'context_pack', 'implementation_plan', 'implementation_task', 'project', 'repository')),
+  subject_id TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (workspace_id, subject_type, subject_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_collab_rooms_workspace_id ON portulan.collab_rooms (workspace_id);
+CREATE INDEX IF NOT EXISTS idx_collab_rooms_subject ON portulan.collab_rooms (subject_type, subject_id);
+
+CREATE TABLE IF NOT EXISTS portulan.collab_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id UUID NOT NULL REFERENCES portulan.collab_rooms(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
+  seq INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
+  agent_identity_id UUID REFERENCES portulan.agent_identities(id) ON DELETE SET NULL,
+  mcp_token_id UUID REFERENCES portulan.mcp_tokens(id) ON DELETE SET NULL,
+  intention TEXT,
+  base_version INTEGER,
+  payload TEXT,
+  idempotency_key TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (room_id, seq),
+  UNIQUE (room_id, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_collab_events_room_seq ON portulan.collab_events (room_id, seq);
+CREATE INDEX IF NOT EXISTS idx_collab_events_workspace_id ON portulan.collab_events (workspace_id);
+
+CREATE TABLE IF NOT EXISTS portulan.presence_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id UUID NOT NULL REFERENCES portulan.collab_rooms(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
+  agent_identity_id UUID REFERENCES portulan.agent_identities(id) ON DELETE SET NULL,
+  mcp_token_id UUID REFERENCES portulan.mcp_tokens(id) ON DELETE SET NULL,
+  intention TEXT NOT NULL DEFAULT 'viewing' CHECK (intention IN ('viewing', 'editing', 'reviewing', 'automating')),
+  client_info TEXT,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_presence_sessions_room_id ON portulan.presence_sessions (room_id);
+CREATE INDEX IF NOT EXISTS idx_presence_sessions_last_seen_at ON portulan.presence_sessions (last_seen_at);
+
 CREATE TABLE IF NOT EXISTS portulan.workspace_board_counters (
   workspace_id UUID PRIMARY KEY REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
   next_value INTEGER NOT NULL DEFAULT 1
