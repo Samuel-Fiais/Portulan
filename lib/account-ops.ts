@@ -18,6 +18,7 @@ import {
   updateUserProfile,
 } from "@/lib/users";
 import { resolveDocumentSharesForUser } from "@/lib/db/document-shares";
+import { ensurePersonalWorkspace } from "@/lib/db/workspaces";
 import { normalizeShareEmail } from "@/lib/document-share-policy";
 import {
   accountProfileSchema,
@@ -52,6 +53,7 @@ export async function registerPasswordAccount(input: unknown) {
       passwordHash: await hashPassword(parsed.data.password),
     });
     await resolveDocumentSharesForUser(user.id, user.email);
+    await ensurePersonalWorkspace(user.id);
     return { ok: true as const, user: toPublicAccount(user) };
   } catch (error) {
     if (uniqueViolation(error)) {

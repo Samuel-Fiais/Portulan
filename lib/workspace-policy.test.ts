@@ -12,6 +12,7 @@ import {
   validateVisibilityChange,
   validateWorkspaceDeletion,
   validateWorkspaceName,
+  shouldCreatePersonalWorkspaceOnBootstrap,
 } from "./workspace-policy.ts";
 
 test("tripulante não mexe na tripulação", () => {
@@ -24,6 +25,12 @@ test("nome do porto respeita os limites", () => {
   assert.equal(validateWorkspaceName("A").ok, false);
   assert.equal(validateWorkspaceName("Porto de Lisboa").ok, true);
   assert.equal(validateWorkspaceName("x".repeat(61)).ok, false);
+});
+
+test("RN-86: porto inicial só nasce quando a conta ainda não tem porto (idempotente)", () => {
+  assert.equal(shouldCreatePersonalWorkspaceOnBootstrap(0), true);
+  assert.equal(shouldCreatePersonalWorkspaceOnBootstrap(1), false);
+  assert.equal(shouldCreatePersonalWorkspaceOnBootstrap(3), false);
 });
 
 test("imediato convida, tripulante não", () => {

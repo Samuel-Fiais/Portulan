@@ -1,7 +1,6 @@
 import "server-only";
 
 import { resolveDocumentSharesForUser } from "@/lib/db/document-shares";
-import { listUserWorkspaceIds } from "@/lib/db/workspaces";
 import type { DocumentAccessContext } from "@/lib/db";
 import { resolveWorkspaceContext } from "@/lib/active-workspace";
 import { getUserById } from "@/lib/users";
@@ -13,8 +12,8 @@ export async function documentAccessContext(userId?: string | null): Promise<Doc
   const userEmail = user?.email ?? null;
   await resolveDocumentSharesForUser(userId, userEmail);
 
-  const { active } = await resolveWorkspaceContext(userId);
-  const workspaceIds = await listUserWorkspaceIds(userId);
+  const { active, workspaces } = await resolveWorkspaceContext(userId);
+  const workspaceIds = workspaces.map((item) => item.id);
 
   return { userId, userEmail, workspaceIds, activeWorkspaceId: active?.id ?? null };
 }
@@ -44,9 +43,10 @@ export async function workspaceScopedAccessContext(
   const user = await getUserById(userId);
   const userEmail = user?.email ?? null;
   await resolveDocumentSharesForUser(userId, userEmail);
-  const workspaceIds = await listUserWorkspaceIds(userId);
+  const { active, workspaces } = await resolveWorkspaceContext(userId);
+  const workspaceIds = workspaces.map((item) => item.id);
   const activeWorkspaceId =
-    workspaceId && workspaceIds.includes(workspaceId) ? workspaceId : workspaceIds[0] ?? null;
+    workspaceId && workspaceIds.includes(workspaceId) ? workspaceId : active?.id ?? null;
 
   return { userId, userEmail, workspaceIds, activeWorkspaceId };
 }

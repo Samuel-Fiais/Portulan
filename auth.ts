@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "@/auth.config";
 import { resolveDocumentSharesForUser } from "@/lib/db/document-shares";
+import { ensurePersonalWorkspace } from "@/lib/db/workspaces";
 import { clearGitHubLinkCookie, readGitHubLinkUserId } from "@/lib/github-link-cookie";
 import { verifyPassword } from "@/lib/password";
 import { accountMethods, getUserByGitHubId, getUserById, getUserByIdentifier, resolveGitHubUser } from "@/lib/users";
@@ -56,6 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!(await verifyPassword(password, user.passwordHash))) return null;
 
         await resolveDocumentSharesForUser(user.id, user.email ?? null);
+        await ensurePersonalWorkspace(user.id);
 
         return {
           id: user.id,
@@ -97,6 +99,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       await resolveDocumentSharesForUser(result.user.id, result.user.email ?? null);
+      await ensurePersonalWorkspace(result.user.id);
       return true;
     },
     async jwt({ token, account, user, profile, trigger, session }) {

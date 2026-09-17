@@ -5,6 +5,7 @@ import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { documents, users, workspaceInvites, workspaceMembers, workspaces } from "@/lib/db/schema";
 import { getUserById } from "@/lib/users";
+import { shouldCreatePersonalWorkspaceOnBootstrap } from "@/lib/workspace-policy";
 import {
   personalWorkspaceName,
   type WorkspaceInviteRecord,
@@ -134,7 +135,7 @@ export async function createWorkspace(
 /** Todo usuário tem um porto inicial. Criado no cadastro e garantido de forma preguiçosa. */
 export async function ensurePersonalWorkspace(userId: string): Promise<WorkspaceMembership | null> {
   const existing = await listUserWorkspaces(userId);
-  if (existing.length > 0) return existing[0];
+  if (!shouldCreatePersonalWorkspaceOnBootstrap(existing.length)) return existing[0];
 
   const user = await getUserById(userId);
   if (!user) return null;

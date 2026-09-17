@@ -8,6 +8,7 @@ import {
   normalizeHandle,
   validateHandle,
 } from "@/lib/auth-account-policy";
+import { ensurePersonalWorkspace } from "@/lib/db/workspaces";
 import { getDb } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import type { PublicAccount } from "@/lib/account-types";
@@ -194,6 +195,7 @@ export async function resolveGitHubUser(profile: GitHubProfile, linkUserId?: str
   }
 
   const user = await createUserFromGitHub(profile);
+  await ensurePersonalWorkspace(user.id);
   return { ok: true as const, user };
 }
 

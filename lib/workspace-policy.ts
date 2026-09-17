@@ -40,6 +40,11 @@ export function validateWorkspaceName(name: string): PolicyResult {
   return ok;
 }
 
+/** RN-86: porto inicial só é criado quando a conta ainda não tem nenhum porto (idempotente). */
+export function shouldCreatePersonalWorkspaceOnBootstrap(existingMembershipCount: number) {
+  return existingMembershipCount === 0;
+}
+
 export function validateCrewInvite(input: {
   actorRole: WorkspaceRole | null;
   role: WorkspaceInviteRole;

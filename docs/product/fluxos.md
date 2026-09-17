@@ -5,7 +5,7 @@ Caminhos que o produto promete. Se a jornada mudar, atualize aqui e as `RN-xx` e
 ## Entrar e criar conta
 
 1. Na tela de acesso, a pessoa entra com GitHub **ou** com handle/e-mail e senha.
-2. Para criar conta com senha: informa nome, handle, e-mail, senha e confirmação. Handle ou e-mail já usados recusam; o sistema pede para entrar (não mescla).
+2. Para criar conta com senha: informa nome, handle, e-mail, senha e confirmação. Handle ou e-mail já usados recusam; o sistema pede para entrar (não mescla). O cadastro já cria o **porto inicial** da conta.
 3. Primeiro login GitHub cria a conta. Se o e-mail do GitHub já existir em conta **sem** GitHub, o GitHub é anexado a essa conta.
 4. Na primeira entrada, a conta ganha o **porto inicial** (`Porto de {nome}`) e já navega nele (RN-86).
 5. Depois de entrar, o clique na foto abre o modal da conta: dados, métodos (definir/trocar senha, conectar ou desligar GitHub), seletor de tema (papel, claro/escuro ou personalizado com cor livre), atalho para Instrumentos e Sair. Não dá para desligar o último método.
