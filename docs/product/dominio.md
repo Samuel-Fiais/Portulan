@@ -35,9 +35,17 @@ A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as A
 | Agente MCP | identidade nomeada (`agentIdentity`) |
 | Chave de bordo | token MCP (`mcpToken`) |
 | Diário de bordo | auditoria (`auditEvent`) |
+| Assunto colaborativo | artefato que uma sala representa (`collaborationSubject`: tipo + id) |
 | Sala | recorte autorizado ao vivo (`collaborationRoom`) |
 | Presença | quem está na sala agora (`presence`) |
+| Intenção | o que a presença veio fazer (`presenceIntent`) |
+| Evento versionado | evento ordenado da sala (`collabEvent`, com `seq`) |
 | Operação colaborativa | mutação versionada de conteúdo mutável (`collabOperation`) |
+| Comando atômico | transação autorizada no servidor (`atomicCommand`) |
+| Idempotência | mesma chave aplicada uma vez só (`opId`) |
+| Revogação | perda de autorização sobre o assunto |
+| Atividade (linha do tempo) | histórico legível do artefato (`activityEntry`) |
+| Passagem de comando | handoff humano ↔ agente na mesma linha |
 | Conversa de bordo | fio de coordenação (`coordinationThread`) |
 | Registro de bordo | relatório de progresso (`progressReport`) |
 | Marcos de chegada | critério de aceite (`acceptanceCriterion`) |
@@ -342,9 +350,128 @@ Identidade nomeada criada junto com toda chave MCP nova. Responsável humano ún
 
 Evento imutável: principal humano, identidade do agente, chave, ação, alvo, data, correlação e `clientInfo` observado. A UI mostra “Nome via Agente”. Toda chamada MCP autenticada gera um evento pesquisável (RN-122): ferramenta, alvo, resultado, duração e correlação — nunca token em texto puro, anexo ou Markdown integral.
 
-### Sala, presença e operação colaborativa
+O Diário é **do porto** e serve auditoria: filtra por identidade, ferramenta, alvo, resultado, período e correlação. Guarda metadado e diagnóstico, não conteúdo. Tem janela de retenção declarada; expirar um evento não reescreve os que ficam.
 
-Infraestrutura transversal do porto (RN-119). Uma **sala** é o recorte autorizado de um artefato (carta, gabarito, Rumo, plano, Expedição, Embarcação, Manobra, etc.) para participação ao vivo. **Presença** é quem está na sala agora — humano ou agente, com identidade e intenção visíveis. **Operação colaborativa** altera conteúdo mutável com versionamento e idempotência. **Comando atômico** (publicação, visibilidade, aprovação, lease, bloqueio, aceite) continua transação no servidor; não passa pelo canal de operações (RN-120). Postgres permanece a fonte de snapshots, releases, autorização e auditoria; o canal ao vivo não é fonte única de verdade (RN-124).
+## Colaboração ao vivo
+
+Infraestrutura **transversal do porto** (RN-119), não uma parte do editor. Vale para os artefatos do porto; o canal projeta o direito que a UI e o MCP já aplicam e nunca cria direito novo (RN-121). Postgres permanece a fonte de snapshots, releases, autorização e auditoria — o canal ao vivo não é fonte única de verdade (RN-124).
+
+### Assunto colaborativo (`collaborationSubject`)
+
+O par **tipo + identificador** do artefato que uma sala representa. Um assunto, uma sala por porto.
+
+| Assunto | Conteúdo mutável ao vivo | Comandos atômicos que o tocam |
+|---|---|---|
+| Carta (rascunho) | título, resumo, metadados, Markdown | publicar, desativar, mudar visibilidade, mover de porto, excluir |
+| Gabarito | nome, paleta, logo, conteúdo-base | mover de porto, excluir |
+| Rumo em rascunho ou revisão | contrato, itens, Marcos, vínculos de fonte | enviar para revisão, aprovar, abrir nova revisão |
+| Plano de navegação | plano da revisão em rascunho | aprovar a revisão |
+| Manobra e Lance | objetivo, descrição, estado editável, responsável | assumir, renovar, soltar, reportar, bloquear, aceitar |
+| Expedição e Embarcação | nome, objetivo, notas, vínculos | excluir |
+| Porto (tripulação e convites) | — | convidar, revogar, mudar papel, transferir capitania, excluir porto |
+| Compartilhamento e cartas-fonte | — | convidar, revogar, mudar papel, vincular ou remover fonte |
+
+Release publicada e revisão aprovada de Rumo **não** são assunto colaborativo: são imutáveis. O caminho é nova publicação ou nova revisão (RN-120).
+
+### Sala (`collaborationRoom`)
+
+Recorte autorizado do assunto para participação ao vivo. Não guarda conteúdo: é o canal.
+
+| Campo | Papel |
+|---|---|
+| `workspaceId` | Porto da sala. Sala nunca cruza porto (RN-96). |
+| assunto | Tipo + id do artefato. |
+| `seq` | Sequência monotônica dos eventos daquela sala. Base da ordem e da reconexão. |
+| `policyVersion` | Carimbo da autorização vigente. Avança quando papel, convite, visibilidade ou porto do artefato muda. |
+| participantes | Presenças ativas. |
+
+Superfície sem sala continua funcionando por leitura normal: ausência de canal ao vivo degrada a experiência, não o trabalho.
+
+### Presença (`presence`)
+
+Quem está no assunto **agora**. Uma presença por sessão, não por conta: a mesma pessoa em duas abas conta duas sessões e aparece uma vez por sessão.
+
+| Campo | Papel |
+|---|---|
+| identidade | Conta humana **ou** identidade de agente de bordo (`agentIdentityId` + responsável). |
+| `intent` | Intenção declarada. |
+| `state` | `ativo` · `ocioso` · `desconectado`. Desconectado sai da lista quando o prazo de graça expira. |
+| `since` | Entrada na sala. |
+| foco | Bloco, campo ou coluna em que está, quando o artefato tem recorte. |
+
+Presença carrega o mínimo: identidade, intenção, estado e foco. Não carrega conteúdo, token nem trecho de Markdown (RN-122).
+
+### Intenção (`presenceIntent`)
+
+O que aquela presença veio fazer. Torna leitura, edição e trabalho de agente distinguíveis antes de qualquer mudança.
+
+| Intenção | Significado |
+|---|---|
+| `lendo` | Acompanha; não pretende alterar. |
+| `editando` | Está aplicando operações no conteúdo mutável. |
+| `revisando` | Comentando ou resolvendo fios. |
+| `executando` | Agente trabalhando numa linha com comando ativo (Manobra ou Lance). |
+| `aguardando` | Espera passagem de comando, aceite humano ou desbloqueio. |
+
+Intenção é declaração observada, nunca permissão. Agente **sempre** declara identidade e intenção (RN-123).
+
+### Evento versionado (`collabEvent`)
+
+Unidade que a sala transmite. Imutável, ordenada por `seq` dentro da sala.
+
+| Campo | Papel |
+|---|---|
+| `seq` | Posição na sala. Quem reconecta pede o que veio depois do último `seq` visto. |
+| `kind` | `operacao` · `comando` · `presenca` · `atividade`. |
+| autor | Conta e, quando houver, identidade de agente. |
+| `payload` | O mínimo para a superfície aplicar a mudança. |
+| `at` | Instante do servidor. |
+
+Evento é derivado. Quem chegou depois, ou perdeu a janela, reconstrói do snapshot em Postgres e volta a seguir a sequência (RN-124).
+
+### Operação colaborativa (`collabOperation`)
+
+Mutação de conteúdo mutável. É o único caminho ao vivo para conteúdo (RN-120).
+
+| Campo | Papel |
+|---|---|
+| `opId` | Chave de idempotência gerada pelo cliente. |
+| `baseVersion` | Versão do conteúdo em que a operação foi calculada. |
+| alvo | Assunto + campo (ou faixa do Markdown). |
+| `payload` | A mudança, não o documento inteiro. |
+
+### Idempotência
+
+Propriedade obrigatória: reaplicar um `opId` já aplicado devolve o mesmo resultado e não gera evento novo. Vale para reconexão, retry de rede e reenvio de agente. Comando atômico segue a mesma exigência — publicar, aprovar, assumir ou aceitar duas vezes com a mesma chave é uma vez.
+
+### Comando atômico (`atomicCommand`)
+
+Transação autorizada no servidor. Não passa pelo canal de operações; o canal só **anuncia** o resultado (RN-120).
+
+Comandos: publicar, desativar carta ou versão, mudar visibilidade, mover de porto, excluir, enviar Rumo para revisão, aprovar, abrir nova revisão, assumir / renovar / soltar o comando, abrir e resolver Maré contrária, registrar resultado, aceite humano, convidar, revogar, mudar papel e transferir capitania.
+
+### Atividade / linha do tempo (`activityEntry`)
+
+Histórico legível do que aconteceu no assunto, em ordem. É o que a vista **Atividade** do Rumo, o histórico da carta e o feed da Manobra mostram.
+
+| Campo | Papel |
+|---|---|
+| assunto | Artefato a que pertence. |
+| autor | Pessoa e, quando houver, agente (“Nome via Agente”). |
+| ação | Verbo do produto: editou, publicou, aprovou, assumiu, bloqueou, reportou, aceitou. |
+| correlação | Liga a entrada ao evento do Diário de bordo da mesma ação. |
+
+Atividade é **por artefato** e segue a autorização daquele artefato. Diário de bordo é **por porto** e existe para auditoria.
+
+### Revogação
+
+Perda de autorização sobre o assunto: sair ou ser removido da tripulação, chave revogada, identidade de agente desativada ou excluída, convite nominal revogado, visibilidade rebaixada, carta movida para outro porto, ferramenta MCP desabilitada.
+
+Efeito: presença encerrada na hora, eventos e comandos protegidos daquela sala recusados, `policyVersion` avançada (RN-121). Revogação não apaga atividade nem Diário já gravados.
+
+### Passagem de comando (handoff)
+
+Troca de responsabilidade sobre a mesma linha (Manobra ou Lance) entre pessoa e agente, ou entre agentes. Nada de novo em poder: responsável é atribuição (RN-115), comando é lease (RN-103), aceite é humano (RN-108). A colaboração ao vivo acrescenta a leitura — quem está na sala, com que intenção e quem detém o comando agora — e o registro da troca na atividade. Agente não assume aceite humano nem aprova por conta própria (RN-123).
 
 ## Identificadores públicos
 
