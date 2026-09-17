@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   validateCollabSubject,
   type CollabRoomRecord,
@@ -72,6 +72,24 @@ export async function ensureCollabRoom(subject: CollabRoomSubject): Promise<Coll
   const existing = await getCollabRoom(subject);
   if (!existing) throw new Error("Não foi possível abrir a sala deste artefato.");
   return existing;
+}
+
+/** Avança o carimbo quando a autorização da sala muda (RN-121). */
+export async function bumpCollabRoomPolicyVersion(roomId: string): Promise<number | null> {
+  const db = await getDb();
+  const [row] = await db
+    .update(collabRooms)
+    .set({ policyVersion: sql`${collabRooms.policyVersion} + 1` })
+    .where(eq(collabRooms.id, roomId))
+    .returning({ policyVersion: collabRooms.policyVersion });
+  return row?.policyVersion ?? null;
+}
+
+export async function bumpCollabRoomPolicyVersions(roomIds: readonly string[]): Promise<void> {
+  const unique = [...new Set(roomIds.filter(Boolean))];
+  for (const roomId of unique) {
+    await bumpCollabRoomPolicyVersion(roomId);
+  }
 }
 
 export async function listCollabRooms(

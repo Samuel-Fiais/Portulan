@@ -19,6 +19,8 @@ import { TaskStatusSelect } from "@/components/task-status-select";
 import { TaskSourceSection } from "@/components/task-source-section";
 import type { CartaOption } from "@/components/context-pack-detail";
 import { WorkspaceBackLink } from "@/components/workspace-back-link";
+import { CollabPresenceStrip } from "@/components/collab-presence-strip";
+import { useCollabPresence } from "@/components/use-collab-presence";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -178,6 +180,12 @@ export function TaskDetail({
   const isLance = Boolean(task.parentTaskId);
   const kindLabel = isLance ? "Lance" : "Manobra";
   const canEditPack = packStatus === "draft" || packStatus === "review";
+  const { participants: livePresence } = useCollabPresence({
+    subjectType: "implementation_task",
+    subjectId: task.id,
+    workspaceId: task.workspaceId,
+    intention: canEditPack ? "automating" : "viewing",
+  });
 
   function submitReport(kind: "progress" | "result") {
     if (!report.trim()) return;
@@ -213,6 +221,7 @@ export function TaskDetail({
               <span>{task.objective}</span>
             </h1>
             <div className="rumo-masthead__bar manobra-masthead__toolbar">
+              <CollabPresenceStrip participants={livePresence} className="manobra-masthead__presence" />
               <TaskStatusSelect taskId={task.id} status={task.status} canEdit={canEditPack} />
               {canEditPack ? (
                 <div className="split-row__actions rumo-masthead__actions">

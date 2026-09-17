@@ -233,6 +233,29 @@ export const mcpTokenWithIdentitySchema = mcpTokenInputSchema.extend({
  * é rótulo curto — o Markdown integral nunca sobe (RN-122). Os nomes em `snake_case` do
  * MCP são aceitos como apelido do mesmo campo.
  */
+export const collabPresenceInputSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+    const body = value as Record<string, unknown>;
+    return {
+      action: body.action,
+      intention: body.intention,
+      clientInfo: body.clientInfo ?? body.client_info,
+    };
+  },
+  z.object({
+    action: z.enum(["join", "heartbeat", "leave"]),
+    intention: z.enum(collabIntentions).default("viewing"),
+    clientInfo: z
+      .string()
+      .trim()
+      .max(240)
+      .optional()
+      .nullable()
+      .transform((value) => value ?? null),
+  }),
+);
+
 export const collabEventInputSchema = z.preprocess(
   (value) => {
     if (typeof value !== "object" || value === null || Array.isArray(value)) return value;

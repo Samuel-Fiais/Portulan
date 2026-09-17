@@ -118,6 +118,8 @@ export async function revokeMcpToken(userId: string, tokenId: string) {
 
   const match = deleted[0];
   if (!match || match.userId !== userId) return false;
+  const { revokeCollabAccessForMcpToken } = await import("@/lib/collab-revocation");
+  await revokeCollabAccessForMcpToken(tokenId);
   return true;
 }
 
@@ -187,6 +189,10 @@ export async function revokeMcpTokensForWorkspaceUser(workspaceId: string, userI
     .delete(mcpTokens)
     .where(and(eq(mcpTokens.workspaceId, workspaceId), eq(mcpTokens.userId, userId)))
     .returning({ id: mcpTokens.id });
+  const { revokeCollabAccessForMcpToken } = await import("@/lib/collab-revocation");
+  for (const row of deleted) {
+    await revokeCollabAccessForMcpToken(row.id);
+  }
   return deleted.length;
 }
 
@@ -196,6 +202,10 @@ export async function revokeMcpTokensForAgentIdentity(agentIdentityId: string) {
     .delete(mcpTokens)
     .where(eq(mcpTokens.agentIdentityId, agentIdentityId))
     .returning({ id: mcpTokens.id });
+  const { revokeCollabAccessForMcpToken } = await import("@/lib/collab-revocation");
+  for (const row of deleted) {
+    await revokeCollabAccessForMcpToken(row.id);
+  }
   return deleted.length;
 }
 

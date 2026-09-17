@@ -171,6 +171,8 @@ export async function removeWorkspaceMemberAction(workspaceId: string, targetUse
 
   await removeWorkspaceMember(workspaceId, targetUserId);
   await revokeMcpTokensForWorkspaceUser(workspaceId, targetUserId);
+  const { revokeCollabAccessForWorkspaceMember } = await import("@/lib/collab-revocation");
+  await revokeCollabAccessForWorkspaceMember(workspaceId, targetUserId);
   revalidateWorkspaceSurfaces();
   return { ok: true as const };
 }
@@ -189,6 +191,8 @@ export async function leaveWorkspaceAction(workspaceId: string) {
 
   await removeWorkspaceMember(workspaceId, context.userId);
   await revokeMcpTokensForWorkspaceUser(workspaceId, context.userId);
+  const { revokeCollabAccessForWorkspaceMember } = await import("@/lib/collab-revocation");
+  await revokeCollabAccessForWorkspaceMember(workspaceId, context.userId);
   const remaining = memberships.find((item) => item.id !== workspaceId);
   if (remaining) await setActiveWorkspaceCookie(remaining.id);
   revalidateWorkspaceSurfaces();

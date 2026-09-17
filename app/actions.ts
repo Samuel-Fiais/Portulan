@@ -435,6 +435,15 @@ export async function revokeDocumentShareAction(documentId: string, shareId: str
   const revoked = await revokeDocumentShare(shareId, documentId);
   if (!revoked) return { ok: false as const, error: "Compartilhamento não encontrado." };
 
+  const { revokeCollabAccessForDocumentShare } = await import("@/lib/collab-revocation");
+  if (document.workspaceId) {
+    await revokeCollabAccessForDocumentShare({
+      workspaceId: document.workspaceId,
+      documentId,
+      userId: revoked.userId,
+    });
+  }
+
   revalidatePath(`/documents/${documentId}`);
   revalidatePath(`/documents/${document.slug}`);
   return { ok: true as const };

@@ -11,6 +11,8 @@ import { createDocumentAction, deleteDocumentAction, listLinkableDocumentsAction
 import { BlobImageUpload } from "@/components/blob-image-upload";
 import { BlobFileUpload } from "@/components/blob-file-upload";
 import { DocumentCollaboratorAvatars } from "@/components/document-collaborator-avatars";
+import { CollabPresenceStrip } from "@/components/collab-presence-strip";
+import { useCollabPresence } from "@/components/use-collab-presence";
 import { DocumentCommentsBoundary, useOptionalDocumentComments } from "@/components/document-comments-context";
 import { DocumentReviewPanel } from "@/components/document-review-panel";
 import { DocumentShareDialog } from "@/components/document-share-dialog";
@@ -117,6 +119,14 @@ export function DocumentEditor({
   const dirty = useMemo(() => JSON.stringify(document) !== JSON.stringify(savedDocument), [document, savedDocument]);
   const latestRelease = releases[0];
   const canPublish = useMemo(() => hasUnpublishedChanges(document, latestRelease), [document, latestRelease]);
+  const presenceIntention = canEdit ? "editing" : "viewing";
+  const { participants: livePresence } = useCollabPresence({
+    subjectType: "document",
+    subjectId: document.id,
+    workspaceId: document.workspaceId,
+    intention: presenceIntention,
+    enabled: Boolean(document.workspaceId),
+  });
 
   function openVersionDiff(left: VersionDiffSideId, right: VersionDiffSideId) {
     setVersionDiffLeft(left);
@@ -734,6 +744,7 @@ export function DocumentEditor({
           </div>
         </div>
         <div className="editor-actions flex items-center gap-2">
+          <CollabPresenceStrip participants={livePresence} className="hidden md:flex" />
           {documentCollaborators.length ? (
             <DocumentCollaboratorAvatars
               collaborators={documentCollaborators}

@@ -726,9 +726,18 @@ const mcpHandler = createMcpHandler((server) => {
       }
 
       const revoked = await revokeDocumentShare(share_id, document.id);
-      return revoked
-        ? textResult({ revoked: true })
-        : { ...textResult({ error: "Compartilhamento não encontrado." }), isError: true };
+      if (!revoked) {
+        return { ...textResult({ error: "Compartilhamento não encontrado." }), isError: true };
+      }
+      if (document.workspaceId) {
+        const { revokeCollabAccessForDocumentShare } = await import("@/lib/collab-revocation");
+        await revokeCollabAccessForDocumentShare({
+          workspaceId: document.workspaceId,
+          documentId: document.id,
+          userId: revoked.userId,
+        });
+      }
+      return textResult({ revoked: true });
     },
   );
 

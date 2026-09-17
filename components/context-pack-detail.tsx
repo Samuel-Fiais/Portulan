@@ -66,6 +66,8 @@ import { BoardId } from "@/components/board-id";
 import { WorkspaceBackLink } from "@/components/workspace-back-link";
 import { BordoFeed } from "@/components/bordo-feed";
 import { RumoWorkBoard } from "@/components/rumo-work-board";
+import { CollabPresenceStrip } from "@/components/collab-presence-strip";
+import { useCollabPresence } from "@/components/use-collab-presence";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   AcceptanceCriterionRecord,
@@ -149,6 +151,12 @@ export function ContextPackDetail({
   const [itemFilter, setItemFilter] = useState<ContextItemType | "all">("all");
   const cartaById = new Map(documents.map((document) => [document.id, document]));
   const canEditPack = pack.status === "draft" || pack.status === "review";
+  const { participants: livePresence } = useCollabPresence({
+    subjectType: "context_pack",
+    subjectId: pack.id,
+    workspaceId: pack.workspaceId,
+    intention: canEditPack ? "editing" : "viewing",
+  });
   const defaultView = pack.status === "approved" ? "trabalho" : "contexto";
   const latestRevision = revisions[0];
   const progress = acceptedCount(tasks);
@@ -180,6 +188,7 @@ export function ContextPackDetail({
               <span>{pack.title}</span>
             </h1>
             <div className="rumo-masthead__bar">
+              <CollabPresenceStrip participants={livePresence} className="rumo-masthead__presence" />
               <div className="dev-badge-row">
                 <PackStatusBadge status={pack.status} />
                 <PackValidityBadge validity={pack.validity} />

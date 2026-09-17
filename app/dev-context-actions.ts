@@ -933,6 +933,8 @@ export async function deactivateAgentIdentityAction(identityId: string) {
   const lifecycle = validateAgentIdentityLifecycle({ status: identity.status, action: "deactivate" });
   if (!lifecycle.ok) return { ok: false as const, error: lifecycle.error };
   const revoked = await revokeMcpTokensForAgentIdentity(identityId);
+  const { revokeCollabAccessForAgentIdentity } = await import("@/lib/collab-revocation");
+  await revokeCollabAccessForAgentIdentity(ctx.workspaceId, identityId);
   const updated = await setAgentIdentityStatus(identityId, ctx.workspaceId, ctx.userId, "inactive");
   if (!updated) return { ok: false as const, error: "Não foi possível desativar este Agente de Bordo." };
   await recordAuditEvent({
@@ -988,6 +990,8 @@ export async function deleteAgentIdentityAction(identityId: string) {
   });
   if (!allowed.ok) return { ok: false as const, error: allowed.error };
   const revoked = await revokeMcpTokensForAgentIdentity(identityId);
+  const { revokeCollabAccessForAgentIdentity } = await import("@/lib/collab-revocation");
+  await revokeCollabAccessForAgentIdentity(ctx.workspaceId, identityId);
   const deleted = await deleteAgentIdentity(identityId, ctx.workspaceId, ctx.userId);
   if (!deleted) return { ok: false as const, error: "Não foi possível excluir este Agente de Bordo." };
   revalidateDev();

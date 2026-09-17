@@ -186,8 +186,8 @@ export async function revokeDocumentShare(shareId: string, documentId: string) {
   const deleted = await db
     .delete(documentShares)
     .where(and(eq(documentShares.id, shareId), eq(documentShares.documentId, documentId)))
-    .returning({ id: documentShares.id });
-  return deleted.length > 0;
+    .returning({ id: documentShares.id, userId: documentShares.userId });
+  return deleted[0] ?? null;
 }
 
 export async function documentHasAnyShares(documentId: string) {

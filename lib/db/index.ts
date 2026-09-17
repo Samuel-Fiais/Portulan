@@ -196,11 +196,26 @@ export {
 export { listAuditEvents, listAuditEventsForIdentity, recordAuditEvent } from "@/lib/db/audit-events";
 
 export {
+  bumpCollabRoomPolicyVersion,
+  bumpCollabRoomPolicyVersions,
   ensureCollabRoom,
   getCollabRoom,
   getCollabRoomById,
   listCollabRooms,
 } from "@/lib/db/collab-rooms";
+
+export {
+  findPresenceSessionForActor,
+  joinOrHeartbeatPresence,
+  leavePresenceSession,
+  listActivePresenceViews,
+  listPresenceSessionsForRoom,
+  revokePresenceForAgentIdentity,
+  revokePresenceForMcpToken,
+  revokePresenceForWorkspaceUser,
+  revokePresenceSessions,
+  type PresenceSessionView,
+} from "@/lib/db/presence-sessions";
 
 export {
   appendCollabEvent,

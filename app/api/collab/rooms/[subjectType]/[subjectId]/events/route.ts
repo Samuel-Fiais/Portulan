@@ -1,4 +1,5 @@
 import { collabRoomPayload, openCollabRoom, type CollabRouteContext } from "@/app/api/collab/_room";
+import { parseCollabPolicyVersionParam, validateCollabPolicyVersion } from "@/lib/collab-room-policy";
 import {
   collabEventRequiresOperate,
   CollabEventRejected,
@@ -42,6 +43,16 @@ export async function POST(request: Request, context: CollabRouteContext) {
   const parsed = collabEventInputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: "Evento inválido", issues: parsed.error.issues }, { status: 400 });
+  }
+
+  const search = new URL(request.url).searchParams;
+  const clientPolicyVersion = parseCollabPolicyVersionParam(search.get("policy_version"));
+  const policy = validateCollabPolicyVersion(clientPolicyVersion, access.room.policyVersion);
+  if (!policy.ok) {
+    return Response.json(
+      { error: policy.error, room: collabRoomPayload(access) },
+      { status: 403 },
+    );
   }
 
   const { type, idempotencyKey, intention, baseVersion, payload } = parsed.data;
