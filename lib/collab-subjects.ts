@@ -4,7 +4,7 @@ import {
   type CollabSubjectType,
 } from "./collab-rooms.ts";
 import type { ContextPackStatus, ImplementationTaskStatus } from "./dev-context.ts";
-import type { DocumentAccessLevel } from "./documents.ts";
+import type { DocumentAccessLevel, DocumentStatus } from "./documents.ts";
 import type { WorkspaceRole } from "./workspaces.ts";
 
 /**
@@ -12,7 +12,13 @@ import type { WorkspaceRole } from "./workspaces.ts";
  * que decide leitura e mutabilidade (RN-120, RN-121). Conteúdo não entra aqui.
  */
 export type CollabSubjectSnapshot =
-  | { subjectType: "document"; workspaceId: string | null; access: DocumentAccessLevel; disabled: boolean }
+  | {
+      subjectType: "document";
+      workspaceId: string | null;
+      access: DocumentAccessLevel;
+      disabled: boolean;
+      status: DocumentStatus;
+    }
   | { subjectType: "template"; workspaceId: string | null; isBuiltin: boolean; manageable: boolean }
   | { subjectType: "context_pack"; workspaceId: string; status: ContextPackStatus }
   | { subjectType: "implementation_plan"; workspaceId: string; revisionId: string | null }
@@ -40,7 +46,10 @@ export function collabSubjectBelongsToWorkspace(
 export function collabSubjectContentMutable(snapshot: CollabSubjectSnapshot): boolean {
   switch (snapshot.subjectType) {
     case "document":
-      return !snapshot.disabled;
+      return (
+        !snapshot.disabled &&
+        (snapshot.status === "draft" || snapshot.status === "review")
+      );
     case "template":
       return !snapshot.isBuiltin && snapshot.manageable;
     case "context_pack":

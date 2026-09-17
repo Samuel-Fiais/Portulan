@@ -19,6 +19,7 @@ const carta: CollabSubjectSnapshot = {
   workspaceId: "ws-1",
   access: "editor",
   disabled: false,
+  status: "draft",
 };
 
 test("RN-119: artefato fora do alcance de quem pede não abre sala", () => {
@@ -128,6 +129,8 @@ test("RN-120: conteúdo imutável entra na sala só em leitura", () => {
   assert.equal(collabSubjectContentMutable({ ...pack, status: "approved" }), false);
   assert.equal(collabSubjectContentMutable({ ...pack, status: "superseded" }), false);
   assert.equal(collabSubjectContentMutable({ ...carta, disabled: true }), false);
+  assert.equal(collabSubjectContentMutable({ ...carta, status: "published" }), false);
+  assert.equal(collabSubjectContentMutable({ ...carta, status: "review" }), true);
 
   assert.equal(
     collabSubjectContentMutable({

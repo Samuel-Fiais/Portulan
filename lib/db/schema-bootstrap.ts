@@ -46,6 +46,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "secondary_color",
     "logo_url",
     "content",
+    "draft_version",
     "is_builtin",
     "created_at",
   ],
@@ -86,6 +87,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "team",
     "tags",
     "content",
+    "draft_version",
     "version",
     "user_id",
     "workspace_id",
@@ -721,6 +723,12 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
         `ALTER TABLE ${PORTULAN_PG_SCHEMA}.templates ADD COLUMN IF NOT EXISTS logo_url TEXT`,
       );
     }
+    if (!columns.has("draft_version")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.templates ADD COLUMN IF NOT EXISTS draft_version INTEGER NOT NULL DEFAULT 0`,
+      );
+    }
   }
 
   await db.execute(sql`
@@ -741,6 +749,13 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
 
   if (await portulanTableExists(db, "documents")) {
     const columns = (await loadTableColumns(db)).get("documents") ?? new Set<string>();
+
+    if (!columns.has("draft_version")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.documents ADD COLUMN IF NOT EXISTS draft_version INTEGER NOT NULL DEFAULT 0`,
+      );
+    }
 
     if (!columns.has("template_id")) {
       await executeSchemaStatement(

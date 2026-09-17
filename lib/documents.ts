@@ -28,6 +28,7 @@ export type TemplateRecord = {
   secondaryColor: string;
   logoUrl: string | null;
   content: string;
+  draftVersion: number;
   isBuiltin: boolean;
   createdAt: string;
 };
@@ -49,6 +50,8 @@ export type DocumentRecord = {
   team: string;
   tags: string[];
   content: string;
+  /** Versão otimista do rascunho para coedição (RN-120); releases usam `version`. */
+  draftVersion: number;
   version: number;
   userId: string | null;
   workspaceId: string | null;
@@ -158,6 +161,7 @@ export function releaseToDocumentRecord(release: DocumentRelease): DocumentRecor
     team: release.team,
     tags: release.tags,
     content: release.content,
+    draftVersion: 0,
     version: release.version,
     userId: null,
     workspaceId: null,

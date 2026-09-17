@@ -129,6 +129,7 @@ Rascunho vivo. Não é o que o público vê.
 | `visibility` | `private` (Camarote) · `workspace` (Porto) · `public` (Mar aberto). Nasce `private` (RN-16). |
 | `author` (Cartógrafo), `team` (Frota), `tags` | Metadados (até 12 tags, 1–40 chars). São texto livre do relatório, independentes de quem é o cartógrafo dono e de quem é a tripulação. |
 | `content` | Markdown + diretivas `:::nome` (até 250.000 chars). |
+| `draftVersion` | Versão otimista do **rascunho** para coedição (`baseVersion` das operações). Incrementa a cada operação colaborativa aplicada ou gravação legada de título, resumo ou conteúdo; publicação usa `version`, não altera releases já publicadas (RN-120). |
 | `version` | Número da última versão **publicada**. Salvar rascunho não incrementa. |
 | `disabled` | Se verdadeiro, nenhum link `/d` ou `/p` desta carta mostra conteúdo. |
 
@@ -156,7 +157,11 @@ Snapshot **imutável** criado ao publicar. O rascunho pode mudar depois; a relea
 
 ### Gabarito (template)
 
-Identidade visual + Markdown inicial. Pertence ao porto onde foi criado: toda a tripulação usa.
+Identidade visual + Markdown inicial. Pertence ao porto onde foi criado: toda a tripulação usa. Alterar o gabarito **não** reescreve cartas já publicadas — só o Markdown inicial de novas cartas e o rascunho em edição.
+
+| Campo | Papel |
+|---|---|
+| `draftVersion` | Versão otimista do conteúdo do gabarito para `content.operation` (RN-120). |
 
 | Tipo | Quem usa | Quem altera | Pode excluir |
 |---|---|---|---|
@@ -444,9 +449,9 @@ Mutação de conteúdo mutável. É o único caminho ao vivo para conteúdo (RN-
 | Campo | Papel |
 |---|---|
 | `opId` | Chave de idempotência gerada pelo cliente. |
-| `baseVersion` | Versão do conteúdo em que a operação foi calculada. |
-| alvo | Assunto + campo (ou faixa do Markdown). |
-| `payload` | A mudança, não o documento inteiro. |
+| `baseVersion` | Versão do rascunho (`draftVersion`) em que a operação foi calculada. |
+| alvo | Assunto + campo (`content`, `title`, `summary` na carta; `content` no gabarito). |
+| `payload` | Substituição do campo inteiro (`field` + `value`), não o artefato completo. |
 
 ### Idempotência
 

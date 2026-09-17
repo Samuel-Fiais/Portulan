@@ -54,6 +54,7 @@ function mapRow(row: DocumentRow, template: Pick<TemplateRow, "name" | "primaryC
     team: row.team,
     tags: JSON.parse(row.tags) as string[],
     content: row.content,
+    draftVersion: row.draftVersion,
     version: row.version,
     userId: row.userId,
     workspaceId: row.workspaceId,
@@ -298,6 +299,7 @@ export async function createDocument(
     team: input.team,
     tags: JSON.stringify(input.tags),
     content: input.content,
+    draftVersion: 0,
     version: 1,
     userId,
     workspaceId: options?.workspaceId ?? null,
@@ -358,6 +360,10 @@ export async function updateDocument(
     input.content !== undefined
       ? mergeLivingDocumentState(current.content, input.content)
       : next.content;
+  const draftFieldsChanged =
+    (input.content !== undefined && content !== current.content) ||
+    (input.title !== undefined && input.title !== current.title) ||
+    (input.summary !== undefined && input.summary !== current.summary);
   const db = await getDb();
 
   await db
@@ -374,6 +380,7 @@ export async function updateDocument(
       // O rascunho pode ser salvo quantas vezes for necessário. A versão só
       // avança ao criar um snapshot publicado em publishDocument.
       version: current.version,
+      draftVersion: draftFieldsChanged ? current.draftVersion + 1 : current.draftVersion,
       updatedAt: now,
       publishedAt,
     })
@@ -397,7 +404,11 @@ export async function updateDocumentLivingContent(
 
   await db
     .update(documents)
-    .set({ content, updatedAt: now })
+    .set({
+      content,
+      draftVersion: content !== current.content ? current.draftVersion + 1 : current.draftVersion,
+      updatedAt: now,
+    })
     .where(eq(documents.id, id));
 
   if (releaseId) {

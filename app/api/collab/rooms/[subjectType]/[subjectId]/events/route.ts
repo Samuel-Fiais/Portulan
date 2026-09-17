@@ -6,7 +6,8 @@ import {
   isCollabClientEventType,
   parseCollabCursor,
 } from "@/lib/collab-events";
-import { appendCollabEvent, readCollabEventsSince } from "@/lib/db";
+import { collabContentOpSupported } from "@/lib/collab-content-ops";
+import { applyCollabContentOperation, appendCollabEvent, readCollabEventsSince } from "@/lib/db";
 import { collabEventInputSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +68,47 @@ export async function POST(request: Request, context: CollabRouteContext) {
   }
 
   try {
+    if (
+      type === "content.operation" &&
+      collabContentOpSupported(access.room.subjectType)
+    ) {
+      const applied = await applyCollabContentOperation({
+        room: access.room,
+        subject: { subjectType: access.room.subjectType, subjectId: access.room.subjectId },
+        idempotencyKey,
+        baseVersion,
+        payload,
+        actor: access.actor,
+        intention,
+      });
+
+      if (!applied.ok) {
+        if (applied.status === 409) {
+          return Response.json(
+            {
+              error: applied.conflict.message,
+              conflict: true,
+              contentVersion: applied.conflict.snapshot.contentVersion,
+              snapshot: applied.conflict.snapshot,
+              room: collabRoomPayload(access),
+            },
+            { status: 409 },
+          );
+        }
+        return Response.json({ error: applied.error }, { status: applied.status });
+      }
+
+      return Response.json(
+        {
+          room: collabRoomPayload(access),
+          event: applied.event,
+          deduplicated: applied.deduplicated,
+          contentVersion: applied.contentVersion,
+        },
+        { status: applied.deduplicated ? 200 : 201 },
+      );
+    }
+
     const result = await appendCollabEvent({
       roomId: access.room.id,
       workspaceId: access.workspaceId,

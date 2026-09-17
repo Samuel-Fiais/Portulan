@@ -229,6 +229,7 @@ function TemplateFormDialog({
       team: "Produto",
       tags: [],
       content: "## Seção de exemplo\n\nConteúdo ilustrativo do relatório.",
+      draftVersion: 0,
       version: 1,
       userId: null,
       createdAt: new Date().toISOString(),

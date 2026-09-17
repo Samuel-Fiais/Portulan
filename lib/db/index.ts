@@ -226,4 +226,9 @@ export {
   readCollabEventsSince,
 } from "@/lib/db/collab-events";
 
+export {
+  applyCollabContentOperation,
+  getCollabContentSnapshot,
+} from "@/lib/db/collab-content-apply";
+
 export { isDatabaseConfigured } from "@/lib/db/client";

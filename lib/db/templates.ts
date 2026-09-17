@@ -33,6 +33,7 @@ function mapRow(row: typeof templates.$inferSelect): TemplateRecord {
     secondaryColor: row.secondaryColor,
     logoUrl: row.logoUrl ?? null,
     content: row.content,
+    draftVersion: row.draftVersion,
     isBuiltin: row.isBuiltin,
     createdAt: row.createdAt,
   };
@@ -85,6 +86,7 @@ export async function createTemplate(ctx: TemplateAccessContext, input: Template
       secondaryColor: input.secondaryColor,
       logoUrl: input.logoUrl ?? null,
       content: input.content || defaultDocumentContent,
+      draftVersion: 0,
       isBuiltin: false,
     })
     .returning();
@@ -98,6 +100,9 @@ export async function updateTemplate(ctx: TemplateAccessContext, id: string, inp
 
   const db = await getDb();
 
+  const nextContent = input.content ?? current.content;
+  const contentChanged = input.content !== undefined && nextContent !== current.content;
+
   if (current.isBuiltin) {
     const [row] = await db
       .update(templates)
@@ -106,7 +111,8 @@ export async function updateTemplate(ctx: TemplateAccessContext, id: string, inp
         primaryColor: input.primaryColor ?? current.primaryColor,
         secondaryColor: input.secondaryColor ?? current.secondaryColor,
         logoUrl: input.logoUrl !== undefined ? input.logoUrl : current.logoUrl,
-        content: input.content ?? current.content,
+        content: nextContent,
+        draftVersion: contentChanged ? current.draftVersion + 1 : current.draftVersion,
       })
       .where(eq(templates.id, id))
       .returning();
@@ -123,7 +129,8 @@ export async function updateTemplate(ctx: TemplateAccessContext, id: string, inp
       primaryColor: input.primaryColor ?? current.primaryColor,
       secondaryColor: input.secondaryColor ?? current.secondaryColor,
       logoUrl: input.logoUrl !== undefined ? input.logoUrl : current.logoUrl,
-      content: input.content ?? current.content,
+      content: nextContent,
+      draftVersion: contentChanged ? current.draftVersion + 1 : current.draftVersion,
     })
     .where(eq(templates.id, id))
     .returning();

@@ -90,11 +90,13 @@ CREATE TABLE IF NOT EXISTS portulan.templates (
   secondary_color TEXT NOT NULL,
   logo_url TEXT,
   content TEXT NOT NULL DEFAULT '',
+  draft_version INTEGER NOT NULL DEFAULT 0,
   is_builtin BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE portulan.templates ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE portulan.templates ADD COLUMN IF NOT EXISTS draft_version INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE portulan.templates ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES portulan.workspaces(id) ON DELETE CASCADE;
 
 UPDATE portulan.templates AS t
@@ -142,6 +144,7 @@ CREATE TABLE IF NOT EXISTS portulan.documents (
   team TEXT NOT NULL DEFAULT '',
   tags TEXT NOT NULL DEFAULT '[]',
   content TEXT NOT NULL DEFAULT '',
+  draft_version INTEGER NOT NULL DEFAULT 0,
   version INTEGER NOT NULL DEFAULT 1,
   user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL,
@@ -172,6 +175,7 @@ ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NUL
 ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES portulan.workspaces(id) ON DELETE SET NULL;
 ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private';
+ALTER TABLE portulan.documents ADD COLUMN IF NOT EXISTS draft_version INTEGER NOT NULL DEFAULT 0;
 
 UPDATE portulan.documents AS d
 SET workspace_id = w.id

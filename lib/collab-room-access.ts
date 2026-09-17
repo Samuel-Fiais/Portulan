@@ -136,6 +136,7 @@ async function resolveSubject(input: {
         workspaceId: document.workspaceId,
         access: await getDocumentAccessLevel(document, ctx),
         disabled: document.disabled,
+        status: document.status,
       },
     };
   }
