@@ -40,6 +40,8 @@ export type CollabRoomSubject = {
 
 export type CollabRoomRecord = CollabRoomSubject & {
   id: string;
+  /** Carimbo da autorização vigente; avança quando papel, convite, visibilidade ou porto muda (RN-121). */
+  policyVersion: number;
   createdAt: string;
 };
 

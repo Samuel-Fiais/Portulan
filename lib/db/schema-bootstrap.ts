@@ -274,7 +274,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "board_number",
     "created_at",
   ],
-  collab_rooms: ["id", "workspace_id", "subject_type", "subject_id", "created_at"],
+  collab_rooms: ["id", "workspace_id", "subject_type", "subject_id", "policy_version", "created_at"],
   collab_events: [
     "id",
     "room_id",

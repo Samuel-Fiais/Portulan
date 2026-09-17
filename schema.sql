@@ -551,6 +551,7 @@ CREATE TABLE IF NOT EXISTS portulan.collab_rooms (
   workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
   subject_type TEXT NOT NULL CHECK (subject_type IN ('document', 'template', 'context_pack', 'implementation_plan', 'implementation_task', 'project', 'repository')),
   subject_id TEXT NOT NULL,
+  policy_version INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (workspace_id, subject_type, subject_id)
 );
@@ -586,7 +587,7 @@ CREATE TABLE IF NOT EXISTS portulan.presence_sessions (
   user_id UUID REFERENCES portulan.users(id) ON DELETE SET NULL,
   agent_identity_id UUID REFERENCES portulan.agent_identities(id) ON DELETE SET NULL,
   mcp_token_id UUID REFERENCES portulan.mcp_tokens(id) ON DELETE SET NULL,
-  intention TEXT NOT NULL DEFAULT 'viewing' CHECK (intention IN ('viewing', 'editing', 'reviewing', 'automating')),
+  intention TEXT NOT NULL DEFAULT 'viewing' CHECK (intention IN ('viewing', 'editing', 'reviewing', 'automating', 'waiting')),
   client_info TEXT,
   joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

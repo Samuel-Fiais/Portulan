@@ -43,3 +43,7 @@ test("presence_sessions nasce com sala, intenção, última batida e revogação
     assert.match(presence, new RegExp(`\\n {2}${column} `));
   }
 });
+
+test("RN-121: a sala carrega o carimbo da autorização vigente", () => {
+  assert.match(tableDdl("collab_rooms"), /\n {2}policy_version INTEGER NOT NULL DEFAULT 1/);
+});

@@ -1,7 +1,7 @@
 export type PolicyResult = { ok: true } | { ok: false; error: string };
 
 /** Intenção declarada na sala: aparece na presença e na atividade, humano ou agente (RN-123). */
-export const collabIntentions = ["viewing", "editing", "reviewing", "automating"] as const;
+export const collabIntentions = ["viewing", "editing", "reviewing", "automating", "waiting"] as const;
 
 export type CollabIntention = (typeof collabIntentions)[number];
 
@@ -9,7 +9,8 @@ export const COLLAB_INTENTION_LABELS: Record<CollabIntention, string> = {
   viewing: "Lendo",
   editing: "Editando",
   reviewing: "Revisando",
-  automating: "Automatizando",
+  automating: "Executando",
+  waiting: "Aguardando",
 };
 
 export const PRESENCE_HEARTBEAT_MS = 20_000;

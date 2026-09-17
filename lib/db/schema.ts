@@ -657,6 +657,7 @@ export const collabRooms = portulanSchema.table(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     subjectType: text("subject_type").notNull(),
     subjectId: text("subject_id").notNull(),
+    policyVersion: integer("policy_version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [

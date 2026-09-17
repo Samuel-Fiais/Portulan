@@ -16,6 +16,7 @@ function mapRoom(row: typeof collabRooms.$inferSelect): CollabRoomRecord {
     workspaceId: row.workspaceId,
     subjectType: row.subjectType as CollabSubjectType,
     subjectId: row.subjectId,
+    policyVersion: row.policyVersion,
     createdAt: row.createdAt,
   };
 }
