@@ -72,8 +72,8 @@ Regras: RN-07, RN-16, RN-19, RN-52, RN-55.
 ## Editar e salvar
 
 1. Da Cartoteca (ou da Ponte, pelos recentes), a pessoa abre a carta.
-2. Cartógrafo ou editor altera título, resumo, Markdown, metadados ou gabarito.
-3. O rascunho é gravado por Cmd/Ctrl+S ou pelo botão **Salvar**. Não publica. Não gera `/p` novo. Com alterações ainda não gravadas, sair da aba pode exibir aviso do navegador.
+2. Cartógrafo ou editor altera título, resumo, Markdown, metadados ou gabarito. Quando a sala ao vivo aceita operar (RN-120), título, resumo e corpo do rascunho sincronizam por `content.operation` com `baseVersion`/`draftVersion`, em debounce — sem sobrescrever o rascunho inteiro a cada tecla; metadados e gabarito continuam pelo **Salvar** clássico.
+3. O rascunho é gravado por Cmd/Ctrl+S ou pelo botão **Salvar** (flush das operações pendentes + metadados). Base defasada devolve conflito visível ou rebase automático com nova tentativa, sem clobber silencioso (RN-124). Não publica. Não gera `/p` novo. Com alterações ainda não gravadas, sair da aba pode exibir aviso do navegador.
 4. Prévia ao lado reflete o rascunho no mesmo papel de leitura da vista pública (folha web, índice quando há `##`/`###`); “Abrir prévia” abre o rascunho autenticado em outra aba. A impressão/PDF continua A4 e os links do relatório permanecem clicáveis.
 5. Atalhos no textarea: Cmd/Ctrl+B (negrito), I (itálico), K (link), Cmd/Ctrl+Shift+C (modal **Adicionar componente**), Tab / Shift+Tab (indentar linha ou bloco selecionado).
 6. Colar imagem (PNG, JPG, WEBP ou GIF) no textarea envia pelo Blob e insere `:::figure` no cursor, com os mesmos limites de RN-45. Arquivos genéricos continuam na modal **Adicionar componente** → **Arquivo** (`:::file`).
@@ -81,7 +81,7 @@ Regras: RN-07, RN-16, RN-19, RN-52, RN-55.
 8. Voltar no editor retorna à Cartoteca.
 9. No menu de ações, **Baixar Markdown** grava o rascunho se houver alterações pendentes e baixa o conteúdo como `{slug}.md`.
 
-Regras: RN-01, RN-08, RN-11, RN-45, RN-46, RN-62, RN-49, RN-64.
+Regras: RN-01, RN-08, RN-11, RN-45, RN-46, RN-62, RN-49, RN-64, RN-120, RN-124.
 
 ## Duplicar gabarito
 

@@ -13,6 +13,8 @@ import { BlobFileUpload } from "@/components/blob-file-upload";
 import { DocumentCollaboratorAvatars } from "@/components/document-collaborator-avatars";
 import { CollabPresenceStrip } from "@/components/collab-presence-strip";
 import { useCollabPresence } from "@/components/use-collab-presence";
+import { useCollabDocumentDraft } from "@/components/use-collab-document-draft";
+import { isCollabDocumentOpField } from "@/lib/collab-content-client";
 import { DocumentCommentsBoundary, useOptionalDocumentComments } from "@/components/document-comments-context";
 import { DocumentReviewPanel } from "@/components/document-review-panel";
 import { DocumentShareDialog } from "@/components/document-share-dialog";
@@ -112,14 +114,42 @@ export function DocumentEditor({
   const [versionDiffLeft, setVersionDiffLeft] = useState<VersionDiffSideId>("draft");
   const [versionDiffRight, setVersionDiffRight] = useState<VersionDiffSideId>("draft");
   const [pending, startTransition] = useTransition();
+  const collabBootstrapRef = useRef(false);
   const markdownEditorRef = useRef<HTMLTextAreaElement>(null);
   const markdownSelectionRef = useRef({ start: 0, end: 0 });
   const pasteImageUploadingRef = useRef(false);
   const workspaceRef = useRef<HTMLElement>(null);
-  const dirty = useMemo(() => JSON.stringify(document) !== JSON.stringify(savedDocument), [document, savedDocument]);
+  const presenceIntention = canEdit ? "editing" : "viewing";
+  const {
+    collabEnabled,
+    collabPending,
+    collabConflict,
+    queueCollabPatch,
+    flushCollab,
+  } = useCollabDocumentDraft({
+    document,
+    canEdit,
+    intention: presenceIntention,
+    onDocumentChange: setDocument,
+    onSavedFieldsChange: setSavedDocument,
+  });
+
+  const metadataDirty = useMemo(
+    () =>
+      document.templateId !== savedDocument.templateId ||
+      document.status !== savedDocument.status ||
+      document.author !== savedDocument.author ||
+      document.team !== savedDocument.team ||
+      JSON.stringify(document.tags) !== JSON.stringify(savedDocument.tags),
+    [document, savedDocument],
+  );
+
+  const dirty = useMemo(
+    () => collabPending || JSON.stringify(document) !== JSON.stringify(savedDocument),
+    [collabPending, document, savedDocument],
+  );
   const latestRelease = releases[0];
   const canPublish = useMemo(() => hasUnpublishedChanges(document, latestRelease), [document, latestRelease]);
-  const presenceIntention = canEdit ? "editing" : "viewing";
   const { participants: livePresence } = useCollabPresence({
     subjectType: "document",
     subjectId: document.id,
@@ -224,6 +254,9 @@ export function DocumentEditor({
 
   function patch<K extends keyof DocumentRecord>(key: K, value: DocumentRecord[K]) {
     setDocument((current) => ({ ...current, [key]: value }));
+    if (collabEnabled && typeof value === "string" && isCollabDocumentOpField(key)) {
+      queueCollabPatch(key, value);
+    }
   }
 
   function applyMarkdownShortcut(format: "bold" | "italic" | "link") {
@@ -420,19 +453,56 @@ export function DocumentEditor({
     [document],
   );
 
+  const metadataSavePayload = useCallback(
+    () => ({
+      templateId: document.templateId,
+      status: document.status,
+      author: document.author,
+      team: document.team,
+      tags: document.tags,
+    }),
+    [document],
+  );
+
+  const persistDraft = useCallback(async () => {
+    if (collabEnabled) {
+      const flushed = await flushCollab();
+      if (!flushed) {
+        toast.error(collabConflict ?? "Conflito ao sincronizar o rascunho. Revise o conteúdo.");
+        return null;
+      }
+    }
+    if (collabEnabled && !metadataDirty) {
+      return document;
+    }
+    const result = await updateDocumentAction(
+      document.id,
+      collabEnabled ? metadataSavePayload() : savePayload(),
+    );
+    if (!result.ok) {
+      toast.error(result.error);
+      return null;
+    }
+    setDocument(result.document);
+    setSavedDocument(result.document);
+    return result.document;
+  }, [
+    collabConflict,
+    collabEnabled,
+    document,
+    flushCollab,
+    metadataDirty,
+    metadataSavePayload,
+    savePayload,
+  ]);
+
   const save = useCallback(() => {
     if (!canEdit || !dirty) return;
     startTransition(async () => {
-      const result = await updateDocumentAction(document.id, savePayload());
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      setDocument(result.document);
-      setSavedDocument(result.document);
-      toast.success("Rascunho salvo");
+      const saved = await persistDraft();
+      if (saved) toast.success("Rascunho salvo");
     });
-  }, [canEdit, dirty, document.id, savePayload]);
+  }, [canEdit, dirty, persistDraft]);
 
   useEffect(() => {
     if (!canEdit) return;
@@ -462,14 +532,7 @@ export function DocumentEditor({
 
   async function ensureSavedForExport() {
     if (!dirty) return document;
-    const result = await updateDocumentAction(document.id, savePayload());
-    if (!result.ok) {
-      toast.error(result.error);
-      return null;
-    }
-    setDocument(result.document);
-    setSavedDocument(result.document);
-    return result.document;
+    return persistDraft();
   }
 
   async function exportPdf() {
@@ -718,14 +781,11 @@ export function DocumentEditor({
     }
     startTransition(async () => {
       if (dirty) {
-        const result = await updateDocumentAction(document.id, savePayload());
-        if (!result.ok) {
-          toast.error(result.error);
+        const saved = await persistDraft();
+        if (!saved) {
           previewWindow.close();
           return;
         }
-        setDocument(result.document);
-        setSavedDocument(result.document);
       }
       previewWindow.location.href = `/documents/${document.id}/preview`;
     });
@@ -740,7 +800,15 @@ export function DocumentEditor({
           <Button variant="ghost" size="icon-sm" asChild><Link href="/library" aria-label="Voltar à cartoteca"><ArrowLeft /></Link></Button>
           <div className="min-w-0">
             <strong className="block truncate text-sm">{document.title}</strong>
-            <small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{dirty ? "Alterações não salvas" : `Salvo ${formatRelativeDate(document.updatedAt)}`}</small>
+            <small className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              {collabConflict
+                ? "Conflito de edição — revise antes de continuar"
+                : dirty
+                  ? collabPending
+                    ? "Sincronizando rascunho…"
+                    : "Alterações não salvas"
+                  : `Salvo ${formatRelativeDate(document.updatedAt)}`}
+            </small>
           </div>
         </div>
         <div className="editor-actions flex items-center gap-2">
