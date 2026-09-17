@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  collabEventTypes,
+  COLLAB_IDEMPOTENCY_KEY_MAX,
+  COLLAB_IDEMPOTENCY_KEY_MIN,
+} from "@/lib/collab-events";
+import { collabIntentions } from "@/lib/collab-presence";
 import { documentStatuses } from "@/lib/documents";
 import {
   documentVisibilities,
@@ -221,6 +227,50 @@ export const agentIdentityInputSchema = z.object({
 export const mcpTokenWithIdentitySchema = mcpTokenInputSchema.extend({
   agentIdentityId: z.string().uuid().optional().nullable(),
 });
+
+/**
+ * Publicar evento na sala. `idempotencyKey` é o `opId` do cliente (RN-125) e o payload
+ * é rótulo curto — o Markdown integral nunca sobe (RN-122). Os nomes em `snake_case` do
+ * MCP são aceitos como apelido do mesmo campo.
+ */
+export const collabEventInputSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+    const body = value as Record<string, unknown>;
+    return {
+      type: body.type,
+      idempotencyKey: body.idempotencyKey ?? body.idempotency_key,
+      intention: body.intention,
+      baseVersion: body.baseVersion ?? body.base_version,
+      payload: body.payload,
+    };
+  },
+  z.object({
+    type: z.enum(collabEventTypes),
+    idempotencyKey: z
+      .string()
+      .trim()
+      .min(COLLAB_IDEMPOTENCY_KEY_MIN)
+      .max(COLLAB_IDEMPOTENCY_KEY_MAX),
+    intention: z
+      .enum(collabIntentions)
+      .optional()
+      .nullable()
+      .transform((value) => value ?? null),
+    baseVersion: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .nullable()
+      .transform((value) => value ?? null),
+    payload: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .nullable()
+      .transform((value) => value ?? null),
+  }),
+);
 
 /** Nova chave MCP: cria identidade + primeira chave, ou emite chave adicional quando `agentIdentityId` vem preenchido. */
 export const mcpKeyCreateSchema = mcpTokenInputSchema.extend({

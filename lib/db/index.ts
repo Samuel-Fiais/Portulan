@@ -127,6 +127,7 @@ export {
   deleteContextPackSource,
   getContextPack,
   getDraftPlan,
+  getImplementationPlan,
   getRevision,
   listContextPacks,
   listDraftCriteria,
@@ -207,6 +208,7 @@ export {
   getCollabEventByIdempotencyKey,
   getLatestCollabSeq,
   listCollabEvents,
+  readCollabEventsSince,
 } from "@/lib/db/collab-events";
 
 export { isDatabaseConfigured } from "@/lib/db/client";
