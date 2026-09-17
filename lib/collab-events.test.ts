@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   appendCollabEvent,
+  collabEventRequiresOperate,
   CollabEventRejected,
+  COLLAB_PAGE_LIMIT_MAX,
+  isCollabClientEventType,
   nextCollabSeq,
+  parseCollabCursor,
+  readCollabEventsSince,
   sanitizeCollabPayload,
   validateCollabEvent,
   type CollabEventDraft,
@@ -14,8 +19,18 @@ import {
 
 type MemoryStore = CollabEventStore & { rows: CollabEventRecord[] };
 
+type MemoryStoreHooks = {
+  beforeInsert?: (row: CollabEventInsert, store: MemoryStore) => void;
+  /** Cede o turno entre ler a posição e gravar, para que appends concorrentes disputem o mesmo `seq`. */
+  yieldBeforeInsert?: boolean;
+  /** Devolve o log fora de ordem, para provar que a ordenação é garantida na leitura. */
+  shuffleListing?: boolean;
+};
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 /** Espelha as travas do Postgres: UNIQUE (room_id, seq) e UNIQUE (room_id, idempotency_key). */
-function createMemoryStore(hooks?: { beforeInsert?: (row: CollabEventInsert, store: MemoryStore) => void }): MemoryStore {
+function createMemoryStore(hooks?: MemoryStoreHooks): MemoryStore {
   const rows: CollabEventRecord[] = [];
   let inserted = 0;
 
@@ -26,6 +41,7 @@ function createMemoryStore(hooks?: { beforeInsert?: (row: CollabEventInsert, sto
     },
     async latestSeq(roomId) {
       const seqs = rows.filter((row) => row.roomId === roomId).map((row) => row.seq);
+      if (hooks?.yieldBeforeInsert) await tick();
       return seqs.length > 0 ? Math.max(...seqs) : null;
     },
     async insert(row) {
@@ -44,6 +60,13 @@ function createMemoryStore(hooks?: { beforeInsert?: (row: CollabEventInsert, sto
       };
       rows.push(record);
       return record;
+    },
+    async listSince(roomId, cursor) {
+      const page = rows
+        .filter((row) => row.roomId === roomId && row.seq > cursor.afterSeq)
+        .sort((left, right) => left.seq - right.seq)
+        .slice(0, cursor.limit);
+      return hooks?.shuffleListing ? page.slice().reverse() : page;
     },
   };
 
@@ -177,6 +200,125 @@ test("RN-122: payload de evento não leva token, segredo nem Markdown integral",
   assert.equal(payload.baseVersion, 7);
   assert.equal(payload.editing, true);
   assert.equal(sanitizeCollabPayload(null), null);
+});
+
+test("RN-125: publicar a mesma chave em paralelo grava uma linha só", async () => {
+  const store = createMemoryStore({ yieldBeforeInsert: true });
+
+  const results = await Promise.all(
+    Array.from({ length: 4 }, () => appendCollabEvent(store, draft({ payload: { cursor: 3 } }))),
+  );
+
+  assert.equal(store.rows.length, 1, "a chave repetida não abre segunda linha");
+  const seqs = new Set(results.map((result) => result.event.seq));
+  const ids = new Set(results.map((result) => result.event.id));
+  assert.deepEqual([...seqs], [1], "todas as respostas apontam para a mesma posição");
+  assert.equal(ids.size, 1, "todas as respostas apontam para o mesmo evento");
+  assert.equal(results.filter((result) => !result.deduplicated).length, 1);
+});
+
+test("RN-124: appends concorrentes ocupam posições únicas e crescentes, sem sobrescrever", async () => {
+  const store = createMemoryStore({ yieldBeforeInsert: true });
+  const total = 5;
+
+  const results = await Promise.all(
+    Array.from({ length: total }, (_, index) =>
+      appendCollabEvent(store, draft({ idempotencyKey: `op-paralelo-${index}` })),
+    ),
+  );
+
+  const seqs = results.map((result) => result.event.seq).sort((left, right) => left - right);
+  assert.deepEqual(seqs, [1, 2, 3, 4, 5], "cada append ficou com uma posição própria");
+  assert.equal(new Set(seqs).size, total);
+  assert.equal(store.rows.length, total, "nenhum evento foi perdido nem sobrescrito");
+  assert.equal(results.every((result) => !result.deduplicated), true);
+  assert.equal(new Set(store.rows.map((row) => row.idempotencyKey)).size, total);
+});
+
+test("RN-124: reconexão a partir de um `seq` devolve só o que veio depois, em ordem", async () => {
+  const store = createMemoryStore();
+  for (let index = 1; index <= 6; index += 1) {
+    await appendCollabEvent(store, draft({ idempotencyKey: `op-reconexao-${index}` }));
+  }
+
+  const desdeOZero = await readCollabEventsSince(store, "room-1", { afterSeq: 0, limit: 100 });
+  assert.deepEqual(desdeOZero.events.map((event) => event.seq), [1, 2, 3, 4, 5, 6]);
+  assert.equal(desdeOZero.latestSeq, 6);
+  assert.equal(desdeOZero.nextSince, 6);
+  assert.equal(desdeOZero.hasMore, false);
+
+  const desdeOQuarto = await readCollabEventsSince(store, "room-1", { afterSeq: 4, limit: 100 });
+  assert.deepEqual(desdeOQuarto.events.map((event) => event.seq), [5, 6]);
+  assert.equal(desdeOQuarto.nextSince, 6);
+  assert.equal(desdeOQuarto.hasMore, false);
+
+  const naPonta = await readCollabEventsSince(store, "room-1", { afterSeq: 6, limit: 100 });
+  assert.deepEqual(naPonta.events, [], "quem já está na ponta não recebe repetição");
+  assert.equal(naPonta.nextSince, 6);
+  assert.equal(naPonta.hasMore, false);
+});
+
+test("RN-124: a leitura paginada indica que falta mais e por onde retomar", async () => {
+  const store = createMemoryStore();
+  for (let index = 1; index <= 5; index += 1) {
+    await appendCollabEvent(store, draft({ idempotencyKey: `op-pagina-${index}` }));
+  }
+
+  const primeira = await readCollabEventsSince(store, "room-1", { afterSeq: 0, limit: 2 });
+  assert.deepEqual(primeira.events.map((event) => event.seq), [1, 2]);
+  assert.equal(primeira.latestSeq, 5);
+  assert.equal(primeira.nextSince, 2);
+  assert.equal(primeira.hasMore, true);
+
+  const segunda = await readCollabEventsSince(store, "room-1", { afterSeq: primeira.nextSince, limit: 2 });
+  assert.deepEqual(segunda.events.map((event) => event.seq), [3, 4]);
+  assert.equal(segunda.hasMore, true);
+});
+
+test("RN-124: a ordem crescente é garantida na leitura, não pela persistência", async () => {
+  const store = createMemoryStore({ shuffleListing: true });
+  for (let index = 1; index <= 4; index += 1) {
+    await appendCollabEvent(store, draft({ idempotencyKey: `op-fora-de-ordem-${index}` }));
+  }
+
+  const page = await readCollabEventsSince(store, "room-1", { afterSeq: 1, limit: 100 });
+  assert.deepEqual(page.events.map((event) => event.seq), [2, 3, 4]);
+});
+
+test("a sala lida é só a pedida: log de outra sala não entra na página", async () => {
+  const store = createMemoryStore();
+  await appendCollabEvent(store, draft({ idempotencyKey: "op-da-sala-um" }));
+  await appendCollabEvent(store, draft({ roomId: "room-2", idempotencyKey: "op-da-sala-dois" }));
+
+  const page = await readCollabEventsSince(store, "room-1", { afterSeq: 0, limit: 100 });
+  assert.deepEqual(page.events.map((event) => event.roomId), ["room-1"]);
+  assert.equal(page.latestSeq, 1);
+});
+
+test("a posição de retomada e o lote são validados antes de ler a sala", () => {
+  assert.deepEqual(parseCollabCursor({}), { ok: true, cursor: { afterSeq: 0, limit: 100 } });
+  assert.deepEqual(parseCollabCursor({ since: "12", limit: "5" }), {
+    ok: true,
+    cursor: { afterSeq: 12, limit: 5 },
+  });
+  assert.equal(parseCollabCursor({ since: "-1" }).ok, false);
+  assert.equal(parseCollabCursor({ since: "3.5" }).ok, false);
+  assert.equal(parseCollabCursor({ since: "ontem" }).ok, false);
+  assert.equal(parseCollabCursor({ limit: "0" }).ok, false);
+  assert.equal(parseCollabCursor({ limit: String(COLLAB_PAGE_LIMIT_MAX + 1) }).ok, false);
+  assert.equal(parseCollabCursor({ limit: String(COLLAB_PAGE_LIMIT_MAX) }).ok, true);
+});
+
+test("RN-120: cliente publica presença e operação; comando atômico é anúncio do servidor", () => {
+  assert.equal(isCollabClientEventType("presence.joined"), true);
+  assert.equal(isCollabClientEventType("content.operation"), true);
+  assert.equal(isCollabClientEventType("content.saved"), true);
+  assert.equal(isCollabClientEventType("command.applied"), false);
+  assert.equal(isCollabClientEventType("room.closed"), false);
+
+  assert.equal(collabEventRequiresOperate("content.operation"), true);
+  assert.equal(collabEventRequiresOperate("content.saved"), true);
+  assert.equal(collabEventRequiresOperate("presence.updated"), false);
 });
 
 test("RN-122: o log gravado já sai redigido", async () => {
