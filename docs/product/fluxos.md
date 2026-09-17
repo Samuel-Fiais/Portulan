@@ -253,22 +253,92 @@ Funcionalidades: F-mcp-token, F-cli-init, F-agente-bordo.
 
 ## Colaborar ao vivo no porto
 
-1. Quem tem acesso ao artefato entra na **sala** daquela entidade no porto ativo. A autorização é a mesma da UI/MCP (porto, papel, convite nominal). Sem acesso, a sala não abre.
-2. Presença mostra humanos e agentes com identidade e, no agente, a intenção. Mudanças autorizadas de estado e de conteúdo mutável aparecem para os outros participantes sem recarregar.
-3. Conteúdo mutável (rascunho de carta, gabarito, Rumo em rascunho ou revisão, plano) aplica-se por operações; dois participantes não se apagam em silêncio. Publicar, mudar visibilidade, aprovar Rumo, assumir lease, abrir Maré e aceitar Manobra passam pelo servidor como comando atômico e também atualizam a sala.
-4. Revogar tripulação, convite ou acesso à entidade tira a presença na hora e recusa novos eventos daquela sala.
-5. Releases e Rumos aprovados não entram em coedição: o caminho continua nova publicação ou nova revisão.
+1. Quem tem acesso ao artefato entra na **sala** daquele assunto no porto ativo. A autorização é a mesma da UI e do MCP (porto, papel, convite nominal). Sem acesso, a sala não abre — e a presença nunca revela artefato que a pessoa não poderia ler.
+2. Ao entrar, a sessão declara **intenção**: `lendo`, `editando`, `revisando`, `executando` (agente com comando ativo) ou `aguardando`. A presença mostra identidade, intenção, estado (`ativo`, `ocioso`, `desconectado`) e foco. Agente aparece com identidade própria e responsável (“Nome via Agente”).
+3. Mudanças autorizadas de conteúdo mutável e de estado aparecem para os outros participantes sem recarregar, na ordem da sequência da sala.
+4. Conteúdo mutável (rascunho de carta, gabarito, Rumo em rascunho ou revisão, plano, objetivo de Manobra ou Lance) aplica-se por **operação** com `opId` e `baseVersion`. Dois participantes não se apagam em silêncio.
+5. Publicar, desativar, mudar visibilidade, mover de porto, excluir, enviar para revisão, aprovar Rumo, abrir nova revisão, assumir/renovar/soltar o comando, abrir e resolver Maré contrária, registrar resultado, aceitar, convidar, revogar, mudar papel e transferir capitania seguem **comandos atômicos** no servidor. A sala anuncia o resultado; não o executa.
+6. Releases e revisões aprovadas de Rumo não entram em coedição: o caminho continua nova publicação (RN-03) ou nova revisão (RN-99).
+7. Revogar tripulação, convite, chave, identidade de agente ou ferramenta MCP — e rebaixar visibilidade ou mover a carta de porto — tira a presença na hora e recusa novos eventos e comandos protegidos daquela sala. O que já foi gravado em atividade e no Diário permanece.
+8. Se o canal cai, a superfície volta à leitura e ao comando normais, com aviso de que a sala está fora. Nada de trabalho fica bloqueado por falta de sala.
 
 Regras: RN-119, RN-120, RN-121, RN-123, RN-124.
 
 Funcionalidades: F-presenca, F-coedicao, F-atividade-viva.
 
+## Editar a quatro mãos, reconectar e resolver conflito
+
+1. Duas presenças com intenção `editando` no mesmo assunto veem o foco uma da outra (bloco, campo ou coluna).
+2. Cada mudança sai como operação: `opId` do cliente, `baseVersion` do conteúdo e só a mudança — não o documento inteiro.
+3. Se a base estiver defasada, o servidor **recusa** e devolve o estado atual; o cliente recalcula e reenvia. Nunca aplica por cima.
+4. Rede instável reenvia com o mesmo `opId`. O servidor aplica uma vez e não emite evento novo — o mesmo vale para comando atômico repetido com a mesma chave.
+5. Ao reconectar, o cliente pede o que veio depois do último `seq` que viu. Se a janela já passou, recarrega o snapshot do banco e volta a seguir a sequência.
+6. Suspeita de estado divergente resolve-se recarregando o snapshot: Postgres é a verdade, o canal é a réplica ordenada.
+7. Se dois participantes escrevem no mesmo bloco, a última operação válida vence **com** registro na atividade — quem perdeu vê o que mudou, não um campo em branco.
+
+Regras: RN-120, RN-124.
+
+Funcionalidades: F-coedicao, F-atividade-viva.
+
+## Passar o comando entre pessoa e agente
+
+1. Na Manobra ou no Lance, a sala mostra quem está presente, com que intenção, quem é o **responsável** e quem detém o **comando** (lease).
+2. Para passar: quem tem o comando **solta**, e a outra parte **assume**. Ou a tripulação **delega** o responsável (humano ou agente). Delegar não cria lease (RN-115).
+3. Agente que assume declara intenção `executando` e aparece na atividade com identidade e responsável. Só usa as ferramentas habilitadas na identidade (RN-111).
+4. Lease expirado libera a linha para retomada regular; a passagem fica na atividade. Não há transferência silenciosa de comando.
+5. Registrar resultado continua do detentor do lease. **Aceite é humano** e continua na Manobra — agente não aceita o próprio resultado (RN-103, RN-108).
+6. Enquanto espera aceite, desbloqueio ou revisão, a presença fica `aguardando`.
+
+Regras: RN-103, RN-108, RN-111, RN-113, RN-115, RN-123.
+
+Funcionalidades: F-handoff, F-presenca, F-manobra, F-delegar.
+
 ## Auditar chamada MCP no Diário
 
-1. Toda chamada autenticada (incluindo leitura e recusa) gera um evento no Diário de bordo: quem, qual ferramenta, qual alvo, resultado, duração e correlação.
-2. O evento **não** guarda token, segredo, anexo nem o Markdown integral. Quem consulta o Diário vê o carimbo “Nome via Agente”, não a chave.
-3. A mesma trilha aparece na atividade do artefato quando a ação foi sobre ele.
+1. Toda chamada autenticada gera um evento no Diário de bordo: quem (pessoa e agente), qual ferramenta, qual alvo, resultado, duração e correlação. Leitura conta. Recusa conta — inclusive ferramenta desabilitada (RN-111) e chave sem participação no porto (RN-104).
+2. O evento **não** guarda token, segredo, anexo nem o Markdown integral; corpo de erro entra redigido. Quem consulta vê o carimbo “Nome via Agente”, nunca a chave.
+3. Quem audita filtra por identidade, ferramenta, alvo, resultado, período e correlação. O Diário é **do porto**; a atividade é **do artefato**.
+4. A correlação liga o evento do Diário à entrada de atividade da mesma ação: da linha do tempo do artefato dá para chegar à chamada, e da chamada ao artefato.
+5. Retenção é janela declarada do porto, com limites de tamanho e frequência por evento. Escrita e recusa nunca são amostradas. Expirar evento antigo não reescreve os que ficam.
+6. Desativar ou excluir a identidade do agente revoga as chaves e mantém o histórico do Diário (RN-110).
 
-Regras: RN-104, RN-122.
+Regras: RN-104, RN-110, RN-111, RN-122.
 
 Funcionalidades: F-diario-bordo, F-mcp-auditoria.
+
+## Plano de migração progressiva (colaboração ao vivo)
+
+A colaboração ao vivo entra por fases. Cada fase é usável sozinha, mantém Postgres como fonte de verdade (RN-124) e pode voltar atrás desligando o canal — a superfície cai para leitura e comando normais (RN-119).
+
+| Fase | Entrega | Estado ao fim da fase | Volta atrás |
+|---|---|---|---|
+| 0 — Contrato | Domínio, regras `RN-119`…`RN-124`, capacidades e jornadas escritas | Modelo fechado; nada em runtime | Não se aplica |
+| 1 — Sala e presença | Sala por assunto, autorização por porto + entidade + papel, presença com identidade, intenção, estado e foco; revogação encerra presença | `F-presenca` `parcial` (leitura ao vivo, sem coedição) | Desligar o canal: presença desaparece, nada mais muda |
+| 2 — Atividade ao vivo | Eventos de comando atômico anunciados na sala; linha do tempo por artefato correlacionada ao Diário; Cartoteca, Rumo, Kanban, Manobra e tripulação atualizam sem recarregar | `F-atividade-viva` `parcial` | Superfícies voltam a atualizar por navegação |
+| 3 — Coedição do conteúdo mutável | Operações com `opId` e `baseVersion`, recusa de base defasada, reaplicação idempotente, reconexão por `seq`; começa pelo rascunho de carta e gabarito | `F-coedicao` `parcial` (carta e gabarito) | Editor volta a salvar o rascunho inteiro pelo caminho atual |
+| 4 — Coedição de coordenação e handoff | Rumo em rascunho/revisão, plano, Manobra e Lance na coedição; passagem de comando visível na sala e na atividade | `F-coedicao` e `F-handoff` `existe` | Rumo e Manobra voltam ao formulário atual |
+| 5 — Auditoria completa de MCP | Evento para toda chamada autenticada, busca por identidade/ferramenta/alvo/resultado/período/correlação, redaction, retenção e limites | `F-mcp-auditoria` `existe` | Diário volta ao recorte de escrita já existente |
+
+Ordem obrigatória: autorização antes de presença, presença antes de atividade, atividade antes de coedição. Coedição não abre para um assunto antes de a sala daquele assunto estar autorizada e auditada.
+
+Invariante de cada fase: nenhuma delas move publicação, release, visibilidade, aprovação, lease, bloqueio ou aceite para fora do servidor (RN-120), e nenhuma delas torna o canal fonte de verdade (RN-124).
+
+Fora de todas as fases: CRDT como fonte de verdade; editar release ou revisão aprovada ao vivo; realtime que contorne permissão, lease, aprovação, publicação ou aceite; segredo no Diário.
+
+## Verificação e telemetria da colaboração ao vivo
+
+Cada fase só fecha com teste automatizado e telemetria no ar. O que precisa estar coberto:
+
+| Risco | Teste automatizado | Telemetria de operação |
+|---|---|---|
+| Concorrência | Duas operações na mesma `baseVersion`: a segunda é recusada com o estado atual, nunca aplicada por cima; conteúdo final íntegro | Taxa de recusa por base defasada; conflitos por assunto |
+| Idempotência | Mesmo `opId` reenviado N vezes aplica uma vez e não emite evento novo; comando atômico repetido com a mesma chave também | Reenvios detectados; duplicatas aplicadas (deve ser zero) |
+| Reconexão | Retomada a partir do último `seq`; janela expirada recarrega snapshot e converge ao mesmo conteúdo | Reconexões, lacunas de sequência, tempo até convergir |
+| Autorização e revogação | Sem acesso não abre sala; remover da tripulação, revogar convite, revogar chave, desativar identidade, rebaixar visibilidade e mover de porto encerram presença e recusam evento protegido | Presenças encerradas por revogação; eventos protegidos recusados |
+| Redaction | Nenhum evento de Diário, presença ou payload de atividade carrega token, segredo, anexo ou Markdown integral, inclusive em erro | Tamanho de payload, eventos truncados, alertas de campo proibido |
+| Recuperação | Canal derrubado no meio da edição: superfície cai para leitura e comando normais, snapshot recarregado sem perda do que foi transacionado | Indisponibilidade do canal, quedas para modo sem sala, recargas de snapshot |
+| Custo e volume | Limites de tamanho, frequência e retenção respeitados; escrita e recusa nunca amostradas | Eventos por porto, retenção efetiva, custo por sala |
+
+Regras: RN-119, RN-120, RN-121, RN-122, RN-123, RN-124.
+
+Funcionalidades: F-presenca, F-coedicao, F-atividade-viva, F-handoff, F-mcp-auditoria.

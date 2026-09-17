@@ -83,9 +83,10 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | F-externo | Marcar como **externo** o convidado que não é da tripulação do porto da carta (RN-93) | existe |
 | F-comentarios | Comentar na prévia do editor (bloco ou trecho) e na aba Revisão; fios com resposta (RN-61, RN-65) | existe |
 | F-resolver-comentarios | Resolver e reabrir fios; filtrar abertos, resolvidos ou todos na aba Revisão (RN-66) | existe |
-| F-presenca | Ver quem está no artefato agora (humano ou agente, com intenção) e encerrar a sala ao perder acesso (RN-119, RN-121, RN-123) | planejado |
-| F-coedicao | Dois participantes editam Carta, Gabarito, Rumo em rascunho/revisão ou Plano sem sobrescrita silenciosa; releases e Rumos aprovados continuam imutáveis (RN-120, RN-124) | planejado |
-| F-atividade-viva | Superfícies do porto refletem ao vivo mudanças autorizadas de estado, participantes e atividade (incluindo Expedições, Embarcações, Manobras, bloqueios e aceite) (RN-119) | planejado |
+| F-presenca | Ver quem está no assunto agora — humano ou agente, com identidade, intenção (`lendo`, `editando`, `revisando`, `executando`, `aguardando`), estado e foco — na mesma leitura da superfície; revogar acesso encerra a presença na hora (RN-119, RN-121, RN-123) · ICE `realtime-transversal` | planejado |
+| F-coedicao | Dois participantes editam Carta, Gabarito, Rumo em rascunho/revisão, Plano ou Manobra sem sobrescrita silenciosa: operação com `opId` e `baseVersion`, recusa de base defasada e reaplicação idempotente; releases e revisões aprovadas continuam imutáveis, e publicar/aprovar/assumir/aceitar seguem comandos atômicos (RN-120, RN-124) · ICE `realtime-transversal` | planejado |
+| F-atividade-viva | Superfícies do porto refletem ao vivo mudanças autorizadas de estado, participantes e atividade (Cartoteca, editor, Rumo, Kanban, Manobra, Lance, Expedição, Embarcação, tripulação, bloqueios e aceite), com linha do tempo por artefato correlacionada ao Diário; sem canal, a superfície volta à leitura normal (RN-119, RN-124) · ICE `realtime-transversal` | planejado |
+| F-handoff | Passagem de comando entre pessoa e agente na mesma Manobra ou Lance: quem está na sala, com que intenção e quem detém o comando; a troca é soltar/assumir lease ou delegar responsável, registrada na atividade, sem atalho para o aceite humano (RN-115, RN-123) · ICE `realtime-transversal` | planejado |
 
 ## Gabaritos e identidade
 
@@ -134,4 +135,4 @@ Planejados apontam o id do [backlog ICE](../../.cursor/skills/portulan-ice/backl
 | F-mcp-dev-context | Ferramentas MCP de bootstrap, contexto, brief, Manobras, leases, relatórios e Conversas de bordo; chave sem participação no porto é recusada (RN-104) | existe |
 | F-cli-init | CLI `portulan init` / `doctor` idempotente: reusa Embarcação e vincula a Expedição escolhida, sem gravar segredo (RN-106); roteiro ponta a ponta na skill portulan-mcp e no Guia do Agente | existe |
 | F-diario-bordo | Auditoria imutável “Nome via Agente de Bordo”, com `clientInfo` observado persistido no token (RN-104) | existe |
-| F-mcp-auditoria | Toda chamada MCP autenticada (leitura e escrita, sucesso ou recusa) vira evento pesquisável no Diário, com redaction, duração e correlação — sem token, anexo ou Markdown integral (RN-122) | planejado |
+| F-mcp-auditoria | Toda chamada MCP autenticada (leitura e escrita, sucesso ou recusa) vira evento pesquisável no Diário — busca por identidade, ferramenta, alvo, resultado, período e correlação, com duração, redaction e retenção declarada; sem token, segredo, anexo ou Markdown integral (RN-104, RN-122) · ICE `realtime-transversal` | planejado |
