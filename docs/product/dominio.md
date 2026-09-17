@@ -352,9 +352,11 @@ Evento imutável: principal humano, identidade do agente, chave, ação, alvo, d
 
 O Diário é **do porto** e serve auditoria: filtra por identidade, ferramenta, alvo, resultado, período e correlação. Guarda metadado e diagnóstico, não conteúdo. Tem janela de retenção declarada; expirar um evento não reescreve os que ficam.
 
-## Colaboração ao vivo
+### Sala, presença e operação colaborativa
 
-Infraestrutura **transversal do porto** (RN-119), não uma parte do editor. Vale para os artefatos do porto; o canal projeta o direito que a UI e o MCP já aplicam e nunca cria direito novo (RN-121). Postgres permanece a fonte de snapshots, releases, autorização e auditoria — o canal ao vivo não é fonte única de verdade (RN-124).
+Infraestrutura transversal do porto (RN-119). Uma **sala** é o recorte autorizado de um artefato (carta, gabarito, Rumo, plano, Expedição, Embarcação, Manobra, etc.) para participação ao vivo. **Presença** é quem está na sala agora — humano ou agente, com identidade e intenção visíveis. **Operação colaborativa** altera conteúdo mutável com versionamento e idempotência. **Comando atômico** (publicação, visibilidade, aprovação, lease, bloqueio, aceite) continua transação no servidor; não passa pelo canal de operações (RN-120). Postgres permanece a fonte de snapshots, releases, autorização e auditoria; o canal ao vivo não é fonte única de verdade (RN-124).
+
+A sala projeta o direito que a UI e o MCP já aplicam: não concede nem amplia direito (RN-121). As entidades abaixo fecham cada termo.
 
 ### Assunto colaborativo (`collaborationSubject`)
 
