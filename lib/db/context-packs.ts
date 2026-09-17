@@ -424,6 +424,24 @@ export async function addAcceptanceCriterion(input: { packId: string; workspaceI
   return mapCriterion({ ...row, boardNumber });
 }
 
+export async function getImplementationPlan(id: string, workspaceId: string) {
+  const db = await getDb();
+  const [row] = await db
+    .select()
+    .from(implementationPlans)
+    .where(and(eq(implementationPlans.id, id), eq(implementationPlans.workspaceId, workspaceId)))
+    .limit(1);
+  return row
+    ? {
+        id: row.id,
+        packId: row.packId,
+        workspaceId: row.workspaceId,
+        revisionId: row.revisionId,
+        summary: row.summary,
+      }
+    : null;
+}
+
 export async function getDraftPlan(packId: string) {
   const db = await getDb();
   const [row] = await db

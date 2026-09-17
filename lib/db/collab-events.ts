@@ -3,9 +3,12 @@ import "server-only";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import {
   appendCollabEvent as appendToCollabLog,
+  readCollabEventsSince as readFromCollabLog,
   type CollabAppendResult,
+  type CollabEventCursor,
   type CollabEventDraft,
   type CollabEventInsert,
+  type CollabEventPage,
   type CollabEventRecord,
   type CollabEventStore,
   type CollabEventType,
@@ -78,17 +81,6 @@ async function insertEvent(row: CollabEventInsert): Promise<CollabEventRecord | 
   return inserted ? mapEvent(inserted) : null;
 }
 
-/** Postgres é a fonte do log da sala; o canal ao vivo só replica (RN-124). */
-export const collabEventStore: CollabEventStore = {
-  findByIdempotencyKey,
-  latestSeq: getLatestCollabSeq,
-  insert: insertEvent,
-};
-
-export function appendCollabEvent(draft: CollabEventDraft): Promise<CollabAppendResult> {
-  return appendToCollabLog(collabEventStore, draft);
-}
-
 export async function listCollabEvents(
   roomId: string,
   options?: { afterSeq?: number; limit?: number },
@@ -103,6 +95,25 @@ export async function listCollabEvents(
     .orderBy(asc(collabEvents.seq))
     .limit(options?.limit ?? 200);
   return rows.map(mapEvent);
+}
+
+/** Postgres é a fonte do log da sala; o canal ao vivo só replica (RN-124). */
+export const collabEventStore: CollabEventStore = {
+  findByIdempotencyKey,
+  latestSeq: getLatestCollabSeq,
+  insert: insertEvent,
+  listSince: (roomId, cursor) => listCollabEvents(roomId, cursor),
+};
+
+export function appendCollabEvent(draft: CollabEventDraft): Promise<CollabAppendResult> {
+  return appendToCollabLog(collabEventStore, draft);
+}
+
+export function readCollabEventsSince(
+  roomId: string,
+  cursor: CollabEventCursor,
+): Promise<CollabEventPage> {
+  return readFromCollabLog(collabEventStore, roomId, cursor);
 }
 
 export async function getCollabEventByIdempotencyKey(roomId: string, idempotencyKey: string) {

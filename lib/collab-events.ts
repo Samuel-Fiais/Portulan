@@ -25,10 +25,28 @@ export const collabEventTypes = [
 
 export type CollabEventType = (typeof collabEventTypes)[number];
 
+/**
+ * O que um cliente autorizado publica na sala. `command.applied` e `room.closed` são
+ * anúncio do servidor depois do comando atômico — cliente não os forja (RN-120).
+ */
+export const collabClientEventTypes = [
+  "presence.joined",
+  "presence.updated",
+  "presence.left",
+  "content.operation",
+  "content.saved",
+] as const satisfies readonly CollabEventType[];
+
+export type CollabClientEventType = (typeof collabClientEventTypes)[number];
+
 export const COLLAB_IDEMPOTENCY_KEY_MIN = 8;
 export const COLLAB_IDEMPOTENCY_KEY_MAX = 200;
 export const COLLAB_FIRST_SEQ = 1;
 export const COLLAB_APPEND_MAX_ATTEMPTS = 5;
+
+/** Janela de releitura da sala: quem reconecta pede a partir do último `seq` visto (RN-124). */
+export const COLLAB_PAGE_LIMIT_DEFAULT = 100;
+export const COLLAB_PAGE_LIMIT_MAX = 500;
 
 /** Texto solto no payload é rótulo curto, nunca o Markdown da carta (RN-122). */
 export const COLLAB_PAYLOAD_TEXT_MAX = 240;
@@ -84,6 +102,12 @@ export type CollabEventInsert = {
   idempotencyKey: string;
 };
 
+/** Retomada da sala: a posição já vista e quantos eventos cabem na resposta. */
+export type CollabEventCursor = {
+  afterSeq: number;
+  limit: number;
+};
+
 /**
  * Persistência do log de uma sala. Postgres é a implementação real (RN-124);
  * `insert` devolve `null` quando (sala, seq) ou (sala, chave de idempotência) já existe.
@@ -92,6 +116,7 @@ export type CollabEventStore = {
   findByIdempotencyKey(roomId: string, idempotencyKey: string): Promise<CollabEventRecord | null>;
   latestSeq(roomId: string): Promise<number | null>;
   insert(row: CollabEventInsert): Promise<CollabEventRecord | null>;
+  listSince(roomId: string, cursor: CollabEventCursor): Promise<CollabEventRecord[]>;
 };
 
 export type CollabAppendResult = {
@@ -109,6 +134,15 @@ export class CollabEventRejected extends Error {
 
 export function isCollabEventType(value: string): value is CollabEventType {
   return (collabEventTypes as readonly string[]).includes(value);
+}
+
+export function isCollabClientEventType(value: string): value is CollabClientEventType {
+  return (collabClientEventTypes as readonly string[]).includes(value);
+}
+
+/** Só operação de conteúdo exige sala que aceite operar; presença basta ler (RN-120). */
+export function collabEventRequiresOperate(type: CollabEventType): boolean {
+  return type === "content.operation" || type === "content.saved";
 }
 
 function isContentKey(key: string) {
@@ -239,4 +273,63 @@ export async function appendCollabEvent(
   }
 
   throw new CollabEventRejected("Não foi possível ordenar o evento nesta sala. Tente novamente.");
+}
+
+export type CollabCursorResult =
+  | { ok: true; cursor: CollabEventCursor }
+  | { ok: false; error: string };
+
+/** `since` é a última posição já vista; 0 (ou ausente) devolve a sala desde o começo. */
+export function parseCollabCursor(input: {
+  since?: string | number | null;
+  limit?: string | number | null;
+}): CollabCursorResult {
+  const afterSeq = parseCursorNumber(input.since, 0);
+  if (afterSeq === null || afterSeq < 0) {
+    return { ok: false, error: "A posição de retomada é um inteiro não negativo." };
+  }
+
+  const limit = parseCursorNumber(input.limit, COLLAB_PAGE_LIMIT_DEFAULT);
+  if (limit === null || limit < 1 || limit > COLLAB_PAGE_LIMIT_MAX) {
+    return { ok: false, error: `O lote de eventos vai de 1 a ${COLLAB_PAGE_LIMIT_MAX}.` };
+  }
+
+  return { ok: true, cursor: { afterSeq, limit } };
+}
+
+function parseCursorNumber(value: string | number | null | undefined, fallback: number): number | null {
+  if (value == null || value === "") return fallback;
+  const parsed = typeof value === "number" ? value : Number(value.trim());
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+export type CollabEventPage = {
+  events: CollabEventRecord[];
+  /** Última posição gravada na sala, mesmo quando a página para antes dela. */
+  latestSeq: number;
+  /** Onde o cliente retoma na próxima leitura. */
+  nextSince: number;
+  hasMore: boolean;
+};
+
+/**
+ * Lê a sala em ordem crescente de posição, a partir do último `seq` visto (RN-124).
+ * A ordenação e o corte são garantidos aqui: quem reconecta nunca recebe evento
+ * repetido nem fora de ordem, qualquer que seja a ordem devolvida pela persistência.
+ */
+export async function readCollabEventsSince(
+  store: CollabEventStore,
+  roomId: string,
+  cursor: CollabEventCursor,
+): Promise<CollabEventPage> {
+  const rows = await store.listSince(roomId, cursor);
+  const events = rows
+    .filter((row) => row.roomId === roomId && row.seq > cursor.afterSeq)
+    .sort((left, right) => left.seq - right.seq)
+    .slice(0, cursor.limit);
+
+  const latestSeq = (await store.latestSeq(roomId)) ?? 0;
+  const nextSince = events.length > 0 ? events[events.length - 1].seq : cursor.afterSeq;
+
+  return { events, latestSeq, nextSince, hasMore: latestSeq > nextSince };
 }
