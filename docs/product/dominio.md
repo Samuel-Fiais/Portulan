@@ -35,14 +35,14 @@ A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as A
 | Agente MCP | identidade nomeada (`agentIdentity`) |
 | Chave de bordo | token MCP (`mcpToken`) |
 | Diário de bordo | auditoria (`auditEvent`) |
-| Assunto colaborativo | artefato que uma sala representa (`collaborationSubject`: tipo + id) |
-| Sala | recorte autorizado ao vivo (`collaborationRoom`) |
-| Presença | quem está na sala agora (`presence`) |
-| Intenção | o que a presença veio fazer (`presenceIntent`) |
+| Assunto colaborativo | artefato que uma sala representa (`collabRoom`: `subjectType` + `subjectId`) |
+| Sala | recorte autorizado ao vivo (`collabRoom`) |
+| Presença | quem está na sala agora (`presenceSession`) |
+| Intenção | o que a presença veio fazer (`intention`) |
 | Evento versionado | evento ordenado da sala (`collabEvent`, com `seq`) |
-| Operação colaborativa | mutação versionada de conteúdo mutável (`collabOperation`) |
+| Operação colaborativa | mutação versionada de conteúdo mutável (`collabEvent` de tipo `content.operation`) |
 | Comando atômico | transação autorizada no servidor (`atomicCommand`) |
-| Idempotência | mesma chave aplicada uma vez só (`opId`) |
+| Idempotência | mesma chave aplicada uma vez só (`opId` do cliente, gravado como `idempotencyKey` da sala) |
 | Revogação | perda de autorização sobre o assunto |
 | Atividade (linha do tempo) | histórico legível do artefato (`activityEntry`) |
 | Passagem de comando | handoff humano ↔ agente na mesma linha |
@@ -358,9 +358,9 @@ Infraestrutura transversal do porto (RN-119). Uma **sala** é o recorte autoriza
 
 A sala projeta o direito que a UI e o MCP já aplicam: não concede nem amplia direito (RN-121). As entidades abaixo fecham cada termo.
 
-### Assunto colaborativo (`collaborationSubject`)
+### Assunto colaborativo (`collabRoom`: `subjectType` + `subjectId`)
 
-O par **tipo + identificador** do artefato que uma sala representa. Um assunto, uma sala por porto.
+O par **tipo + identificador** do artefato que uma sala representa. Um assunto, uma sala por porto — a unicidade é do banco, não da convenção.
 
 | Assunto | Conteúdo mutável ao vivo | Comandos atômicos que o tocam |
 |---|---|---|
@@ -375,30 +375,33 @@ O par **tipo + identificador** do artefato que uma sala representa. Um assunto, 
 
 Release publicada e revisão aprovada de Rumo **não** são assunto colaborativo: são imutáveis. O caminho é nova publicação ou nova revisão (RN-120).
 
-### Sala (`collaborationRoom`)
+### Sala (`collabRoom`)
 
 Recorte autorizado do assunto para participação ao vivo. Não guarda conteúdo: é o canal.
 
 | Campo | Papel |
 |---|---|
 | `workspaceId` | Porto da sala. Sala nunca cruza porto (RN-96). |
-| assunto | Tipo + id do artefato. |
+| assunto | Tipo + id do artefato. Único por porto: abrir a sala duas vezes devolve a mesma. |
 | `seq` | Sequência monotônica dos eventos daquela sala. Base da ordem e da reconexão. |
 | `policyVersion` | Carimbo da autorização vigente. Avança quando papel, convite, visibilidade ou porto do artefato muda. |
 | participantes | Presenças ativas. |
 
+Autorização da sala: porto e papel para os demais assuntos; na carta vale o acesso da própria carta — cartógrafo e editor convidado operam, visibilidade de porto e leitor entram em leitura (RN-17, RN-18, RN-121). Conteúdo imutável (release publicada, revisão aprovada) abre a sala em leitura, nunca em operação (RN-120).
+
 Superfície sem sala continua funcionando por leitura normal: ausência de canal ao vivo degrada a experiência, não o trabalho.
 
-### Presença (`presence`)
+### Presença (`presenceSession`)
 
 Quem está no assunto **agora**. Uma presença por sessão, não por conta: a mesma pessoa em duas abas conta duas sessões e aparece uma vez por sessão.
 
 | Campo | Papel |
 |---|---|
-| identidade | Conta humana **ou** identidade de agente de bordo (`agentIdentityId` + responsável). |
+| identidade | Conta humana **ou** identidade de agente de bordo (`agentIdentityId` + responsável), mais a chave usada. |
 | `intent` | Intenção declarada. |
-| `state` | `ativo` · `ocioso` · `desconectado`. Desconectado sai da lista quando o prazo de graça expira. |
+| `state` | `ativo` · `ocioso` · `desconectado`. Deriva da última batida da sessão; desconectado sai da lista quando o prazo de graça expira. |
 | `since` | Entrada na sala. |
+| revogação | Instante em que a sessão foi encerrada por perda de acesso. Sessão revogada não conta como alguém na sala (RN-121). |
 | foco | Bloco, campo ou coluna em que está, quando o artefato tem recorte. |
 
 Presença carrega o mínimo: identidade, intenção, estado e foco. Não carrega conteúdo, token nem trecho de Markdown (RN-122).
@@ -407,13 +410,13 @@ Presença carrega o mínimo: identidade, intenção, estado e foco. Não carrega
 
 O que aquela presença veio fazer. Torna leitura, edição e trabalho de agente distinguíveis antes de qualquer mudança.
 
-| Intenção | Significado |
-|---|---|
-| `lendo` | Acompanha; não pretende alterar. |
-| `editando` | Está aplicando operações no conteúdo mutável. |
-| `revisando` | Comentando ou resolvendo fios. |
-| `executando` | Agente trabalhando numa linha com comando ativo (Manobra ou Lance). |
-| `aguardando` | Espera passagem de comando, aceite humano ou desbloqueio. |
+| Intenção | Código | Significado |
+|---|---|---|
+| `lendo` | `viewing` | Acompanha; não pretende alterar. |
+| `editando` | `editing` | Está aplicando operações no conteúdo mutável. |
+| `revisando` | `reviewing` | Comentando ou resolvendo fios. |
+| `executando` | `automating` | Agente trabalhando numa linha com comando ativo (Manobra ou Lance). |
+| `aguardando` | `waiting` | Espera passagem de comando, aceite humano ou desbloqueio. |
 
 Intenção é declaração observada, nunca permissão. Agente **sempre** declara identidade e intenção (RN-123).
 
@@ -423,13 +426,16 @@ Unidade que a sala transmite. Imutável, ordenada por `seq` dentro da sala.
 
 | Campo | Papel |
 |---|---|
-| `seq` | Posição na sala. Quem reconecta pede o que veio depois do último `seq` visto. |
+| `seq` | Posição na sala, a partir de 1. Única na sala: dois eventos não ocupam a mesma posição. Quem reconecta pede o que veio depois do último `seq` visto. |
 | `kind` | `operacao` · `comando` · `presenca` · `atividade`. |
-| autor | Conta e, quando houver, identidade de agente. |
-| `payload` | O mínimo para a superfície aplicar a mudança. |
+| `type` | O evento em si: `content.operation`, `content.saved`, `command.applied`, `presence.joined`, `presence.updated`, `presence.left`, `room.closed`. |
+| autor | Conta e, quando houver, identidade de agente, mais a chave usada. Pelo menos um dos dois. |
+| `baseVersion` | Versão do conteúdo em que a operação foi calculada, quando houver. |
+| `payload` | O mínimo para a superfície aplicar a mudança, já redigido (RN-122). |
+| `idempotencyKey` | O `opId` do cliente. Única na sala. |
 | `at` | Instante do servidor. |
 
-Evento é derivado. Quem chegou depois, ou perdeu a janela, reconstrói do snapshot em Postgres e volta a seguir a sequência (RN-124).
+O log é gravado em Postgres por sala; o canal transporta (RN-124). Evento é derivado: quem chegou depois, ou perdeu a janela, reconstrói do snapshot em Postgres e volta a seguir a sequência.
 
 ### Operação colaborativa (`collabOperation`)
 
@@ -445,6 +451,8 @@ Mutação de conteúdo mutável. É o único caminho ao vivo para conteúdo (RN-
 ### Idempotência
 
 Propriedade obrigatória: reaplicar um `opId` já aplicado devolve o mesmo resultado e não gera evento novo. Vale para reconexão, retry de rede e reenvio de agente. Comando atômico segue a mesma exigência — publicar, aprovar, assumir ou aceitar duas vezes com a mesma chave é uma vez.
+
+A chave é única **na sala**: repetir devolve o evento já gravado, sem segunda linha e sem nova posição; a mesma chave em outra sala é outro evento. Corrida por uma posição já ocupada vai para a seguinte, nunca sobrescreve.
 
 ### Comando atômico (`atomicCommand`)
 
