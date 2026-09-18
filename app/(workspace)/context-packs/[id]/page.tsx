@@ -3,6 +3,7 @@ import { ContextPackDetail } from "@/components/context-pack-detail";
 import {
   getAgentIdentity,
   getContextPack,
+  ensureDraftImplementationPlan,
   getDraftPlan,
   getProject,
   listAgentIdentities,
@@ -40,6 +41,7 @@ export default async function RumoPage({ params }: { params: Promise<{ id: strin
   if (!pack) notFound();
   const revisionId = pack.currentRevisionId;
   const useRevision = pack.status === "approved" && revisionId;
+  const canEditPack = pack.status === "draft" || pack.status === "review";
   const access = await documentAccessContext(userId);
   const [items, sources, criteria, tasks, allThreads, revisions, repositories, plan, project, documents, members, agents] =
     await Promise.all([
@@ -50,7 +52,9 @@ export default async function RumoPage({ params }: { params: Promise<{ id: strin
       listCoordinationThreads(active.id),
       listRevisions(pack.id),
       listRepositories(active.id),
-      getDraftPlan(pack.id),
+      canEditPack
+        ? ensureDraftImplementationPlan({ packId: pack.id, workspaceId: active.id })
+        : getDraftPlan(pack.id),
       getProject(pack.projectId, active.id),
       listDocuments(undefined, access),
       listWorkspaceMembers(active.id),
@@ -123,6 +127,7 @@ export default async function RumoPage({ params }: { params: Promise<{ id: strin
         })),
       )}
       planSummary={plan?.summary ?? ""}
+      draftPlan={canEditPack && plan ? { id: plan.id, draftVersion: plan.draftVersion } : null}
       roster={roster}
     />
   );

@@ -146,6 +146,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "owner_user_id",
     "current_revision_id",
     "board_number",
+    "draft_version",
     "created_at",
     "updated_at",
   ],
@@ -196,7 +197,7 @@ export const PORTULAN_TABLE_COLUMNS = {
     "board_number",
     "created_at",
   ],
-  implementation_plans: ["id", "pack_id", "workspace_id", "revision_id", "summary", "created_at"],
+  implementation_plans: ["id", "pack_id", "workspace_id", "revision_id", "summary", "draft_version", "created_at"],
   implementation_tasks: [
     "id",
     "pack_id",
@@ -1021,10 +1022,28 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
   );
 
   if (await portulanTableExists(db, "context_packs")) {
-    await executeSchemaStatement(
-      db,
-      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.context_packs ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
-    );
+    const packColumns = (await loadTableColumns(db)).get("context_packs") ?? new Set<string>();
+    if (!packColumns.has("board_number")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.context_packs ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
+      );
+    }
+    if (!packColumns.has("draft_version")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.context_packs ADD COLUMN IF NOT EXISTS draft_version INTEGER NOT NULL DEFAULT 0`,
+      );
+    }
+  }
+  if (await portulanTableExists(db, "implementation_plans")) {
+    const planColumns = (await loadTableColumns(db)).get("implementation_plans") ?? new Set<string>();
+    if (!planColumns.has("draft_version")) {
+      await executeSchemaStatement(
+        db,
+        `ALTER TABLE ${PORTULAN_PG_SCHEMA}.implementation_plans ADD COLUMN IF NOT EXISTS draft_version INTEGER NOT NULL DEFAULT 0`,
+      );
+    }
   }
   if (await portulanTableExists(db, "context_pack_items")) {
     await executeSchemaStatement(

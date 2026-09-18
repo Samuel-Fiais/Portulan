@@ -1,4 +1,6 @@
 import type { CollabSubjectType } from "./collab-rooms.ts";
+import { canEditContextPack } from "./context-pack-policy.ts";
+import type { ContextPackStatus } from "./dev-context.ts";
 
 /**
  * Modelo pragmático de coedição (Lances #67–#69): substituição de campo inteiro com
@@ -8,10 +10,30 @@ import type { CollabSubjectType } from "./collab-rooms.ts";
  */
 export const collabDocumentOpFields = ["content", "title", "summary"] as const;
 export const collabTemplateOpFields = ["content"] as const;
+export const collabContextPackRecorteFields = [
+  "title",
+  "objective",
+  "expectedOutcome",
+  "scope",
+  "outOfScope",
+] as const;
+export const collabImplementationPlanOpFields = ["summary"] as const;
 
 export type CollabDocumentOpField = (typeof collabDocumentOpFields)[number];
 export type CollabTemplateOpField = (typeof collabTemplateOpFields)[number];
-export type CollabContentOpField = CollabDocumentOpField | CollabTemplateOpField;
+export type CollabContextPackRecorteField = (typeof collabContextPackRecorteFields)[number];
+export type CollabImplementationPlanOpField = (typeof collabImplementationPlanOpFields)[number];
+export type CollabContextPackItemOpField = `item.${string}.body`;
+export type CollabContextPackCriterionOpField = `criterion.${string}.description`;
+export type CollabContextPackOpField =
+  | CollabContextPackRecorteField
+  | CollabContextPackItemOpField
+  | CollabContextPackCriterionOpField;
+export type CollabContentOpField =
+  | CollabDocumentOpField
+  | CollabTemplateOpField
+  | CollabContextPackOpField
+  | CollabImplementationPlanOpField;
 
 export type CollabContentOpPayload = {
   field: CollabContentOpField;
@@ -25,12 +47,40 @@ export type CollabContentSnapshot = {
 
 export type CollabContentApplySubject =
   | { subjectType: "document"; subjectId: string }
-  | { subjectType: "template"; subjectId: string };
+  | { subjectType: "template"; subjectId: string }
+  | { subjectType: "context_pack"; subjectId: string }
+  | { subjectType: "implementation_plan"; subjectId: string };
 
 export function collabContentOpSupported(
   subjectType: CollabSubjectType,
 ): subjectType is CollabContentApplySubject["subjectType"] {
-  return subjectType === "document" || subjectType === "template";
+  return (
+    subjectType === "document" ||
+    subjectType === "template" ||
+    subjectType === "context_pack" ||
+    subjectType === "implementation_plan"
+  );
+}
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function parseCollabContextPackDynamicField(
+  field: string,
+): { kind: "item"; itemId: string } | { kind: "criterion"; criterionId: string } | null {
+  const itemMatch = /^item\.([0-9a-f-]{36})\.body$/i.exec(field);
+  if (itemMatch && UUID_PATTERN.test(itemMatch[1])) {
+    return { kind: "item", itemId: itemMatch[1] };
+  }
+  const criterionMatch = /^criterion\.([0-9a-f-]{36})\.description$/i.exec(field);
+  if (criterionMatch && UUID_PATTERN.test(criterionMatch[1])) {
+    return { kind: "criterion", criterionId: criterionMatch[1] };
+  }
+  return null;
+}
+
+export function contextPackAcceptsContentOperation(status: ContextPackStatus): boolean {
+  return canEditContextPack(status);
 }
 
 export function parseCollabContentOpPayload(
@@ -50,34 +100,73 @@ export function parseCollabContentOpPayload(
     return { ok: false, error: "Operação de conteúdo exige valor textual." };
   }
 
-  const allowed =
-    subjectType === "document"
-      ? (collabDocumentOpFields as readonly string[])
-      : (collabTemplateOpFields as readonly string[]);
-  if (!allowed.includes(fieldRaw)) {
+  if (subjectType === "document") {
+    if (!(collabDocumentOpFields as readonly string[]).includes(fieldRaw)) {
+      return { ok: false, error: "Campo inválido para carta; use content, title ou summary." };
+    }
+    if (fieldRaw === "title" && valueRaw.trim().length === 0) {
+      return { ok: false, error: "O título da carta não pode ficar vazio." };
+    }
+    if (fieldRaw === "title" && valueRaw.length > 180) {
+      return { ok: false, error: "O título da carta vai até 180 caracteres." };
+    }
+    if (fieldRaw === "summary" && valueRaw.length > 500) {
+      return { ok: false, error: "O resumo da carta vai até 500 caracteres." };
+    }
+    return { ok: true, op: { field: fieldRaw as CollabContentOpField, value: valueRaw } };
+  }
+
+  if (subjectType === "template") {
+    if (!(collabTemplateOpFields as readonly string[]).includes(fieldRaw)) {
+      return { ok: false, error: "Campo inválido para gabarito; use content." };
+    }
+    return { ok: true, op: { field: fieldRaw as CollabContentOpField, value: valueRaw } };
+  }
+
+  if (subjectType === "context_pack") {
+    if ((collabContextPackRecorteFields as readonly string[]).includes(fieldRaw)) {
+      if (fieldRaw === "title") {
+        const trimmed = valueRaw.trim();
+        if (trimmed.length < 3) {
+          return { ok: false, error: "O título do Rumo precisa de pelo menos 3 caracteres." };
+        }
+        if (trimmed.length > 180) {
+          return { ok: false, error: "O título do Rumo vai até 180 caracteres." };
+        }
+      }
+      return { ok: true, op: { field: fieldRaw as CollabContentOpField, value: valueRaw } };
+    }
+    const dynamic = parseCollabContextPackDynamicField(fieldRaw);
+    if (dynamic?.kind === "item") {
+      if (valueRaw.trim().length === 0) {
+        return { ok: false, error: "O texto do item não pode ficar vazio." };
+      }
+      return { ok: true, op: { field: fieldRaw as CollabContentOpField, value: valueRaw } };
+    }
+    if (dynamic?.kind === "criterion") {
+      if (valueRaw.trim().length === 0) {
+        return { ok: false, error: "A descrição do Marco não pode ficar vazia." };
+      }
+      return { ok: true, op: { field: fieldRaw as CollabContentOpField, value: valueRaw } };
+    }
     return {
       ok: false,
       error:
-        subjectType === "document"
-          ? "Campo inválido para carta; use content, title ou summary."
-          : "Campo inválido para gabarito; use content.",
+        "Campo inválido para Rumo; use recorte (title, objective, expectedOutcome, scope, outOfScope) ou item./criterion.",
     };
   }
 
-  if (fieldRaw === "title" && valueRaw.trim().length === 0) {
-    return { ok: false, error: "O título da carta não pode ficar vazio." };
-  }
-  if (fieldRaw === "title" && valueRaw.length > 180) {
-    return { ok: false, error: "O título da carta vai até 180 caracteres." };
-  }
-  if (fieldRaw === "summary" && valueRaw.length > 500) {
-    return { ok: false, error: "O resumo da carta vai até 500 caracteres." };
+  if (subjectType === "implementation_plan") {
+    if (!(collabImplementationPlanOpFields as readonly string[]).includes(fieldRaw)) {
+      return { ok: false, error: "Campo inválido para plano; use summary." };
+    }
+    if (valueRaw.length > 8_000) {
+      return { ok: false, error: "O plano de navegação vai até 8000 caracteres." };
+    }
+    return { ok: true, op: { field: fieldRaw as CollabContentOpField, value: valueRaw } };
   }
 
-  return {
-    ok: true,
-    op: { field: fieldRaw as CollabContentOpField, value: valueRaw },
-  };
+  return { ok: false, error: "Assunto não aceita operação de conteúdo." };
 }
 
 export function validateCollabContentBaseVersion(

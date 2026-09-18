@@ -41,6 +41,7 @@ export type ContextPackRecord = {
   ownerUserId: string;
   currentRevisionId: string | null;
   boardNumber: number;
+  draftVersion: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -84,6 +85,7 @@ export type ImplementationPlanRecord = {
   packId: string;
   revisionId: string | null;
   summary: string;
+  draftVersion: number;
 };
 
 export type ContextPackRevisionRecord = {
@@ -110,6 +112,7 @@ function mapPack(row: typeof contextPacks.$inferSelect): ContextPackRecord {
     ownerUserId: row.ownerUserId,
     currentRevisionId: row.currentRevisionId,
     boardNumber: row.boardNumber,
+    draftVersion: row.draftVersion,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -245,6 +248,20 @@ export async function updateContextPack(
   input: Partial<Pick<ContextPackRecord, "title" | "objective" | "expectedOutcome" | "scope" | "outOfScope" | "status">>,
 ) {
   const db = await getDb();
+  const [current] = await db
+    .select()
+    .from(contextPacks)
+    .where(and(eq(contextPacks.id, id), eq(contextPacks.workspaceId, workspaceId)))
+    .limit(1);
+  if (!current) return null;
+
+  const recorteChanged =
+    (input.title !== undefined && input.title.trim() !== current.title) ||
+    (input.objective !== undefined && input.objective !== current.objective) ||
+    (input.expectedOutcome !== undefined && input.expectedOutcome !== current.expectedOutcome) ||
+    (input.scope !== undefined && input.scope !== current.scope) ||
+    (input.outOfScope !== undefined && input.outOfScope !== current.outOfScope);
+
   const [row] = await db
     .update(contextPacks)
     .set({
@@ -254,11 +271,73 @@ export async function updateContextPack(
       ...(input.scope !== undefined ? { scope: input.scope } : {}),
       ...(input.outOfScope !== undefined ? { outOfScope: input.outOfScope } : {}),
       ...(input.status ? { status: input.status } : {}),
+      draftVersion: recorteChanged ? current.draftVersion + 1 : current.draftVersion,
       updatedAt: new Date().toISOString(),
     })
     .where(and(eq(contextPacks.id, id), eq(contextPacks.workspaceId, workspaceId)))
     .returning();
   return row ? mapPack(row) : null;
+}
+
+export async function updateDraftContextPackItemBody(input: {
+  packId: string;
+  itemId: string;
+  body: string;
+}) {
+  const db = await getDb();
+  const [row] = await db
+    .update(contextPackItems)
+    .set({ body: input.body.trim() })
+    .where(
+      and(
+        eq(contextPackItems.id, input.itemId),
+        eq(contextPackItems.packId, input.packId),
+        isNull(contextPackItems.revisionId),
+      ),
+    )
+    .returning({ id: contextPackItems.id });
+  return row != null;
+}
+
+export async function updateDraftAcceptanceCriterionDescription(input: {
+  packId: string;
+  criterionId: string;
+  description: string;
+}) {
+  const db = await getDb();
+  const [row] = await db
+    .update(acceptanceCriteria)
+    .set({ description: input.description.trim() })
+    .where(
+      and(
+        eq(acceptanceCriteria.id, input.criterionId),
+        eq(acceptanceCriteria.packId, input.packId),
+        isNull(acceptanceCriteria.revisionId),
+      ),
+    )
+    .returning({ id: acceptanceCriteria.id });
+  return row != null;
+}
+
+export async function ensureDraftImplementationPlan(input: { packId: string; workspaceId: string }) {
+  const existing = await getDraftPlan(input.packId);
+  if (existing) return existing;
+  const db = await getDb();
+  const [row] = await db
+    .insert(implementationPlans)
+    .values({
+      packId: input.packId,
+      workspaceId: input.workspaceId,
+      summary: "",
+    })
+    .returning();
+  return {
+    id: row.id,
+    packId: row.packId,
+    revisionId: row.revisionId,
+    summary: row.summary,
+    draftVersion: row.draftVersion,
+  };
 }
 
 export async function listDraftItems(packId: string) {
@@ -438,6 +517,7 @@ export async function getImplementationPlan(id: string, workspaceId: string) {
         workspaceId: row.workspaceId,
         revisionId: row.revisionId,
         summary: row.summary,
+        draftVersion: row.draftVersion,
       }
     : null;
 }
@@ -450,7 +530,13 @@ export async function getDraftPlan(packId: string) {
     .where(and(eq(implementationPlans.packId, packId), isNull(implementationPlans.revisionId)))
     .limit(1);
   return row
-    ? { id: row.id, packId: row.packId, revisionId: row.revisionId, summary: row.summary }
+    ? {
+        id: row.id,
+        packId: row.packId,
+        revisionId: row.revisionId,
+        summary: row.summary,
+        draftVersion: row.draftVersion,
+      }
     : null;
 }
 
@@ -458,12 +544,22 @@ export async function upsertDraftPlan(input: { packId: string; workspaceId: stri
   const existing = await getDraftPlan(input.packId);
   const db = await getDb();
   if (existing) {
+    const summaryChanged = existing.summary !== input.summary.trim();
     const [row] = await db
       .update(implementationPlans)
-      .set({ summary: input.summary.trim() })
+      .set({
+        summary: input.summary.trim(),
+        draftVersion: summaryChanged ? existing.draftVersion + 1 : existing.draftVersion,
+      })
       .where(eq(implementationPlans.id, existing.id))
       .returning();
-    return { id: row.id, packId: row.packId, revisionId: row.revisionId, summary: row.summary };
+    return {
+      id: row.id,
+      packId: row.packId,
+      revisionId: row.revisionId,
+      summary: row.summary,
+      draftVersion: row.draftVersion,
+    };
   }
   const [row] = await db
     .insert(implementationPlans)
@@ -473,7 +569,13 @@ export async function upsertDraftPlan(input: { packId: string; workspaceId: stri
       summary: input.summary.trim(),
     })
     .returning();
-  return { id: row.id, packId: row.packId, revisionId: row.revisionId, summary: row.summary };
+  return {
+    id: row.id,
+    packId: row.packId,
+    revisionId: row.revisionId,
+    summary: row.summary,
+    draftVersion: row.draftVersion,
+  };
 }
 
 export async function listPacksUsingDocument(documentId: string, workspaceId: string) {
@@ -720,6 +822,7 @@ export async function startNewContextPackRevision(pack: ContextPackRecord) {
     .update(contextPacks)
     .set({
       status: "draft",
+      draftVersion: 0,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(contextPacks.id, pack.id))

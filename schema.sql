@@ -354,9 +354,12 @@ CREATE TABLE IF NOT EXISTS portulan.context_packs (
   owner_user_id UUID NOT NULL REFERENCES portulan.users(id) ON DELETE CASCADE,
   current_revision_id UUID,
   board_number INTEGER NOT NULL DEFAULT 0,
+  draft_version INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE portulan.context_packs ADD COLUMN IF NOT EXISTS draft_version INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_context_packs_workspace_id ON portulan.context_packs (workspace_id);
 CREATE INDEX IF NOT EXISTS idx_context_packs_project_id ON portulan.context_packs (project_id);
@@ -429,8 +432,11 @@ CREATE TABLE IF NOT EXISTS portulan.implementation_plans (
   workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
   revision_id UUID REFERENCES portulan.context_pack_revisions(id) ON DELETE CASCADE,
   summary TEXT NOT NULL DEFAULT '',
+  draft_version INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE portulan.implementation_plans ADD COLUMN IF NOT EXISTS draft_version INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_implementation_plans_pack_id ON portulan.implementation_plans (pack_id);
 

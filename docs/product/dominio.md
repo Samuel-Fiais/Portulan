@@ -270,6 +270,7 @@ Objeto persistente, curado, revisado e versionado. Uma carta pode ser fonte de z
 | `projectId` | Expedição a que pertence. |
 | título | 3–180. |
 | `boardNumber` | Identificador público inteiro do porto (`#42`). UUID continua interno. |
+| `draftVersion` | Versão otimista do rascunho do Rumo para `content.operation` (Recorte, itens e Marcos de rascunho compartilham a mesma versão na sala `context_pack`) (RN-120). |
 | objetivo, resultado, escopo, não-escopo | Contrato operacional (objetivo opcional na criação). A tela **Contexto** junta contrato, Marcos, itens e cartas-fonte. |
 
 ### Revisão do Rumo (`contextPackRevision`)
@@ -312,7 +313,7 @@ Critérios de aceite verificáveis do Rumo (e cobertos por Manobras). Pertencem 
 
 ### Plano de navegação, Manobra e Lance
 
-O plano é **opcional** e pertence a uma revisão do Rumo. Não é fonte de verdade paralela.
+O plano é **opcional** e pertence a uma revisão do Rumo. Não é fonte de verdade paralela. O rascunho do plano tem `draftVersion` próprio na sala `implementation_plan`; aprovar o Rumo fixa o plano na revisão imutável (RN-99, RN-120).
 
 A **Manobra** é o PBI: objetivo, Embarcação e paths alvo (se for de código), itens obrigatórios, Marcos que cobre, dependências simples, a revisão exata do Rumo, responsável (humano ou agente) e `boardNumber`. Sem prazo, pontos ou sprint. O quadro Kanban é só vista dos estados: no quadro de Lances, a Manobra é a faixa à esquerda e os Lances cruzam as colunas.
 

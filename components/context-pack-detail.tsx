@@ -2,7 +2,7 @@
 
 import "./dev-workspace.css";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
@@ -68,6 +68,12 @@ import { BordoFeed } from "@/components/bordo-feed";
 import { RumoWorkBoard } from "@/components/rumo-work-board";
 import { CollabPresenceStrip } from "@/components/collab-presence-strip";
 import { useCollabPresence } from "@/components/use-collab-presence";
+import { useCollabFieldDraft } from "@/components/use-collab-field-draft";
+import type { CollabContentOpField } from "@/lib/collab-content-ops";
+import {
+  parseCollabContextPackDynamicField,
+  type CollabContextPackRecorteField,
+} from "@/lib/collab-content-ops";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   AcceptanceCriterionRecord,
@@ -127,6 +133,7 @@ export function ContextPackDetail({
   repositories,
   documents,
   planSummary,
+  draftPlan,
   roster,
 }: {
   pack: ContextPackRecord;
@@ -143,6 +150,7 @@ export function ContextPackDetail({
   repositories: RepositoryRecord[];
   documents: CartaOption[];
   planSummary: string;
+  draftPlan: { id: string; draftVersion: number } | null;
   roster: WorkspaceRosterEntry[];
 }) {
   const router = useRouter();
@@ -151,11 +159,123 @@ export function ContextPackDetail({
   const [itemFilter, setItemFilter] = useState<ContextItemType | "all">("all");
   const cartaById = new Map(documents.map((document) => [document.id, document]));
   const canEditPack = pack.status === "draft" || pack.status === "review";
+  const collabIntention = canEditPack ? "editing" : "viewing";
+
+  const [recorteExpectedOutcome, setRecorteExpectedOutcome] = useState(pack.expectedOutcome);
+  const [recorteScope, setRecorteScope] = useState(pack.scope);
+  const [recorteOutOfScope, setRecorteOutOfScope] = useState(pack.outOfScope);
+  const [planSummaryLive, setPlanSummaryLive] = useState(planSummary);
+  const [packDraftVersion, setPackDraftVersion] = useState(pack.draftVersion);
+  const [planDraftVersion, setPlanDraftVersion] = useState(draftPlan?.draftVersion ?? 0);
+  const [itemBodies, setItemBodies] = useState(() => Object.fromEntries(items.map((item) => [item.id, item.body])));
+  const [criterionDescriptions, setCriterionDescriptions] = useState(() =>
+    Object.fromEntries(criteria.map((criterion) => [criterion.id, criterion.description])),
+  );
+
+  useEffect(() => {
+    setRecorteExpectedOutcome(pack.expectedOutcome);
+    setRecorteScope(pack.scope);
+    setRecorteOutOfScope(pack.outOfScope);
+    setPackDraftVersion(pack.draftVersion);
+  }, [pack.id, pack.expectedOutcome, pack.scope, pack.outOfScope, pack.draftVersion]);
+
+  useEffect(() => {
+    setPlanSummaryLive(planSummary);
+    setPlanDraftVersion(draftPlan?.draftVersion ?? 0);
+  }, [draftPlan?.draftVersion, draftPlan?.id, planSummary]);
+
+  useEffect(() => {
+    setItemBodies(Object.fromEntries(items.map((item) => [item.id, item.body])));
+  }, [items]);
+
+  useEffect(() => {
+    setCriterionDescriptions(Object.fromEntries(criteria.map((criterion) => [criterion.id, criterion.description])));
+  }, [criteria]);
+
+  const readPackCollabField = useCallback(
+    (field: CollabContentOpField): string => {
+      if (field === "expectedOutcome") return recorteExpectedOutcome;
+      if (field === "scope") return recorteScope;
+      if (field === "outOfScope") return recorteOutOfScope;
+      const dynamic = parseCollabContextPackDynamicField(field);
+      if (dynamic?.kind === "item") return itemBodies[dynamic.itemId] ?? "";
+      if (dynamic?.kind === "criterion") return criterionDescriptions[dynamic.criterionId] ?? "";
+      return "";
+    },
+    [criterionDescriptions, itemBodies, recorteExpectedOutcome, recorteOutOfScope, recorteScope],
+  );
+
+  const onPackFieldSynced = useCallback((field: CollabContentOpField, value: string) => {
+    if (field === "expectedOutcome") setRecorteExpectedOutcome(value);
+    else if (field === "scope") setRecorteScope(value);
+    else if (field === "outOfScope") setRecorteOutOfScope(value);
+    else {
+      const dynamic = parseCollabContextPackDynamicField(field);
+      if (dynamic?.kind === "item") {
+        setItemBodies((current) => ({ ...current, [dynamic.itemId]: value }));
+      } else if (dynamic?.kind === "criterion") {
+        setCriterionDescriptions((current) => ({ ...current, [dynamic.criterionId]: value }));
+      }
+    }
+  }, []);
+
+  const packCollab = useCollabFieldDraft({
+    subjectType: "context_pack",
+    subjectId: pack.id,
+    workspaceId: pack.workspaceId,
+    canEdit: canEditPack,
+    intention: collabIntention,
+    draftVersion: packDraftVersion,
+    onDraftVersionChange: setPackDraftVersion,
+    onFieldSynced: onPackFieldSynced,
+    readField: readPackCollabField,
+  });
+
+  const planCollab = useCollabFieldDraft({
+    subjectType: "implementation_plan",
+    subjectId: draftPlan?.id ?? "",
+    workspaceId: pack.workspaceId,
+    canEdit: canEditPack && Boolean(draftPlan?.id),
+    intention: collabIntention,
+    draftVersion: planDraftVersion,
+    onDraftVersionChange: setPlanDraftVersion,
+    onFieldSynced: (_field, value) => setPlanSummaryLive(value),
+    readField: (field) => (field === "summary" ? planSummaryLive : ""),
+  });
+
+  const queueRecortePatch = useCallback(
+    (field: CollabContextPackRecorteField, value: string) => {
+      packCollab.queueCollabPatch(field, value);
+    },
+    [packCollab],
+  );
+
+  const queueItemBodyPatch = useCallback(
+    (itemId: string, value: string) => {
+      setItemBodies((current) => ({ ...current, [itemId]: value }));
+      packCollab.queueCollabPatch(`item.${itemId}.body`, value);
+    },
+    [packCollab],
+  );
+
+  const queueCriterionPatch = useCallback(
+    (criterionId: string, value: string) => {
+      setCriterionDescriptions((current) => ({ ...current, [criterionId]: value }));
+      packCollab.queueCollabPatch(`criterion.${criterionId}.description`, value);
+    },
+    [packCollab],
+  );
+
+  const collabConflictMessage = useMemo(
+    () => packCollab.collabConflict ?? planCollab.collabConflict,
+    [packCollab.collabConflict, planCollab.collabConflict],
+  );
+
   const { participants: livePresence } = useCollabPresence({
     subjectType: "context_pack",
     subjectId: pack.id,
     workspaceId: pack.workspaceId,
-    intention: canEditPack ? "editing" : "viewing",
+    intention: collabIntention,
   });
   const defaultView = pack.status === "approved" ? "trabalho" : "contexto";
   const latestRevision = revisions[0];
@@ -350,16 +470,57 @@ export function ContextPackDetail({
                 <div className="rumo-recorte__header">
                   <h2>Contrato</h2>
                 </div>
+                {collabConflictMessage ? (
+                  <p className="dev-item-meta fp-alert warning" role="status">
+                    {collabConflictMessage}
+                  </p>
+                ) : null}
                 {canEditPack ? (
                   <RecorteForm
                     packId={pack.id}
-                    initial={{
-                      expectedOutcome: pack.expectedOutcome,
-                      scope: pack.scope,
-                      outOfScope: pack.outOfScope,
-                      planSummary,
+                    expectedOutcome={recorteExpectedOutcome}
+                    scope={recorteScope}
+                    outOfScope={recorteOutOfScope}
+                    planSummary={planSummaryLive}
+                    collabPending={packCollab.collabPending || planCollab.collabPending}
+                    onExpectedOutcomeChange={(value) => {
+                      setRecorteExpectedOutcome(value);
+                      queueRecortePatch("expectedOutcome", value);
                     }}
-                    onSuccess={() => router.refresh()}
+                    onScopeChange={(value) => {
+                      setRecorteScope(value);
+                      queueRecortePatch("scope", value);
+                    }}
+                    onOutOfScopeChange={(value) => {
+                      setRecorteOutOfScope(value);
+                      queueRecortePatch("outOfScope", value);
+                    }}
+                    onPlanSummaryChange={(value) => {
+                      setPlanSummaryLive(value);
+                      planCollab.queueCollabPatch("summary", value);
+                    }}
+                    onSave={async () => {
+                      if (packCollab.collabEnabled || planCollab.collabEnabled) {
+                        const packOk = await packCollab.flushCollab();
+                        const planOk = await planCollab.flushCollab();
+                        if (packOk && planOk) {
+                          toast.success("Contrato sincronizado");
+                          router.refresh();
+                        }
+                        return;
+                      }
+                      const result = await saveContextPackRecorteAction(pack.id, {
+                        expectedOutcome: recorteExpectedOutcome,
+                        scope: recorteScope,
+                        outOfScope: recorteOutOfScope,
+                        planSummary: planSummaryLive,
+                      });
+                      if (!result.ok) toast.error(result.error);
+                      else {
+                        toast.success("Contrato gravado");
+                        router.refresh();
+                      }
+                    }}
                   />
                 ) : (
                   <div className="rumo-contrato-read">
@@ -407,7 +568,16 @@ export function ContextPackDetail({
                       return (
                         <li key={criterion.id} className="rumo-dense-row">
                           <BoardId number={criterion.boardNumber} />
-                          <span>{criterion.description}</span>
+                          {canEditPack ? (
+                            <Textarea
+                              className="rumo-inline-edit"
+                              value={criterionDescriptions[criterion.id] ?? criterion.description}
+                              onChange={(event) => queueCriterionPatch(criterion.id, event.target.value)}
+                              aria-label="Descrição do marco"
+                            />
+                          ) : (
+                            <span>{criterion.description}</span>
+                          )}
                           {covering > 0 ? (
                             <span className="dev-item-meta">
                               {covering} {covering === 1 ? "Manobra" : "Manobras"}
@@ -476,8 +646,17 @@ export function ContextPackDetail({
                       <li key={item.id} className={`rumo-dense-row rumo-item--${item.type}`}>
                         <BoardId number={item.boardNumber} />
                         <span className="rumo-type-chip">{CONTEXT_ITEM_TYPE_LABELS[item.type]}</span>
-                        <span>{item.body}</span>
-                        {item.strength !== "required" ? (
+                          {canEditPack ? (
+                            <Textarea
+                              className="rumo-inline-edit"
+                              value={itemBodies[item.id] ?? item.body}
+                              onChange={(event) => queueItemBodyPatch(item.id, event.target.value)}
+                              aria-label="Texto do item"
+                            />
+                          ) : (
+                            <span>{item.body}</span>
+                          )}
+                          {item.strength !== "required" ? (
                           <span className="dev-item-meta">{CONTEXT_ITEM_STRENGTH_LABELS[item.strength]}</span>
                         ) : null}
                         {itemThreadOpen.has(item.id) ? <span className="dev-item-meta">fio aberto</span> : null}
@@ -901,17 +1080,29 @@ function AddCriterionForm({ packId, onSuccess }: { packId: string; onSuccess?: (
 
 function RecorteForm({
   packId,
-  initial,
-  onSuccess,
+  expectedOutcome,
+  scope,
+  outOfScope,
+  planSummary,
+  collabPending,
+  onExpectedOutcomeChange,
+  onScopeChange,
+  onOutOfScopeChange,
+  onPlanSummaryChange,
+  onSave,
 }: {
   packId: string;
-  initial: { expectedOutcome: string; scope: string; outOfScope: string; planSummary: string };
-  onSuccess?: () => void;
+  expectedOutcome: string;
+  scope: string;
+  outOfScope: string;
+  planSummary: string;
+  collabPending: boolean;
+  onExpectedOutcomeChange: (value: string) => void;
+  onScopeChange: (value: string) => void;
+  onOutOfScopeChange: (value: string) => void;
+  onPlanSummaryChange: (value: string) => void;
+  onSave: () => void | Promise<void>;
 }) {
-  const [expectedOutcome, setExpectedOutcome] = useState(initial.expectedOutcome);
-  const [scope, setScope] = useState(initial.scope);
-  const [outOfScope, setOutOfScope] = useState(initial.outOfScope);
-  const [planSummary, setPlanSummary] = useState(initial.planSummary);
   const [pending, start] = useTransition();
   return (
     <form
@@ -919,17 +1110,7 @@ function RecorteForm({
       onSubmit={(event) => {
         event.preventDefault();
         start(async () => {
-          const result = await saveContextPackRecorteAction(packId, {
-            expectedOutcome,
-            scope,
-            outOfScope,
-            planSummary,
-          });
-          if (!result.ok) toast.error(result.error);
-          else {
-            toast.success("Contrato gravado");
-            onSuccess?.();
-          }
+          await onSave();
         });
       }}
     >
@@ -938,7 +1119,7 @@ function RecorteForm({
         <Textarea
           id={`outcome-${packId}`}
           value={expectedOutcome}
-          onChange={(event) => setExpectedOutcome(event.target.value)}
+          onChange={(event) => onExpectedOutcomeChange(event.target.value)}
           placeholder="Qual resultado este Rumo deve alcançar"
         />
       </div>
@@ -947,7 +1128,7 @@ function RecorteForm({
         <Textarea
           id={`scope-${packId}`}
           value={scope}
-          onChange={(event) => setScope(event.target.value)}
+          onChange={(event) => onScopeChange(event.target.value)}
           placeholder="O que este Rumo cobre"
         />
       </div>
@@ -956,7 +1137,7 @@ function RecorteForm({
         <Textarea
           id={`out-of-scope-${packId}`}
           value={outOfScope}
-          onChange={(event) => setOutOfScope(event.target.value)}
+          onChange={(event) => onOutOfScopeChange(event.target.value)}
           placeholder="O que fica deliberadamente de fora"
         />
       </div>
@@ -965,13 +1146,13 @@ function RecorteForm({
         <Textarea
           id={`plan-${packId}`}
           value={planSummary}
-          onChange={(event) => setPlanSummary(event.target.value)}
+          onChange={(event) => onPlanSummaryChange(event.target.value)}
           placeholder="Como se chega ao resultado, se quiser registrar"
         />
       </div>
       <DialogFooter>
-        <Button type="submit" disabled={pending}>
-          Gravar
+        <Button type="submit" disabled={pending || collabPending}>
+          {collabPending ? "Sincronizando…" : "Gravar"}
         </Button>
       </DialogFooter>
     </form>
