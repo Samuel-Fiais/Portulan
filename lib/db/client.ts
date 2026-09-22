@@ -1,9 +1,17 @@
 import "server-only";
 
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
 import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
 import * as schema from "@/lib/db/schema";
 import { applyPortulanSchema } from "@/lib/db/schema-bootstrap";
+
+// Local development only: when NEON_LOCAL_PROXY_URL is set, route the Neon
+// serverless HTTP driver at a local proxy (scripts/neon-local-proxy) that
+// forwards to a plain PostgreSQL server. Never set in production, where the
+// driver talks to Neon directly using DATABASE_URL.
+if (process.env.NEON_LOCAL_PROXY_URL) {
+  neonConfig.fetchEndpoint = process.env.NEON_LOCAL_PROXY_URL;
+}
 
 type Db = NeonHttpDatabase<typeof schema>;
 

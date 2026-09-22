@@ -1,0 +1,14 @@
+{
+  "name": "neon-local-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local dev proxy that speaks the Neon serverless HTTP (SQL over HTTP) protocol and forwards to a plain PostgreSQL server. Dev-only; not used in production.",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}
