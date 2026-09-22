@@ -196,7 +196,20 @@ export {
   updateAgentIdentity,
 } from "@/lib/db/agent-identities";
 
-export { listAuditEvents, listAuditEventsForIdentity, recordAuditEvent } from "@/lib/db/audit-events";
+export {
+  countAuditEventsForWorkspace,
+  listAuditEvents,
+  listAuditEventsForIdentity,
+  queryAuditEvents,
+  recordAuditEvent,
+  type AuditEventQuery,
+} from "@/lib/db/audit-events";
+
+export {
+  announceCollabCommandApplied,
+  announceCollabCommandWithWorkspaceFeed,
+  type CollabCommandAnnounceInput,
+} from "@/lib/db/collab-command-announce";
 
 export {
   bumpCollabRoomPolicyVersion,

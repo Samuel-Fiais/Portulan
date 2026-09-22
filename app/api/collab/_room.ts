@@ -3,6 +3,8 @@ import {
   resolveCollabRoomAccess,
   type CollabRoomAccessGrant,
 } from "@/lib/collab-room-access";
+import { collabRealtimeScopeEnabled } from "@/lib/collab-feature-flags";
+import { trackCollabRequestBlocked } from "@/lib/collab-telemetry";
 import { collabRoomKey } from "@/lib/collab-rooms";
 
 export type CollabRouteContext = {
@@ -21,6 +23,14 @@ export async function openCollabRoom(
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  if (!collabRealtimeScopeEnabled("presence")) {
+    trackCollabRequestBlocked();
+    return Response.json(
+      { error: "Colaboração ao vivo desligada neste ambiente.", collabDisabled: true },
+      { status: 503 },
+    );
   }
 
   const { subjectType, subjectId } = await context.params;

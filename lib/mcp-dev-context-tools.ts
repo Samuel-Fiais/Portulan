@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { liveAnnounceCommand } from "@/lib/collab-live-actions";
+import type { CollabSubjectType } from "@/lib/collab-rooms";
+import { touchAgentCollabPresence } from "@/lib/db/collab-agent-presence";
 import {
   addAcceptanceCriterion,
   addContextPackItem,
@@ -47,7 +50,6 @@ import {
   listRevisionCriteria,
   listRevisionItems,
   listRevisionSources,
-  recordAuditEvent,
   registerAuthorizedProgress,
   releaseImplementationTask,
   renewImplementationTaskLease,
@@ -264,19 +266,75 @@ export function registerDevContextMcpTools(
     return { ok: true as const, pack, reasons: [] as string[] };
   }
 
+  function collabSubjectFromAuditTarget(
+    targetType: string,
+    targetId: string,
+  ): { subjectType: CollabSubjectType; subjectId: string } | null {
+    switch (targetType) {
+      case "task":
+        return { subjectType: "implementation_task", subjectId: targetId };
+      case "pack":
+        return { subjectType: "context_pack", subjectId: targetId };
+      case "document":
+        return { subjectType: "document", subjectId: targetId };
+      case "project":
+        return { subjectType: "project", subjectId: targetId };
+      case "repository":
+        return { subjectType: "repository", subjectId: targetId };
+      default:
+        return null;
+    }
+  }
+
+  const MCP_ACTION_COMMAND: Record<string, string> = {
+    claim_implementation_task: "task.claimed",
+    release_implementation_task: "task.released",
+    renew_implementation_task_lease: "task.lease_renewed",
+    report_implementation_progress: "task.progress_reported",
+    report_implementation_result: "task.result_reported",
+    assign_implementation_task: "task.assigned",
+    accept_implementation_task_result: "task.accepted",
+    add_implementation_task_source: "task.source_linked",
+    delete_implementation_task_source: "task.source_removed",
+    approve_context_pack: "pack.approved",
+    submit_context_pack_review: "pack.submitted",
+  };
+
   async function audit(action: string, targetType: string, targetId: string) {
     const store = getStore();
     if (!store.workspaceId) return;
-    await recordAuditEvent({
-      workspaceId: store.workspaceId,
+    const subject = collabSubjectFromAuditTarget(targetType, targetId);
+    if (!subject) return;
+    const command = MCP_ACTION_COMMAND[action] ?? action;
+    const actor = {
       userId: store.userId,
       agentIdentityId: store.agentIdentityId,
       mcpTokenId: store.tokenId,
-      action,
-      targetType,
-      targetId,
-      clientInfo: store.clientInfo,
+    };
+    await liveAnnounceCommand({
+      workspaceId: store.workspaceId,
+      subjectType: subject.subjectType,
+      subjectId: subject.subjectId,
+      command,
+      actor,
+      mirrorToWorkspaceFeed: command.startsWith("task.") || command.startsWith("workspace."),
+      payload: { source: "mcp", action },
     });
+    if (store.agentIdentityId && subject.subjectType === "implementation_task") {
+      const intention =
+        action === "claim_implementation_task" || action === "report_implementation_progress"
+          ? "automating"
+          : action === "release_implementation_task"
+            ? "waiting"
+            : "viewing";
+      await touchAgentCollabPresence({
+        workspaceId: store.workspaceId,
+        subjectType: subject.subjectType,
+        subjectId: subject.subjectId,
+        actor,
+        intention,
+      });
+    }
   }
 
   async function requireEditablePack(packLocator: string, action: AgentAction) {

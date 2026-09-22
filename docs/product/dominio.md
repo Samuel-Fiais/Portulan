@@ -376,7 +376,7 @@ O par **tipo + identificador** do artefato que uma sala representa. Um assunto, 
 | Plano de navegação | plano da revisão em rascunho | aprovar a revisão |
 | Manobra e Lance | objetivo, descrição, estado editável, responsável | assumir, renovar, soltar, reportar, bloquear, aceitar |
 | Expedição e Embarcação | nome, objetivo, notas, vínculos | excluir |
-| Porto (tripulação e convites) | — | convidar, revogar, mudar papel, transferir capitania, excluir porto |
+| Porto (tripulação e convites) | — (sala `workspace` espelha feed transversal) | convidar, revogar, mudar papel, transferir capitania, excluir porto |
 | Compartilhamento e cartas-fonte | — | convidar, revogar, mudar papel, vincular ou remover fonte |
 
 Release publicada e revisão aprovada de Rumo **não** são assunto colaborativo: são imutáveis. O caminho é nova publicação ou nova revisão (RN-120).

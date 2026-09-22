@@ -37,6 +37,7 @@ import {
   validateWorkspaceDeletion,
   validateWorkspaceName,
 } from "@/lib/workspace-policy";
+import { liveAnnounceCommand } from "@/lib/collab-live-actions";
 import {
   workspaceIdentitySchema,
   workspaceInputSchema,
@@ -149,6 +150,15 @@ export async function setWorkspaceMemberRoleAction(
   if (!validated.ok) return { ok: false as const, error: validated.error };
 
   await setWorkspaceMemberRole(workspaceId, targetUserId, parsed.data);
+  await liveAnnounceCommand({
+    workspaceId,
+    subjectType: "workspace",
+    subjectId: workspaceId,
+    command: "workspace.member.role_changed",
+    actor: { userId: context.userId },
+    idempotencyKey: `role-${targetUserId}-${parsed.data}`,
+    payload: { targetUserId, role: parsed.data },
+  });
   revalidateWorkspaceSurfaces();
   return { ok: true as const };
 }
@@ -173,6 +183,15 @@ export async function removeWorkspaceMemberAction(workspaceId: string, targetUse
   await revokeMcpTokensForWorkspaceUser(workspaceId, targetUserId);
   const { revokeCollabAccessForWorkspaceMember } = await import("@/lib/collab-revocation");
   await revokeCollabAccessForWorkspaceMember(workspaceId, targetUserId);
+  await liveAnnounceCommand({
+    workspaceId,
+    subjectType: "workspace",
+    subjectId: workspaceId,
+    command: "workspace.member.removed",
+    actor: { userId: context.userId },
+    idempotencyKey: `removed-${targetUserId}`,
+    payload: { targetUserId },
+  });
   revalidateWorkspaceSurfaces();
   return { ok: true as const };
 }
@@ -193,6 +212,14 @@ export async function leaveWorkspaceAction(workspaceId: string) {
   await revokeMcpTokensForWorkspaceUser(workspaceId, context.userId);
   const { revokeCollabAccessForWorkspaceMember } = await import("@/lib/collab-revocation");
   await revokeCollabAccessForWorkspaceMember(workspaceId, context.userId);
+  await liveAnnounceCommand({
+    workspaceId,
+    subjectType: "workspace",
+    subjectId: workspaceId,
+    command: "workspace.member.left",
+    actor: { userId: context.userId },
+    idempotencyKey: `left-${context.userId}`,
+  });
   const remaining = memberships.find((item) => item.id !== workspaceId);
   if (remaining) await setActiveWorkspaceCookie(remaining.id);
   revalidateWorkspaceSurfaces();
@@ -215,6 +242,15 @@ export async function transferCaptaincyAction(workspaceId: string, targetUserId:
   if (!validated.ok) return { ok: false as const, error: validated.error };
 
   await transferWorkspaceCaptaincy(workspaceId, context.userId, targetUserId);
+  await liveAnnounceCommand({
+    workspaceId,
+    subjectType: "workspace",
+    subjectId: workspaceId,
+    command: "workspace.captaincy.transferred",
+    actor: { userId: context.userId },
+    idempotencyKey: `captaincy-${targetUserId}`,
+    payload: { targetUserId },
+  });
   revalidateWorkspaceSurfaces();
   return { ok: true as const };
 }
@@ -264,6 +300,15 @@ export async function createWorkspaceInviteAction(workspaceId: string, input: un
     maxUses: parsed.data.maxUses,
   });
 
+  await liveAnnounceCommand({
+    workspaceId,
+    subjectType: "workspace",
+    subjectId: workspaceId,
+    command: "workspace.invite.created",
+    actor: { userId: context.userId },
+    idempotencyKey: `invite-${invite.id}`,
+    payload: { inviteId: invite.id, role: parsed.data.role },
+  });
   revalidateWorkspaceSurfaces();
   return { ok: true as const, token, invite };
 }
@@ -278,6 +323,15 @@ export async function revokeWorkspaceInviteAction(workspaceId: string, inviteId:
 
   const revoked = await revokeWorkspaceInvite(workspaceId, inviteId);
   if (!revoked) return { ok: false as const, error: "Convite não encontrado." };
+  await liveAnnounceCommand({
+    workspaceId,
+    subjectType: "workspace",
+    subjectId: workspaceId,
+    command: "workspace.invite.revoked",
+    actor: { userId: context.userId },
+    idempotencyKey: `invite-revoked-${inviteId}`,
+    payload: { inviteId },
+  });
   revalidateWorkspaceSurfaces();
   return { ok: true as const };
 }

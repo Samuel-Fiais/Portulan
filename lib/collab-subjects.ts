@@ -24,7 +24,8 @@ export type CollabSubjectSnapshot =
   | { subjectType: "implementation_plan"; workspaceId: string; revisionId: string | null }
   | { subjectType: "implementation_task"; workspaceId: string; status: ImplementationTaskStatus }
   | { subjectType: "project"; workspaceId: string }
-  | { subjectType: "repository"; workspaceId: string };
+  | { subjectType: "repository"; workspaceId: string }
+  | { subjectType: "workspace"; workspaceId: string };
 
 /** Carta e gabarito sem porto são acervo legado, visível de qualquer porto; o resto é do porto. */
 export function collabSubjectBelongsToWorkspace(
@@ -58,6 +59,8 @@ export function collabSubjectContentMutable(snapshot: CollabSubjectSnapshot): bo
       return snapshot.revisionId === null;
     case "implementation_task":
       return snapshot.status !== "accepted";
+    case "workspace":
+      return false;
     default:
       return true;
   }

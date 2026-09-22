@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { auditEvents } from "@/lib/db/schema";
 import { sanitizeAuditPayload, type AuditEventDraft } from "@/lib/audit-policy";
@@ -78,4 +78,47 @@ export async function listAuditEventsForIdentity(workspaceId: string, agentIdent
     .orderBy(desc(auditEvents.createdAt))
     .limit(limit);
   return rows.map(mapRow);
+}
+
+export type AuditEventQuery = {
+  workspaceId: string;
+  action?: string;
+  targetType?: string;
+  targetId?: string;
+  agentIdentityId?: string;
+  correlationId?: string;
+  createdAfter?: string;
+  createdBefore?: string;
+  limit?: number;
+};
+
+/** Diário pesquisável por identidade, ferramenta, alvo, período e correlação (RN-122). */
+export async function queryAuditEvents(input: AuditEventQuery) {
+  const db = await getDb();
+  const clauses = [eq(auditEvents.workspaceId, input.workspaceId)];
+  if (input.action) clauses.push(eq(auditEvents.action, input.action));
+  if (input.targetType) clauses.push(eq(auditEvents.targetType, input.targetType));
+  if (input.targetId) clauses.push(eq(auditEvents.targetId, input.targetId));
+  if (input.agentIdentityId) clauses.push(eq(auditEvents.agentIdentityId, input.agentIdentityId));
+  if (input.correlationId) clauses.push(eq(auditEvents.correlationId, input.correlationId));
+  if (input.createdAfter) clauses.push(gte(auditEvents.createdAt, input.createdAfter));
+  if (input.createdBefore) clauses.push(lte(auditEvents.createdAt, input.createdBefore));
+
+  const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
+  const rows = await db
+    .select()
+    .from(auditEvents)
+    .where(and(...clauses))
+    .orderBy(desc(auditEvents.createdAt))
+    .limit(limit);
+  return rows.map(mapRow);
+}
+
+export async function countAuditEventsForWorkspace(workspaceId: string) {
+  const db = await getDb();
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(auditEvents)
+    .where(eq(auditEvents.workspaceId, workspaceId));
+  return row?.count ?? 0;
 }

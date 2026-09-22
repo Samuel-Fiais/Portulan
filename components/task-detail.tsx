@@ -19,7 +19,9 @@ import { TaskStatusSelect } from "@/components/task-status-select";
 import { TaskSourceSection } from "@/components/task-source-section";
 import type { CartaOption } from "@/components/context-pack-detail";
 import { WorkspaceBackLink } from "@/components/workspace-back-link";
+import { CollabActivityTimeline } from "@/components/collab-activity-timeline";
 import { CollabPresenceStrip } from "@/components/collab-presence-strip";
+import { useCollabActivity } from "@/components/use-collab-activity";
 import { useCollabPresence } from "@/components/use-collab-presence";
 import { Button } from "@/components/ui/button";
 import {
@@ -185,6 +187,14 @@ export function TaskDetail({
     subjectId: task.id,
     workspaceId: task.workspaceId,
     intention: canEditPack ? "automating" : "viewing",
+  });
+  const [activityFilter, setActivityFilter] = useState<"all" | "human" | "agent" | "commands">("all");
+  const { events: liveActivity, loading: activityLoading } = useCollabActivity({
+    subjectType: "implementation_task",
+    subjectId: task.id,
+    workspaceId: task.workspaceId,
+    actorNames: userNames,
+    agentNames,
   });
 
   function submitReport(kind: "progress" | "result") {
@@ -404,6 +414,37 @@ export function TaskDetail({
                 <p className="alert-body">Há uma maré contrária nesta {kindLabel}.</p>
               </aside>
             ) : null}
+
+            <section className="manobra-panel">
+              <header className="manobra-panel__header">
+                <h2 className="manobra-panel__title">Atividade ao vivo</h2>
+                <div className="collab-activity-filters" role="group" aria-label="Filtrar atividade">
+                  {(
+                    [
+                      ["all", "Tudo"],
+                      ["commands", "Comandos"],
+                      ["human", "Humanos"],
+                      ["agent", "Agentes"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`collab-activity-filter${activityFilter === value ? " is-active" : ""}`}
+                      onClick={() => setActivityFilter(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </header>
+              <CollabActivityTimeline
+                events={liveActivity}
+                loading={activityLoading}
+                filter={activityFilter}
+                className="manobra-activity-timeline"
+              />
+            </section>
 
             <section className="manobra-panel">
               <header className="manobra-panel__header">

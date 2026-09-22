@@ -18,6 +18,8 @@ export const collabSubjectTypes = [
   "implementation_task",
   "project",
   "repository",
+  /** Feed transversal do porto — tripulação, convites e espelho de comandos (RN-119). */
+  "workspace",
 ] as const;
 
 export type CollabSubjectType = (typeof collabSubjectTypes)[number];
@@ -30,6 +32,7 @@ export const COLLAB_SUBJECT_TYPE_LABELS: Record<CollabSubjectType, string> = {
   implementation_task: "Manobra ou Lance",
   project: "Expedição",
   repository: "Embarcação",
+  workspace: "Porto",
 };
 
 export type CollabRoomSubject = {

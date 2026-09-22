@@ -8,6 +8,7 @@ import {
   type CollabPresenceParticipant,
   type CollabPresenceRoom,
 } from "@/lib/collab-presence-client";
+import { collabRealtimeClientEnabled } from "@/lib/collab-feature-flags";
 import type { CollabIntention } from "@/lib/collab-presence";
 
 type UseCollabPresenceInput = {
@@ -25,6 +26,7 @@ export function useCollabPresence({
   intention,
   enabled = true,
 }: UseCollabPresenceInput) {
+  const collabOn = enabled && collabRealtimeClientEnabled("presence");
   const [participants, setParticipants] = useState<CollabPresenceParticipant[]>([]);
   const [room, setRoom] = useState<CollabPresenceRoom | null>(null);
   const [accessLost, setAccessLost] = useState(false);
@@ -35,7 +37,7 @@ export function useCollabPresence({
   const basePath = collabPresenceApiPath(subjectType, subjectId);
 
   const heartbeat = useCallback(async () => {
-    if (!enabled || accessLost) return;
+    if (!collabOn || accessLost) return;
     const policyVersion = policyRef.current;
     const response = await fetch(`${basePath}${collabPresenceQuery(workspaceId, policyVersion)}`, {
       method: "POST",
@@ -66,10 +68,10 @@ export function useCollabPresence({
     }
     setParticipants(payload.presence ?? []);
     setAccessLost(false);
-  }, [accessLost, basePath, enabled, workspaceId]);
+  }, [accessLost, basePath, collabOn, workspaceId]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!collabOn) return;
     let cancelled = false;
     const tick = async () => {
       if (cancelled) return;
@@ -86,12 +88,12 @@ export function useCollabPresence({
         body: JSON.stringify({ action: "leave", intention: intentionRef.current }),
       }).catch(() => undefined);
     };
-  }, [basePath, enabled, heartbeat, workspaceId]);
+  }, [basePath, collabOn, heartbeat, workspaceId]);
 
   useEffect(() => {
-    if (!enabled || accessLost) return;
+    if (!collabOn || accessLost) return;
     void heartbeat();
-  }, [intention, enabled, accessLost, heartbeat]);
+  }, [intention, collabOn, accessLost, heartbeat]);
 
-  return { participants, room, accessLost };
+  return { participants, room, accessLost, enabled: collabOn };
 }

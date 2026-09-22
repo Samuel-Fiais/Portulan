@@ -2803,3 +2803,63 @@
     gap: var(--sp-3);
   }
 }
+
+.collab-activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.collab-activity-filter {
+  border: 1px solid var(--border-subtle, #d8dee9);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.collab-activity-filter.is-active {
+  background: var(--accent-soft, #eef2ff);
+  border-color: var(--accent, #4f46e5);
+}
+
+.collab-activity-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.collab-activity-item__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: baseline;
+  font-size: 0.8125rem;
+}
+
+.collab-activity-item__actor {
+  font-weight: 600;
+}
+
+.collab-activity-item--agent .collab-activity-item__actor {
+  color: var(--accent, #4f46e5);
+}
+
+.collab-activity-item__summary {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+}
+
+.collab-activity-item__correlation {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.collab-activity-empty {
+  margin: 0;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}

@@ -1125,6 +1125,16 @@ export async function migrateLegacyPortulanTables(db: Db): Promise<void> {
       `ALTER TABLE ${PORTULAN_PG_SCHEMA}.coordination_threads ADD COLUMN IF NOT EXISTS board_number INTEGER NOT NULL DEFAULT 0`,
     );
   }
+  if (await portulanTableExists(db, "collab_rooms")) {
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.collab_rooms DROP CONSTRAINT IF EXISTS collab_rooms_subject_type_check`,
+    );
+    await executeSchemaStatement(
+      db,
+      `ALTER TABLE ${PORTULAN_PG_SCHEMA}.collab_rooms ADD CONSTRAINT collab_rooms_subject_type_check CHECK (subject_type IN ('document', 'template', 'context_pack', 'implementation_plan', 'implementation_task', 'project', 'repository', 'workspace'))`,
+    );
+  }
   if (await portulanTableExists(db, "coordination_messages")) {
     await executeSchemaStatement(
       db,

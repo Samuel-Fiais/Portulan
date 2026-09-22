@@ -559,7 +559,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_events_created_at ON portulan.audit_events 
 CREATE TABLE IF NOT EXISTS portulan.collab_rooms (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES portulan.workspaces(id) ON DELETE CASCADE,
-  subject_type TEXT NOT NULL CHECK (subject_type IN ('document', 'template', 'context_pack', 'implementation_plan', 'implementation_task', 'project', 'repository')),
+  subject_type TEXT NOT NULL CHECK (subject_type IN ('document', 'template', 'context_pack', 'implementation_plan', 'implementation_task', 'project', 'repository', 'workspace')),
   subject_id TEXT NOT NULL,
   policy_version INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -213,5 +213,13 @@ async function resolveSubject(input: {
         snapshot: { subjectType: "repository", workspaceId: repository.workspaceId },
       };
     }
+    case "workspace": {
+      if (input.subjectId !== workspaceId) return null;
+      return {
+        subjectId: workspaceId,
+        workspaceId,
+        snapshot: { subjectType: "workspace", workspaceId },
+      };
+    }
   }
 }

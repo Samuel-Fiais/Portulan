@@ -392,6 +392,19 @@ export async function addDocumentShareAction(documentId: string, input: unknown)
   const result = await addDocumentShare(documentId, parsed.data.email, parsed.data.role, session.user.id);
   if (!result.ok) return { ok: false as const, error: result.error };
 
+  if (document.workspaceId) {
+    const { liveAnnounceCommand } = await import("@/lib/collab-live-actions");
+    await liveAnnounceCommand({
+      workspaceId: document.workspaceId,
+      subjectType: "document",
+      subjectId: document.id,
+      command: "document.share.created",
+      actor: { userId: session.user.id },
+      idempotencyKey: `share-${result.share.id}`,
+      payload: { shareId: result.share.id, role: parsed.data.role },
+    });
+  }
+
   revalidatePath(`/documents/${documentId}`);
   revalidatePath(`/documents/${document.slug}`);
   return { ok: true as const, share: result.share };
@@ -414,6 +427,19 @@ export async function updateDocumentShareAction(documentId: string, shareId: str
 
   const share = await updateDocumentShareRole(shareId, documentId, parsed.data.role);
   if (!share.ok) return { ok: false as const, error: share.error };
+
+  if (document.workspaceId) {
+    const { liveAnnounceCommand } = await import("@/lib/collab-live-actions");
+    await liveAnnounceCommand({
+      workspaceId: document.workspaceId,
+      subjectType: "document",
+      subjectId: document.id,
+      command: "document.share.updated",
+      actor: { userId: session.user.id },
+      idempotencyKey: `share-role-${shareId}-${parsed.data.role}`,
+      payload: { shareId, role: parsed.data.role },
+    });
+  }
 
   revalidatePath(`/documents/${documentId}`);
   revalidatePath(`/documents/${document.slug}`);
@@ -441,6 +467,16 @@ export async function revokeDocumentShareAction(documentId: string, shareId: str
       workspaceId: document.workspaceId,
       documentId,
       userId: revoked.userId,
+    });
+    const { liveAnnounceCommand } = await import("@/lib/collab-live-actions");
+    await liveAnnounceCommand({
+      workspaceId: document.workspaceId,
+      subjectType: "document",
+      subjectId: document.id,
+      command: "document.share.revoked",
+      actor: { userId: session.user.id },
+      idempotencyKey: `share-revoked-${shareId}`,
+      payload: { shareId },
     });
   }
 

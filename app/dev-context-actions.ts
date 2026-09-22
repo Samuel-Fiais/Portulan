@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { z } from "zod";
+import { liveAnnounceCommand } from "@/lib/collab-live-actions";
 import { getWorkspaceMembership } from "@/lib/db/workspaces";
 import {
   addAcceptanceCriterion,
@@ -657,6 +658,16 @@ export async function updateImplementationTaskStatusAction(taskId: string, statu
   if (!validated.ok) return { ok: false as const, error: validated.error };
   const updated = await updateImplementationTaskStatus(taskId, ctx.workspaceId, status);
   if (!updated) return { ok: false as const, error: "Não foi possível atualizar o estado." };
+  await liveAnnounceCommand({
+    workspaceId: ctx.workspaceId,
+    subjectType: "implementation_task",
+    subjectId: updated.id,
+    command: status === "blocked" ? "task.blocked" : "task.status_changed",
+    actor: { userId: ctx.userId },
+    idempotencyKey: `status-${updated.id}-${status}`,
+    payload: { status },
+    mirrorToWorkspaceFeed: true,
+  });
   revalidateDev();
   return { ok: true as const, task: updated };
 }
@@ -693,6 +704,19 @@ export async function assignImplementationTaskAction(
     assigneeAgentIdentityId: input.assigneeAgentIdentityId ?? null,
   });
   if (!task) return { ok: false as const, error: "Manobra não encontrada." };
+  await liveAnnounceCommand({
+    workspaceId: ctx.workspaceId,
+    subjectType: "implementation_task",
+    subjectId: task.id,
+    command: "handoff",
+    actor: { userId: ctx.userId },
+    idempotencyKey: `assign-${task.id}-${task.updatedAt}`,
+    payload: {
+      assigneeUserId: task.assigneeUserId,
+      assigneeAgentIdentityId: task.assigneeAgentIdentityId,
+    },
+    mirrorToWorkspaceFeed: true,
+  });
   revalidateDev();
   return { ok: true as const, task };
 }
@@ -714,6 +738,15 @@ export async function acceptTaskResultAction(taskId: string) {
     await acceptReportedChildren(task.id, ctx.workspaceId);
   }
   await setTaskStatus(taskId, ctx.workspaceId, "accepted");
+  await liveAnnounceCommand({
+    workspaceId: ctx.workspaceId,
+    subjectType: "implementation_task",
+    subjectId: taskId,
+    command: "task.accepted",
+    actor: { userId: ctx.userId },
+    idempotencyKey: `accepted-${taskId}`,
+    mirrorToWorkspaceFeed: true,
+  });
   revalidateDev();
   return { ok: true as const };
 }
@@ -765,6 +798,16 @@ export async function createCoordinationMessageAction(input: {
   });
   if (input.isBlocker && input.subjectType === "task") {
     await setTaskStatus(input.subjectId, ctx.workspaceId, "blocked");
+    await liveAnnounceCommand({
+      workspaceId: ctx.workspaceId,
+      subjectType: "implementation_task",
+      subjectId: input.subjectId,
+      command: "task.blocked",
+      actor: { userId: ctx.userId },
+      idempotencyKey: `blocker-${created.thread.id}`,
+      payload: { threadId: created.thread.id },
+      mirrorToWorkspaceFeed: true,
+    });
   }
   revalidateDev();
   return { ok: true as const, thread: created.thread, message: created.message };

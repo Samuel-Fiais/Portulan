@@ -63,6 +63,7 @@ import {
 } from "@/lib/mcp-blob-upload";
 
 import { enforceAgentMcpToolCall } from "@/lib/agent-mcp-access";
+import { createMcpCorrelationId, recordMcpToolAudit } from "@/lib/mcp-audit";
 import { registerDevContextMcpTools, type DevContextMcpStore } from "@/lib/mcp-dev-context-tools";
 
 export const runtime = "nodejs";
@@ -899,8 +900,11 @@ async function handler(request: Request) {
 
   let clientInfo: unknown = authResult.lastClientInfo ?? null;
   let bodyText: string | null = null;
-  let parsedBody: { id?: unknown; method?: string; params?: { clientInfo?: unknown; name?: string } } | null =
-    null;
+  let parsedBody: {
+    id?: unknown;
+    method?: string;
+    params?: { clientInfo?: unknown; name?: string; arguments?: unknown };
+  } | null = null;
 
   if (request.method === "POST") {
     try {
@@ -916,13 +920,41 @@ async function handler(request: Request) {
     await recordMcpClientInfo(authResult.tokenId, clientInfo);
   }
 
+  const toolCallStartedAt = Date.now();
+  let mcpCorrelationId: string | undefined;
+  let mcpToolName: string | undefined;
+  let mcpToolArgs: unknown;
+
   if (parsedBody?.method === "tools/call" && parsedBody.params?.name) {
+    mcpToolName = parsedBody.params.name;
+    mcpToolArgs = parsedBody.params.arguments;
+    mcpCorrelationId = createMcpCorrelationId();
     const toolAccess = await enforceAgentMcpToolCall({
       agentIdentityId: authResult.agentIdentityId,
       workspaceId: authResult.workspaceId,
       toolName: parsedBody.params.name,
     });
     if (!toolAccess.ok) {
+      if (authResult.workspaceId) {
+        await recordMcpToolAudit({
+          context: {
+            workspaceId: authResult.workspaceId,
+            userId: authResult.userId,
+            agentIdentityId: authResult.agentIdentityId,
+            mcpTokenId: authResult.tokenId,
+            clientInfo,
+          },
+          toolName: parsedBody.params.name,
+          startedAtMs: toolCallStartedAt,
+          outcome: "denied",
+          correlationId: mcpCorrelationId,
+          argumentSummary:
+            mcpToolArgs && typeof mcpToolArgs === "object"
+              ? (mcpToolArgs as Record<string, unknown>)
+              : null,
+          errorMessage: toolAccess.error,
+        }).catch(() => undefined);
+      }
       return Response.json({
         jsonrpc: "2.0",
         id: parsedBody.id ?? null,
@@ -940,7 +972,7 @@ async function handler(request: Request) {
         })
       : request;
 
-  return mcpUserStore.run(
+  const response = await mcpUserStore.run(
     {
       userId: authResult.userId,
       workspaceId: authResult.workspaceId,
@@ -950,6 +982,48 @@ async function handler(request: Request) {
     },
     () => mcpHandler(nextRequest),
   );
+
+  if (mcpToolName && authResult.workspaceId && parsedBody?.method === "tools/call") {
+    const cloned = response.clone();
+    const text = await cloned.text().catch(() => "");
+    let outcome: "success" | "error" = "success";
+    let errorMessage: string | null = null;
+    try {
+      const body = text ? JSON.parse(text) : null;
+      if (body?.error?.message) {
+        outcome = "error";
+        errorMessage = String(body.error.message);
+      } else if (body?.result?.isError) {
+        outcome = "error";
+        const content = body.result?.content?.[0]?.text;
+        errorMessage = typeof content === "string" ? content.slice(0, 240) : "Ferramenta retornou erro.";
+      }
+    } catch {
+      outcome = "error";
+      errorMessage = "Resposta MCP inválida.";
+    }
+
+    await recordMcpToolAudit({
+      context: {
+        workspaceId: authResult.workspaceId,
+        userId: authResult.userId,
+        agentIdentityId: authResult.agentIdentityId,
+        mcpTokenId: authResult.tokenId,
+        clientInfo,
+      },
+      toolName: mcpToolName,
+      startedAtMs: toolCallStartedAt,
+      outcome,
+      correlationId: mcpCorrelationId,
+      argumentSummary:
+        mcpToolArgs && typeof mcpToolArgs === "object"
+          ? (mcpToolArgs as Record<string, unknown>)
+          : null,
+      errorMessage,
+    }).catch(() => undefined);
+  }
+
+  return response;
 }
 
 export { handler as GET, handler as POST, handler as DELETE };
