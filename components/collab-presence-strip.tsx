@@ -1,5 +1,7 @@
 "use client";
 
+import "./collab-presence-strip.css";
+
 import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/user-avatar";
