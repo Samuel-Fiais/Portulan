@@ -1,6 +1,7 @@
 "use client";
 
 import "./agent-tool-picker.css";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MCP_TOOL_COUNT, MCP_TOOL_GROUPS } from "@/lib/mcp-tool-catalog";
 
@@ -36,12 +37,12 @@ export function AgentToolPicker({
           {selected.size} de {MCP_TOOL_COUNT} ferramentas habilitadas
         </p>
         <div className="agent-tool-picker__bulk">
-          <button type="button" className="agent-tool-picker__bulk-btn" onClick={() => onChange(new Set(allTools))}>
+          <Button type="button" variant="ghost" size="xs" onClick={() => onChange(new Set(allTools))}>
             Marcar todas
-          </button>
-          <button type="button" className="agent-tool-picker__bulk-btn" onClick={() => onChange(new Set())}>
+          </Button>
+          <Button type="button" variant="ghost" size="xs" onClick={() => onChange(new Set())}>
             Desmarcar todas
-          </button>
+          </Button>
         </div>
       </div>
       <div className="agent-tool-picker__groups">

@@ -31,22 +31,6 @@
   gap: var(--sp-2);
 }
 
-.agent-tool-picker__bulk-btn {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--background);
-  padding: 0.35em 0.75em;
-  color: var(--text-2);
-  font: 500 11px/1.2 var(--font-sans);
-  cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease;
-}
-
-.agent-tool-picker__bulk-btn:hover {
-  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
-  color: var(--primary);
-}
-
 .agent-tool-picker__groups {
   display: grid;
   gap: var(--sp-2);

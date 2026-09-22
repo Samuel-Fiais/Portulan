@@ -25,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { DisabledBadge } from "@/components/document-badges";
 import {
   Dialog,
   DialogContent,
@@ -123,7 +124,7 @@ export function McpKeysPanel({
                       <span className="agent-identity__summary-main">
                         <span className="agent-identity__title-row">
                           <h3 className="agent-identity__name">{identity.name}</h3>
-                          {isInactive ? <span className="agent-identity__status">Desativado</span> : null}
+                          {isInactive ? <DisabledBadge /> : null}
                         </span>
                         <p className="agent-identity__summary-meta">
                           {identityOwner} · {identity.allowedMcpTools.length}/{MCP_TOOL_COUNT} ferramentas ·{" "}
