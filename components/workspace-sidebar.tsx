@@ -11,10 +11,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Ruler,
-  Sailboat,
-  Ship,
-  Telescope,
-  Waypoints,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -46,15 +42,7 @@ const NAV_GROUPS: readonly (readonly NavLeaf[])[] = [
     { href: "/library", label: "Cartoteca", icon: Map },
     { href: "/templates", label: "Gabaritos", icon: Ruler },
   ],
-  [
-    { href: "/projects", label: "Expedições", icon: Ship },
-    { href: "/repositories", label: "Embarcações", icon: Sailboat },
-    { href: "/context-packs", label: "Rumos", icon: Waypoints },
-  ],
-  [
-    { href: "/integrations", label: "Instrumentos", icon: Telescope },
-    { href: "/workspace", label: "Porto", icon: Anchor },
-  ],
+  [{ href: "/workspace", label: "Porto", icon: Anchor }],
 ];
 
 function isActive(pathname: string, href: string) {
@@ -236,7 +224,7 @@ export function WorkspaceSidebar({
               <BrandMark compact />
             </span>
           </Link>
-          {workspaces.length ? (
+          {workspaces.length > 1 ? (
             <div className="workspace-rail-porto">
               <WorkspaceSwitcher workspaces={workspaces} activeWorkspaceId={activeWorkspaceId} />
             </div>
@@ -288,7 +276,7 @@ export function WorkspaceSidebar({
             <BrandMark compact />
           </Link>
         </div>
-        {workspaces.length ? (
+        {workspaces.length > 1 ? (
           <WorkspaceSwitcher
             workspaces={workspaces}
             activeWorkspaceId={activeWorkspaceId}

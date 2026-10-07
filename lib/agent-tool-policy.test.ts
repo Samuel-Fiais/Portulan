@@ -25,8 +25,8 @@ test("seleção válida exige ao menos uma ferramenta conhecida", () => {
 });
 
 test("isAgentToolAllowed respeita lista gravada", () => {
-  const subset = ["find_context", "create_project"] as const;
-  assert.equal(isAgentToolAllowed(subset, "create_project"), true);
+  const subset = ["list_documents", "create_document"] as const;
+  assert.equal(isAgentToolAllowed(subset, "create_document"), true);
   assert.equal(isAgentToolAllowed(subset, "delete_document"), false);
   assert.equal(disabledAgentTools(subset).includes("delete_document"), true);
 });

@@ -4,9 +4,6 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import {
   countWorkspaceDocuments,
-  countWorkspacePacks,
-  countWorkspaceProjects,
-  countWorkspaceRepositories,
   createWorkspace,
   createWorkspaceInvite,
   deleteWorkspace,
@@ -259,19 +256,11 @@ export async function deleteWorkspaceAction(workspaceId: string) {
   const context = await requireMembership(workspaceId);
   if (!context.ok) return context;
 
-  const [documentCount, projectCount, repositoryCount, packCount] = await Promise.all([
-    countWorkspaceDocuments(workspaceId),
-    countWorkspaceProjects(workspaceId),
-    countWorkspaceRepositories(workspaceId),
-    countWorkspacePacks(workspaceId),
-  ]);
+  const documentCount = await countWorkspaceDocuments(workspaceId);
   const validated = validateWorkspaceDeletion({
     role: context.membership.role,
     isPersonal: context.membership.isPersonal,
     documentCount,
-    projectCount,
-    repositoryCount,
-    packCount,
   });
   if (!validated.ok) return { ok: false as const, error: validated.error };
 

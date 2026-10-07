@@ -2,17 +2,13 @@
   "name": "portulan",
   "version": "0.1.0",
   "private": true,
-  "bin": {
-    "portulan": "./cli/portulan.mjs"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test lib/**/*.test.ts",
-    "portulan": "node cli/portulan.mjs"
+    "test": "node --experimental-strip-types --test lib/**/*.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",

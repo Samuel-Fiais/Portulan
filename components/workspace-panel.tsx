@@ -2,7 +2,6 @@
 
 import "./workspace-panel.css";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -26,6 +25,7 @@ import {
 } from "@/app/workspace-actions";
 import { StatCard } from "@/components/stat-card";
 import { ThemePicker } from "@/components/theme-picker";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/user-avatar";
 import {
@@ -84,6 +84,7 @@ function memberLabel(member: WorkspaceMemberRecord) {
 
 export function WorkspacePanel({
   workspace,
+  workspaces,
   roster,
   invites,
   currentUserId,
@@ -92,6 +93,7 @@ export function WorkspacePanel({
   origin,
 }: {
   workspace: WorkspaceMembership;
+  workspaces: WorkspaceMembership[];
   roster: WorkspaceRosterEntry[];
   invites: WorkspaceInviteRecord[];
   currentUserId: string;
@@ -175,6 +177,7 @@ export function WorkspacePanel({
             </p>
           </div>
           <div className="split-row__actions porto-header-stats">
+            <WorkspaceSwitcher workspaces={workspaces} activeWorkspaceId={workspace.id} variant="drawer" />
             <div className="fp-stat-grid porto-header-stats__grid" aria-label="Resumo do porto">
               <StatCard label="Tripulação" value={rosterStats.total} note={rosterNote} />
               <StatCard label="Cartas" value={documentCount} note="no porto" />
@@ -183,7 +186,7 @@ export function WorkspacePanel({
         </header>
 
         <div className="workspace-page-body">
-          <ol className="integration-rumos">
+          <ol className="porto-steps">
             <li className="integration-step" id="porto-identidade">
               <span className="section-number" aria-hidden="true">
                 01
@@ -234,8 +237,7 @@ export function WorkspacePanel({
               <div className="integration-step-body">
                 <h2>Tripulação</h2>
                 <p>
-                  Humanos e agentes de bordo compõem o porto. Capitão e imediato cuidam das pessoas;
-                  agentes têm responsável e configuração própria em Instrumentos.
+                  Capitão e imediato cuidam de quem entra neste porto e de qual papel cada pessoa tem.
                 </p>
 
                 <div className="mcp-token-table-wrap">
@@ -243,8 +245,7 @@ export function WorkspacePanel({
                         <thead>
                           <tr>
                             <th scope="col">Membro</th>
-                            <th scope="col">Tipo</th>
-                            <th scope="col">Papel / responsável</th>
+                            <th scope="col">Papel</th>
                             {showCrewActions ? (
                               <th scope="col">
                                 <span className="sr-only">Ações</span>
@@ -254,48 +255,6 @@ export function WorkspacePanel({
                         </thead>
                         <tbody>
                           {roster.map((entry) => {
-                            if (entry.kind === "agent") {
-                              const { agent, ownerName } = entry;
-                              const isOwner = agent.ownerUserId === currentUserId;
-                              const inactive = agent.status === "inactive";
-                              return (
-                                <tr
-                                  key={`agent-${agent.id}`}
-                                  className={cn(inactive && "porto-crew-row--inactive")}
-                                >
-                                  <td>
-                                    <div className="porto-crew-person">
-                                      <UserAvatar name={agent.name} kind="agent" size="md" />
-                                      <div className="porto-crew-meta">
-                                        <strong>
-                                          {agent.name}
-                                          {isOwner ? <span className="porto-tag">seu agente</span> : null}
-                                        </strong>
-                                        <span>
-                                          Agente de bordo
-                                          {inactive ? " · inativo" : ""}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <span className="porto-kind porto-kind--agent">Agente</span>
-                                  </td>
-                                  <td>
-                                    <div className="porto-agent-role">
-                                      <span className="porto-role">Responsável: {ownerName}</span>
-                                      {isOwner ? (
-                                        <Link href="/integrations#chaves-mcp" className="porto-agent-link">
-                                          Gerenciar em Instrumentos
-                                        </Link>
-                                      ) : null}
-                                    </div>
-                                  </td>
-                                  {showCrewActions ? <td /> : null}
-                                </tr>
-                              );
-                            }
-
                             const member = entry.member;
                             const isSelf = member.userId === currentUserId;
                             return (
@@ -317,9 +276,6 @@ export function WorkspacePanel({
                                       <span>{member.email ?? member.login}</span>
                                     </div>
                                   </div>
-                                </td>
-                                <td>
-                                  <span className="porto-kind porto-kind--human">Humano</span>
                                 </td>
                                 <td>
                                   {manageCrew && member.role !== "owner" && !isSelf ? (

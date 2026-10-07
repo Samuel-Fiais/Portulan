@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Bot, Palette } from "lucide-react";
+import { ArrowRight, Palette } from "lucide-react";
 import { DocumentSummaryList } from "@/components/document-summary-list";
 import { NewDocumentDialog } from "@/components/new-document-dialog";
 import { StatCard } from "@/components/stat-card";
@@ -34,8 +34,7 @@ export function HomeDashboard({
               O que está em <span>andamento.</span>
             </h1>
             <p className="fp-lead">
-              Resumo da cartoteca, cartas recentes e atalhos para
-              gabaritos e agentes.
+              Resumo da cartoteca, cartas recentes e atalho para gabaritos.
             </p>
           </div>
           <NewDocumentDialog templates={templates} />
@@ -109,14 +108,6 @@ export function HomeDashboard({
             <div>
               <h3>Gabaritos</h3>
               <p>Paleta, logo e identidade editorial dos relatórios.</p>
-            </div>
-            <ArrowRight />
-          </Link>
-          <Link href="/integrations" className="fp-card dashboard-shortcut">
-            <Bot />
-            <div>
-              <h3>Instrumentos</h3>
-              <p>Tokens MCP e skill para agentes manterem a cartoteca.</p>
             </div>
             <ArrowRight />
           </Link>

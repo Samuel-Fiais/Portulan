@@ -11,7 +11,7 @@ Guia para agentes operarem a cartoteca técnica **Portulan** via MCP Streamable 
 
 1. App Portulan acessível (ex.: `https://seu-dominio.com` ou `http://localhost:3000` em desenvolvimento)
 2. Endpoint MCP: `{origin}/api/mcp`
-3. Servidor MCP: `portulan` v0.8.0
+3. Servidor MCP: `portulan` v0.10.0
 4. Conta Portulan com login GitHub e **token MCP pessoal**
 
 Sem o app rodando ou sem token válido, conexões falham (timeout ou 401).
@@ -21,8 +21,8 @@ Sem o app rodando ou sem token válido, conexões falham (timeout ou 401).
 O MCP opera **como o usuário Portulan**, não como chave global compartilhada.
 
 1. Faça login no Portulan com GitHub ou com handle/e-mail e senha
-2. Abra **Instrumentos → MCP** (confira antes em que porto você está — o token fica preso a ele)
-3. Clique em **Gerar token MCP**
+2. Abra o modal da conta (confira antes em que porto você está — o token fica preso a ele)
+3. Gere uma chave MCP
 4. Copie o token (`ptl_…`) — ele só é exibido uma vez
 5. Envie em **toda** requisição MCP:
 
@@ -58,11 +58,11 @@ Se o cliente só suporta stdio, use um proxy HTTP como `mcp-remote`:
 }
 ```
 
-Revogue tokens comprometidos na tela Instrumentos a qualquer momento.
+Revogue chaves comprometidas no modal da conta a qualquer momento.
 
 ## Porto (workspace) e visibilidade
 
-O Portulan organiza o acervo em **portos** (workspaces), cada um com tripulação própria. O token MCP opera em **um** porto, fixado quando foi gerado: documentos e templates criados pelo agente nascem nele, e as listagens mostram o acervo desse porto mais os documentos compartilhados nominalmente com a pessoa. Use `list_workspaces` para ver os portos e qual deles é o do token; para operar em outro porto, troque de porto na UI e gere um token novo. `create_workspace` abre um porto novo, e `workspace_id` em `update_document` ou `update_template` move documento e template entre portos — sem mudar o porto do token.
+O Portulan organiza o acervo em **portos** (workspaces), cada um com tripulação própria. O token MCP opera em **um** porto, fixado quando foi gerado: documentos e templates criados pelo agente nascem nele, e as listagens mostram o acervo desse porto mais os documentos compartilhados nominalmente com a pessoa. Use `list_workspaces` para ver os portos e qual deles é o do token; para operar em outro porto, troque de porto na UI e gere um token novo. `workspace_id` em `update_document` ou `update_template` move documento e template entre portos — sem mudar o porto do token.
 
 Cada documento tem um de três níveis de visibilidade, alterável só pelo responsável via `update_document` com `visibility`:
 
@@ -90,7 +90,6 @@ A lista de ferramentas abaixo pode estar atrás do servidor: chame `get_system_g
 | `list_markdown_components` | Catálogo de diretivas `:::` e Markdown |
 | `explain_markdown_component` | Sintaxe e exemplos de um componente |
 | `list_workspaces` | Portos da pessoa e qual deles este token opera |
-| `create_workspace` | Abrir um porto novo, como capitão; o token segue no porto de origem |
 | `list_documents` | Descobrir o que existe no porto do token; buscar por título, tag, template ou status |
 | `get_document` | Ler conteúdo completo antes de editar |
 | `create_document` | Assunto novo, sem documento equivalente |

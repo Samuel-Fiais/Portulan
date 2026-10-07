@@ -40,8 +40,7 @@ Critério: só entra o que o código hoje não faz e que cabe no produto. Não i
 | Leitura pública | `components/public-document-view.tsx`, `components/report-preview.tsx`, `app/d/`, `app/p/` |
 | Compartilhar / visibilidade | `lib/document-share-policy.ts`, `lib/workspace-policy.ts`, `components/document-share-dialog.tsx` |
 | Gabaritos | `components/templates-panel.tsx`, `lib/db/templates.ts` |
-| Expedição / Rumo | `lib/dev-context.ts`, `lib/project-policy.ts`, `lib/context-pack-policy.ts`, `lib/implementation-task-policy.ts`, `lib/agent-capability-policy.ts`, `components/expeditions-panel.tsx`, `components/context-pack-detail.tsx`, `cli/portulan.mjs` |
-| MCP | `app/api/mcp/route.ts`, `lib/mcp-dev-context-tools.ts`, `.cursor/skills/portulan-mcp/SKILL.md`, `components/integrations-panel.tsx` |
+| MCP | `app/api/mcp/route.ts`, `lib/mcp-tool-catalog.ts`, `.cursor/skills/portulan-mcp/SKILL.md`, `components/mcp-tokens-panel.tsx` |
 | Checklist living | `components/living-checklist.tsx`, `lib/living-document-storage.ts` (hoje: localStorage) |
 
 ## Saída

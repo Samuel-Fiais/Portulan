@@ -24,7 +24,7 @@ Paridade **humano + agente** na mesma biblioteca (UI e MCP), com **releases imut
 
 ## Operating Context
 
-- **Workspace autenticado:** porto ativo no trilho; Ponte (dashboard), Cartoteca (busca no corpo, filtro por status/gabarito), Gabaritos, Instrumentos (MCP) e a tela do Porto (tripulação, tema, convites).
+- **Workspace autenticado:** Ponte (dashboard), Cartoteca (busca no corpo, filtro por status/gabarito), Gabaritos e a tela do Porto (tripulação, tema, convites). O seletor de porto aparece no trilho quando a pessoa tem mais de um porto. Chaves MCP ficam no modal da conta.
 - **Editor:** título, resumo, Markdown, metadados, prévia lado a lado, salvar rascunho (botão ou Cmd/Ctrl+S), atalhos, export PDF/Markdown, componentes do catálogo.
 - **Publicação:** snapshot imutável por release; links `/d/{uuid}` (última ativa) e `/p/{id}` (versão fixa); histórico com comparar, restaurar e desativar.
 - **Leitura pública:** `/d` e `/p` sem login; TOC com âncoras; Mermaid; blocos living (checklist local no navegador).

@@ -25,13 +25,13 @@ export function mcpTokenAuthErrorMessage(reason: McpTokenAuthFailure): string {
     case "not_found":
       return "Chave MCP inválida ou revogada. Confira se o endpoint aponta para o mesmo ambiente onde a chave foi gerada.";
     case "expired":
-      return "Chave MCP expirada. Gere uma nova em Instrumentos.";
+      return "Chave MCP expirada. Gere uma nova nas configurações da conta.";
     case "workspace_access":
       return "Esta chave não tem mais acesso ao porto onde foi emitida.";
     case "agent_inactive":
       return "Este Agente de Bordo está desativado. Reative-o ou gere outra chave.";
     case "agent_missing":
-      return "Agente de Bordo desta chave não foi encontrado. Gere uma nova chave em Instrumentos.";
+      return "Agente desta chave não foi encontrado. Gere uma nova chave nas configurações da conta.";
     case "agent_workspace_mismatch":
       return "Chave MCP inconsistente com o porto do Agente de Bordo. Gere uma nova chave.";
   }

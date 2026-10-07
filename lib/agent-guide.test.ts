@@ -6,8 +6,8 @@ test("Guia do Agente: humano só cola guia; agente faz o setup", () => {
   const guide = buildAgentGuide({
     name: "Assistente",
     ownerName: "Samuel",
-    allowedToolCount: 49,
-    totalToolCount: 49,
+    allowedToolCount: 32,
+    totalToolCount: 32,
   });
   assert.match(guide, /cola este guia no chat/i);
   assert.match(guide, /Só isso/i);
@@ -15,10 +15,8 @@ test("Guia do Agente: humano só cola guia; agente faz o setup", () => {
   assert.match(guide, /export PORTULAN_TOKEN/);
   assert.match(guide, /http_headers/);
   assert.match(guide, /Pedir ao humano.*export/i);
-  assert.match(guide, /portulan init/);
-  assert.match(guide, /get_agent_bootstrap/);
-  assert.match(guide, /Carta de conclusão/i);
-  assert.match(guide, /add_implementation_task_source/);
+  assert.match(guide, /get_system_guide/);
+  assert.match(guide, /list_workspaces/);
   const withoutPaths = guide.replace(/`[^`]*\.(cursor|codex)[^`]*`/g, "`<config-model>`");
   assert.doesNotMatch(withoutPaths, /Cursor|Claude|Codex|Composer|ChatGPT/i);
   assert.doesNotMatch(guide, /configure.*você mesmo/i);

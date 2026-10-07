@@ -784,11 +784,6 @@ export async function publishDocument(
     publishedByUserId: ctx.userId ?? null,
   });
 
-  if (document.workspaceId) {
-    const { markPacksNeedingReviewForDocument } = await import("@/lib/db/context-packs");
-    await markPacksNeedingReviewForDocument(id);
-  }
-
   return { document, release: (await getDocumentRelease(releaseId))! };
 }
 

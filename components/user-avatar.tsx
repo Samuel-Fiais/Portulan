@@ -37,7 +37,7 @@ export function UserAvatar({
   size = "md",
   kind = "human",
 }: UserAvatarProps) {
-  const label = title ?? name ?? login ?? email ?? (kind === "agent" ? "Agente de bordo" : "Colaborador");
+  const label = title ?? name ?? login ?? email ?? (kind === "agent" ? "Agente" : "Colaborador");
   const sizeClass = avatarSizeClasses[size];
 
   if (kind === "agent") {

@@ -60,9 +60,9 @@ export function sanitizeAuditPayload(payload: Record<string, unknown> | null | u
 }
 
 export function validateAuditEvent(input: AuditEventDraft): PolicyResult {
-  if (!input.workspaceId) return deny("Evento de Diário de bordo exige porto.");
-  if (!input.userId) return deny("Evento de Diário de bordo exige responsável humano.");
-  if (!input.action.trim()) return deny("Evento de Diário de bordo exige ação.");
+  if (!input.workspaceId) return deny("Evento de auditoria exige porto.");
+  if (!input.userId) return deny("Evento de auditoria exige responsável humano.");
+  if (!input.action.trim()) return deny("Evento de auditoria exige ação.");
   return { ok: true };
 }
 

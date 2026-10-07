@@ -5,12 +5,12 @@ import { getDb } from "@/lib/db/client";
 import { agentIdentities } from "@/lib/db/schema";
 import { parseJsonArray, stringifyJsonArray } from "@/lib/db/json-text";
 import { defaultAgentAllowedTools, resolveAgentAllowedTools } from "@/lib/agent-tool-policy";
-import {
-  agentIdentityStatuses,
-  agentWorkModes,
-  type AgentIdentityStatus,
-  type AgentWorkMode,
-} from "@/lib/dev-context";
+
+export const agentWorkModes = ["context_and_coordination", "local_implementation", "review"] as const;
+export type AgentWorkMode = (typeof agentWorkModes)[number];
+
+export const agentIdentityStatuses = ["active", "inactive"] as const;
+export type AgentIdentityStatus = (typeof agentIdentityStatuses)[number];
 
 export type AgentIdentityRecord = {
   id: string;

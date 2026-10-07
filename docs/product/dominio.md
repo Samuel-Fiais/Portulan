@@ -4,7 +4,7 @@ Vocabulário estável do Portulan. Se um termo mudar de significado, atualize es
 
 ## O que é
 
-Workspace editorial para criar, revisar, publicar e imprimir **cartas técnicas** (documentos) em Markdown, com a mesma cartoteca operável por pessoas (UI) e por agentes (MCP). O trabalho acontece dentro de um **porto**: um espaço com tripulação e acervo próprios. Dentro do porto, uma **Expedição** reúne o conhecimento de desenvolvimento (Embarcações, Rumos e Manobras) sem substituir o porto.
+Workspace editorial para criar, revisar, publicar e imprimir **cartas técnicas** (documentos) em Markdown, com a mesma cartoteca operável por pessoas (UI) e por agentes (MCP). O trabalho acontece dentro de um **porto**: um espaço com tripulação, cartas e gabaritos próprios.
 
 ## Léxico
 
@@ -15,26 +15,14 @@ A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as A
 | Carta | documento (`document`) |
 | Cartoteca | biblioteca (`/library`) |
 | Gabarito | template (`/templates`) |
-| Instrumentos | integrações (`/integrations`) |
 | Porto | workspace (`/workspace`) |
 | Tripulação | membros do workspace |
 | Cartógrafo | responsável / dono da carta (`userId`) |
 | Frota | time (`team`, metadado da carta) |
 | Ponte | dashboard (`/`) |
 | Camarote · Porto · Mar aberto | `visibility` = `private` · `workspace` · `public` |
-| Expedição | projeto (`project`, `/projects`) |
-| Embarcação | repositório lógico (`repository`, `/repositories`) |
-| Rumo | Context Pack (`contextPack`, `/context-packs`)
-| Rumo de execução | projeção (`devContext`) |
-| Plano de navegação | plano (`implementationPlan`) |
-| Manobra | tarefa de implementação raiz (`implementationTask`, `/context-packs/{id}/tasks/{taskId}`) |
-| Lance | subtarefa da Manobra (`implementationTask` com `parentTaskId`) |
-| Assumir o comando | lease da linha (`claimTask`) |
-| Responsável | atribuição da Manobra ou Lance (`assigneeUserId` / `assigneeAgentIdentityId`) |
-| Identificador de bordo | inteiro único no porto (`boardNumber`, `#42`) |
-| Agente MCP | identidade nomeada (`agentIdentity`) |
-| Chave de bordo | token MCP (`mcpToken`) |
-| Diário de bordo | auditoria (`auditEvent`) |
+| Chave MCP | token (`mcpToken`), gerada na conta |
+| Auditoria | evento de chamada MCP (`auditEvent`) |
 | Assunto colaborativo | artefato que uma sala representa (`collabRoom`: `subjectType` + `subjectId`) |
 | Sala | recorte autorizado ao vivo (`collabRoom`) |
 | Presença | quem está na sala agora (`presenceSession`) |
@@ -45,12 +33,6 @@ A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as A
 | Idempotência | mesma chave aplicada uma vez só (`opId` do cliente, gravado como `idempotencyKey` da sala) |
 | Revogação | perda de autorização sobre o assunto |
 | Atividade (linha do tempo) | histórico legível do artefato (`activityEntry`) |
-| Passagem de comando | handoff humano ↔ agente na mesma linha |
-| Conversa de bordo | fio de coordenação (`coordinationThread`) |
-| Registro de bordo | relatório de progresso (`progressReport`) |
-| Marcos de chegada | critério de aceite (`acceptanceCriterion`) |
-| Carta-fonte | fonte documental (`documentSource`) |
-| Maré contrária | bloqueio (`blocker`) |
 
 ## Atores
 
@@ -64,15 +46,14 @@ A copy da UI usa o vocabulário náutico; o código, as URLs autenticadas e as A
 | Leitor | Convidado com papel `viewer` naquela carta. Lê rascunho e prévia; não edita. |
 | Externo | Convidado nominal que **não** faz parte do porto da carta. Mesmo papel de editor/leitor, marcado como externo na UI. |
 | Visitante público | Quem abre `/d/{slug}` ou `/p/{id}` sem login. Só vê versão publicada e habilitada de carta em mar aberto. |
-| Agente de bordo | Membro do porto do tipo `agente`: identidade nomeada (`agentIdentity`) com responsável humano, status e configuração MCP própria. Aparece na tripulação junto com humanos, mas **não** é conta nem membro com papel capitão/imediato/tripulante. Opera via MCP como o responsável, dentro do porto da chave. |
-| Agente MCP | Cliente MCP autenticado com chave válida ligado a um Agente de bordo. Não tem Embarcação fixa. |
+| Agente MCP | Cliente autenticado com chave MCP. Opera como a pessoa, no porto da chave. Chave nova não tem identidade; chave legada pode ter. |
 | Legado | Carta sem `userId` ou sem porto (pré-autenticação / pré-portos). Tratamento especial de acesso. |
 
 ## Entidades
 
 ### Porto (workspace)
 
-Espaço de trabalho. Toda conta tem pelo menos um. Reúne tripulação, cartas, gabaritos, Expedições, Embarcações, Rumos, agentes MCP e chaves MCP.
+Espaço de trabalho. Toda conta tem pelo menos um. Reúne tripulação, cartas, gabaritos e chaves MCP.
 
 | Campo | Papel |
 |---|---|
@@ -85,12 +66,11 @@ Espaço de trabalho. Toda conta tem pelo menos um. Reúne tripulação, cartas, 
 
 ### Tripulação (roster do porto)
 
-Lista unificada de quem compõe o porto: **humanos** (conta + papel) e **agentes de bordo** (identidade + responsável). Toda a tripulação vê os dois tipos em `/workspace`.
+Pessoas com conta e papel no porto, visíveis em `/workspace`.
 
-| Tipo | Entidade | Papel / configuração |
+| Tipo | Entidade | Papel |
 |---|---|---|
 | Humano | `workspaceMember` + conta | `owner` · `admin` · `member` |
-| Agente de bordo | `agentIdentity` | Responsável humano, status (`active`/`inactive`), ferramentas MCP permitidas (RN-111). Sem capitania nem convite. |
 
 ### Membro humano do porto
 
@@ -217,150 +197,23 @@ Cada papel tem modo claro e escuro. **Personalizado** é a sexta opção: a pess
 
 ### Chave MCP
 
-Credencial (`ptl_…`) ligada a uma identidade nomeada no porto. Expira em 30d, 60d, 1 ano ou nunca. Autentica o agente como o usuário **e** fixa o porto em que ele opera: o porto ativo no momento da geração. Cartas criadas pelo agente nascem nesse porto. Na criação, o responsável escolhe validade e quais ferramentas MCP ficam habilitadas (RN-111). Chaves legadas sem identidade continuam válidas até revogação. O servidor nunca guarda a chave em texto puro; afirma só qual credencial foi usada. `clientInfo` do handshake MCP é dado observado, não autenticação.
+Credencial (`ptl_…`) gerada no modal da conta. Expira em 30d, 60d, 1 ano ou nunca. Autentica o agente como o usuário e fixa o porto ativo no momento da geração. Chave nova não cria identidade de agente (RN-111). Chave legada pode apontar para uma identidade ainda gravada; essa identidade restringe as ferramentas. O servidor nunca guarda a chave em texto puro.
 
 ### Componente Markdown
 
 Bloco do catálogo (alerta, gráfico, checklist, …). A modal **Adicionar componente** e o MCP leem o mesmo catálogo. Novo bloco = uma entrada no catálogo, não uma lista paralela no editor.
 
-### Expedição (project)
-
-Iniciativa ou produto **dentro de um porto**. Agrupa Embarcações e Rumos. Não substitui o porto: acervo, tripulação, permissões e tokens continuam no porto.
-
-| Campo | Papel |
-|---|---|
-| `id` | UUID. Identidade estável. |
-| `workspaceId` | Porto a que pertence. |
-| `name` | Nome da Expedição (2–80). |
-| `objective` | O que esta Expedição cobre. |
-| `createdBy` | Quem criou. |
-
-### Embarcação (repository)
-
-Identidade **lógica** de código no porto. Pode ser Git, local ou ambos. Um path de checkout é da máquina do cliente, nunca verdade global do servidor.
-
-| Campo | Papel |
-|---|---|
-| `id` | UUID. Identidade estável. |
-| `workspaceId` | Porto a que pertence. |
-| `name` | Nome da Embarcação (2–80). |
-| `kind` | `git` · `local` · `both`. |
-| `remoteUrl` | URL remota opcional. Não é path absoluto. |
-| `notes` | Observações. |
-
-### Vínculo Expedição–Embarcação (`ProjectRepository`)
-
-Relação N:N. Uma Expedição tem várias Embarcações; uma Embarcação participa de várias Expedições.
-
-| Campo | Papel |
-|---|---|
-| `role` | `primary` · `dependency` · `consumer` · `infrastructure`. |
-| `pathScopes` | Paths relativos cobertos pelo vínculo. |
-| `notes` | Observações do vínculo. |
-
-### Rumo (contextPack)
-
-Objeto persistente, curado, revisado e versionado. Uma carta pode ser fonte de zero, um ou vários Rumos; um Rumo pode usar várias cartas e também itens escritos nele.
-
-| Campo | Papel |
-|---|---|
-| `status` | Ciclo: `draft` · `review` · `approved` · `superseded`. |
-| `validity` | Independente do ciclo: `current` · `needs_review` · `expired`. |
-| `ownerUserId` | Responsável humano do Rumo. |
-| `projectId` | Expedição a que pertence. |
-| título | 3–180. |
-| `boardNumber` | Identificador público inteiro do porto (`#42`). UUID continua interno. |
-| `draftVersion` | Versão otimista do rascunho do Rumo para `content.operation` (Recorte, itens e Marcos de rascunho compartilham a mesma versão na sala `context_pack`) (RN-120). |
-| objetivo, resultado, escopo, não-escopo | Contrato operacional (objetivo opcional na criação). A tela **Contexto** junta contrato, Marcos, itens e cartas-fonte. |
-
-### Revisão do Rumo (`contextPackRevision`)
-
-Snapshot **imutável** criado ao aprovar. A revisão anterior permanece auditável. MCP serve por padrão só uma revisão `approved` e validade `current`.
-
-### Rumo de execução (`devContext`)
-
-Projeção consumida na hora de implementar — **não** é entidade persistida. Junta o objetivo da Expedição + revisão aprovada do Rumo + recorte de Embarcação/Manobra + dados observados da sessão.
-
-### Item de contexto
-
-Bloco tipado do Rumo.
-
-| Campo | Papel |
-|---|---|
-| `type` | `decision` · `rule` · `contract` · `risk` · `assumption` · `question`. |
-| `strength` | `required` · `recommended` · `reference`. |
-| `blocking` | Em pergunta: se aberta, impede servir o Rumo. |
-| `body` | Texto do item; não vazio (RN-108). |
-| `boardNumber` | Identificador público inteiro do porto. |
-
-### Carta-fonte (`documentSource`)
-
-Relação entre Rumo, Manobra ou Lance e carta. No Rumo, fonte formal de aprovação aponta para **release imutável**. Em Manobra/Lance, cartas-fonte documentam referências de trabalho e a **Carta de conclusão** quando a linha é finalizada (RN-118). Publicar uma carta privada continua privado.
-
-| Campo | Papel |
-|---|---|
-| carta + `releaseId` | Release específica. A UI distingue Carta viva e snapshot da edição fixada. |
-| papel da fonte | Como a carta entra no Rumo ou na linha. |
-| seção | Trecho opcional. |
-| razão | Por que foi incluída. |
-| obrigatória | No Rumo: exigida para aprovação formal. Em Manobra/Lance: raro; quando true, edição publicada é obrigatória. |
-| `boardNumber` | Identificador público inteiro do porto. |
-| âncora | Rumo (`contextPackSource`) ou Manobra/Lance (`implementationTaskSource`). |
-
-### Marcos de chegada (`acceptanceCriterion`)
-
-Critérios de aceite verificáveis do Rumo (e cobertos por Manobras). Pertencem ao **Contexto** da Feature, não à lista de trabalho. Têm `boardNumber`.
-
-### Plano de navegação, Manobra e Lance
-
-O plano é **opcional** e pertence a uma revisão do Rumo. Não é fonte de verdade paralela. O rascunho do plano tem `draftVersion` próprio na sala `implementation_plan`; aprovar o Rumo fixa o plano na revisão imutável (RN-99, RN-120).
-
-A **Manobra** é o PBI: objetivo, Embarcação e paths alvo (se for de código), itens obrigatórios, Marcos que cobre, dependências simples, a revisão exata do Rumo, responsável (humano ou agente) e `boardNumber`. Sem prazo, pontos ou sprint. O quadro Kanban é só vista dos estados: no quadro de Lances, a Manobra é a faixa à esquerda e os Lances cruzam as colunas.
-
-O **Lance** é a mesma entidade com `parentTaskId` apontando para uma Manobra-raiz. Um nível só: Lance não tem filhos.
-
-| Estado | Na UI | Significado |
-|---|---|---|
-| `available` | To do | Livre para assumir. |
-| `claimed` | Doing | Com lease ativo. |
-| `in_progress` | In progress | Em trabalho. |
-| `blocked` | Blocked | Com Maré contrária. |
-| `reported` | Done | Resultado enviado; ainda não aceito. |
-| `accepted` | Accepted | Aceite humano. |
-
-No Kanban, `claimed` e `in_progress` compartilham a coluna **In progress**.
-
-Manobra **de código** tem `repositoryId`; sem isso é Manobra de contexto. Linha de comando = Manobra ou Lance. Uma Manobra com Lances também se assume.
-
-### Responsável da Manobra ou Lance
-
-Atribuição (`assigneeUserId` **ou** `assigneeAgentIdentityId`). Não é o lease. Delegar uma Manobra sem responsável preenche os Lances que também estão sem responsável (RN-115).
-
-### Lease da Manobra
-
-Um lease ativo por **linha** (Manobra ou Lance). Expira. Renovar exige atividade explícita. Expirado pode ser retomado. Manobra com Lances também se assume; o lease e o responsável de cada Lance são independentes do pai.
-
-### Registro de bordo (`progressReport`)
-
-Relatório de progresso ou resultado: resumo, arquivos/escopos, testes/evidências, commit/PR opcional, critérios cobertos e lacunas. Reportado não é automaticamente aceito. Resumo em branco não entra na lista (RN-108).
-
-### Conversa de bordo
-
-Fios de coordenação, separados dos comentários de revisão das cartas. Âncora: Rumo, Manobra, Lance, item ou Marco. Mensagem tem autor humano, identidade delegada opcional, horário, menções (`mentionedUserIds` / `mentionedAgentIdentityIds`) e aberto/resolvido. Comentário comum reutiliza o **fio de discussão** aberto do sujeito; Maré contrária é fio próprio (RN-109, RN-114). Corpo não vazio, até 2000 caracteres (RN-108). Fio e recado têm `boardNumber`. Conversa, mensagens e sujeito pertencem ao mesmo Porto.
-
 ### Identidade de agente MCP (`agentIdentity`)
 
-Identidade nomeada criada junto com toda chave MCP nova. Responsável humano único (RN-110). Só o responsável edita, desativa, reativa ou exclui e emite chaves adicionais. Status: `active` ou `inactive` (`deactivatedAt` quando inativo). A Embarcação, o checkout e o `clientInfo` pertencem à **sessão**, não ao perfil. Paridade com o humano via MCP (RN-105), com lista `allowedMcpTools` — padrão catálogo completo; o responsável desmarca o que quiser restringir (RN-111). Manobra de código exige Embarcação reconhecida de verdade na sessão.
+Registro legado ligado a chaves antigas (`mcp_tokens.agent_identity_id`). A UI não gerencia identidades. Chave nova fica com `agent_identity_id` nulo. Se a identidade existir e estiver ativa, a chamada só passa nas ferramentas da lista gravada (RN-105, RN-111).
 
-### Diário de bordo (`auditEvent`)
+### Auditoria (`auditEvent`)
 
-Evento imutável: principal humano, identidade do agente, chave, ação, alvo, data, correlação e `clientInfo` observado. A UI mostra “Nome via Agente”. Toda chamada MCP autenticada gera um evento pesquisável (RN-122): ferramenta, alvo, resultado, duração e correlação — nunca token em texto puro, anexo ou Markdown integral.
-
-O Diário é **do porto** e serve auditoria: filtra por identidade, ferramenta, alvo, resultado, período e correlação. Guarda metadado e diagnóstico, não conteúdo. Tem janela de retenção declarada; expirar um evento não reescreve os que ficam.
+Evento imutável: pessoa, identidade de agente quando houver, chave, ação, alvo, data e correlação. Toda chamada MCP autenticada gera um evento (RN-122): ferramenta, alvo e resultado — nunca token em texto puro, anexo ou Markdown integral. Não há tela de consulta; o registro permanece no banco.
 
 ### Sala, presença e operação colaborativa
 
-Infraestrutura transversal do porto (RN-119). Uma **sala** é o recorte autorizado de um artefato (carta, gabarito, Rumo, plano, Expedição, Embarcação, Manobra, etc.) para participação ao vivo. **Presença** é quem está na sala agora — humano ou agente, com identidade e intenção visíveis. **Operação colaborativa** altera conteúdo mutável com versionamento e idempotência. **Comando atômico** (publicação, visibilidade, aprovação, lease, bloqueio, aceite) continua transação no servidor; não passa pelo canal de operações (RN-120). Postgres permanece a fonte de snapshots, releases, autorização e auditoria; o canal ao vivo não é fonte única de verdade (RN-124).
+Infraestrutura do editor e do porto (RN-119). Uma **sala** é o recorte autorizado de uma carta, de um gabarito ou do próprio porto. **Presença** é quem está na sala agora — humano ou agente, com identidade e intenção visíveis. **Operação colaborativa** altera conteúdo mutável com versionamento e idempotência. **Comando atômico** (publicação, visibilidade, aprovação, lease, bloqueio, aceite) continua transação no servidor; não passa pelo canal de operações (RN-120). Postgres permanece a fonte de snapshots, releases, autorização e auditoria; o canal ao vivo não é fonte única de verdade (RN-124).
 
 A sala projeta o direito que a UI e o MCP já aplicam: não concede nem amplia direito (RN-121). As entidades abaixo fecham cada termo.
 
@@ -370,16 +223,12 @@ O par **tipo + identificador** do artefato que uma sala representa. Um assunto, 
 
 | Assunto | Conteúdo mutável ao vivo | Comandos atômicos que o tocam |
 |---|---|---|
-| Carta (rascunho) | título, resumo, metadados, Markdown | publicar, desativar, mudar visibilidade, mover de porto, excluir |
-| Gabarito | nome, paleta, logo, conteúdo-base | mover de porto, excluir |
-| Rumo em rascunho ou revisão | contrato, itens, Marcos, vínculos de fonte | enviar para revisão, aprovar, abrir nova revisão |
-| Plano de navegação | plano da revisão em rascunho | aprovar a revisão |
-| Manobra e Lance | objetivo, descrição, estado editável, responsável | assumir, renovar, soltar, reportar, bloquear, aceitar |
-| Expedição e Embarcação | nome, objetivo, notas, vínculos | excluir |
-| Porto (tripulação e convites) | — (sala `workspace` espelha feed transversal) | convidar, revogar, mudar papel, transferir capitania, excluir porto |
+| Carta (rascunho) | título, resumo, Markdown | publicar, desativar, mudar visibilidade, mover de porto, excluir |
+| Gabarito | conteúdo-base | mover de porto, excluir |
+| Porto (tripulação e convites) | — (sala `workspace`) | convidar, revogar, mudar papel, transferir capitania, excluir porto |
 | Compartilhamento e cartas-fonte | — | convidar, revogar, mudar papel, vincular ou remover fonte |
 
-Release publicada e revisão aprovada de Rumo **não** são assunto colaborativo: são imutáveis. O caminho é nova publicação ou nova revisão (RN-120).
+Release publicada não é assunto colaborativo: é imutável. O caminho é nova publicação (RN-120).
 
 ### Sala (`collabRoom`)
 
@@ -403,7 +252,7 @@ Quem está no assunto **agora**. Uma presença por sessão, não por conta: a me
 
 | Campo | Papel |
 |---|---|
-| identidade | Conta humana **ou** identidade de agente de bordo (`agentIdentityId` + responsável), mais a chave usada. |
+| identidade | Conta humana e, se a chave tiver, a identidade de agente legada. |
 | `intent` | Intenção declarada. |
 | `state` | `ativo` · `ocioso` · `desconectado`. Deriva da última batida da sessão; desconectado sai da lista quando o prazo de graça expira. |
 | `since` | Entrada na sala. |
@@ -421,7 +270,7 @@ O que aquela presença veio fazer. Torna leitura, edição e trabalho de agente 
 | `lendo` | `viewing` | Acompanha; não pretende alterar. |
 | `editando` | `editing` | Está aplicando operações no conteúdo mutável. |
 | `revisando` | `reviewing` | Comentando ou resolvendo fios. |
-| `executando` | `automating` | Agente trabalhando numa linha com comando ativo (Manobra ou Lance). |
+| `executando` | `automating` | Presença automatizada de uma chave com identidade. |
 | `aguardando` | `waiting` | Espera passagem de comando, aceite humano ou desbloqueio. |
 
 Intenção é declaração observada, nunca permissão. Agente **sempre** declara identidade e intenção (RN-123).
@@ -464,30 +313,26 @@ A chave é única **na sala**: repetir devolve o evento já gravado, sem segunda
 
 Transação autorizada no servidor. Não passa pelo canal de operações; o canal só **anuncia** o resultado (RN-120).
 
-Comandos: publicar, desativar carta ou versão, mudar visibilidade, mover de porto, excluir, enviar Rumo para revisão, aprovar, abrir nova revisão, assumir / renovar / soltar o comando, abrir e resolver Maré contrária, registrar resultado, aceite humano, convidar, revogar, mudar papel e transferir capitania.
+Comandos: publicar, desativar carta ou versão, mudar visibilidade, mover de porto, excluir, convidar, revogar, mudar papel e transferir capitania.
 
 ### Atividade / linha do tempo (`activityEntry`)
 
-Histórico legível do que aconteceu no assunto, em ordem. É o que a vista **Atividade** do Rumo, o histórico da carta e o feed da Manobra mostram.
+Histórico legível do que aconteceu no assunto, em ordem.
 
 | Campo | Papel |
 |---|---|
 | assunto | Artefato a que pertence. |
 | autor | Pessoa e, quando houver, agente (“Nome via Agente”). |
 | ação | Verbo do produto: editou, publicou, aprovou, assumiu, bloqueou, reportou, aceitou. |
-| correlação | Liga a entrada ao evento do Diário de bordo da mesma ação. |
+| correlação | Liga a entrada ao evento do auditoria da mesma ação. |
 
-Atividade é **por artefato** e segue a autorização daquele artefato. Diário de bordo é **por porto** e existe para auditoria.
+Atividade é **por artefato** e segue a autorização daquele artefato. auditoria é **por porto** e existe para auditoria.
 
 ### Revogação
 
 Perda de autorização sobre o assunto: sair ou ser removido da tripulação, chave revogada, identidade de agente desativada ou excluída, convite nominal revogado, visibilidade rebaixada, carta movida para outro porto, ferramenta MCP desabilitada.
 
 Efeito: presença encerrada na hora, eventos e comandos protegidos daquela sala recusados, `policyVersion` avançada (RN-121). Revogação não apaga atividade nem Diário já gravados.
-
-### Passagem de comando (handoff)
-
-Troca de responsabilidade sobre a mesma linha (Manobra ou Lance) entre pessoa e agente, ou entre agentes. Nada de novo em poder: responsável é atribuição (RN-115), comando é lease (RN-103), aceite é humano (RN-108). A colaboração ao vivo acrescenta a leitura — quem está na sala, com que intenção e quem detém o comando agora — e o registro da troca na atividade. Agente não assume aceite humano nem aprova por conta própria (RN-123).
 
 ## Identificadores públicos
 
@@ -499,33 +344,15 @@ Troca de responsabilidade sobre a mesma linha (Manobra ou Lance) entre pessoa e 
 | `/documents/{id}/preview` | Prévia do rascunho (quem tem acesso). |
 | `/invite/{token}` | Resgate de convite de porto. Exige login. |
 
-No porto, Rumo, Manobra, Lance, item, carta-fonte, Marco, fio e recado compartilham uma sequência de inteiros (`boardNumber`). A UI mostra `#42` e copia `42`. UUID não aparece. MCP e UI resolvem o número no porto ativo.
-
-| URL | Significado |
-|---|---|
-| `/d/{uuid}` | Sempre a última versão publicada **habilitada**. UUID fixo na criação. Em mar aberto, qualquer pessoa com o link vê; nos outros níveis, só cartógrafo, convidados e (em visibilidade de porto) a tripulação, autenticados. |
-| `/p/{releaseId}` | Aquela versão, para sempre, até ser desativada. Mesma regra de acesso que `/d`. |
-| `/documents/{id\|uuid}` | Editor autenticado. |
-| `/documents/{id}/preview` | Prévia do rascunho (quem tem acesso). |
-| `/invite/{token}` | Resgate de convite de porto. Exige login. |
-
 ## Workspace autenticado
 
-Chrome com trilho compacto ou expandido (RN-70) e, no topo, o seletor de porto. Destinos irmãos no trilho, nesta ordem: Ponte, Cartoteca, Gabaritos, Expedições, Embarcações, Rumos, Instrumentos e Porto. Não vale para leitura pública nem para o editor.
+Chrome com trilho compacto ou expandido (RN-70). O seletor de porto aparece no trilho quando a pessoa tem mais de um porto. Destinos: Ponte, Cartoteca, Gabaritos e Porto. Não vale para leitura pública nem para o editor.
 
 | URL | Significado |
 |---|---|
 | `/` | Ponte (dashboard): resumo da cartoteca, cartas recentes, atalhos. |
 | `/library` | Cartoteca: lista do porto ativo, busca (título, resumo, tags e corpo), filtro por origem (minhas / compartilhadas), filtro por status e filtro por gabarito. |
 | `/templates` | Gabaritos do porto ativo. |
-| `/projects` | Expedições do porto ativo: lista, detalhe, Embarcações vinculadas e Rumos. |
-| `/projects/{id}` | Detalhe de uma Expedição. |
-| `/context-packs` | Rumos do porto ativo. |
-| `/context-packs/{id}` | Detalhe de um Rumo (vistas Trabalho, Contexto e Atividade). |
-| `/context-packs/{id}/tasks/{taskId}` | Detalhe de uma Manobra ou Lance. |
-| `/repositories` | Embarcações do porto ativo: lista, detalhe e vínculo com Expedições. |
-| `/repositories/{id}` | Detalhe de uma Embarcação. |
-| `/integrations` | Instrumentos: rumos de conexão MCP, chaves MCP, catálogo de ferramentas e skill. |
 | `/workspace` | Porto: identidade (nome e papel pessoal), tripulação, convites por link e zona de risco. |
 
 ## Componentes living

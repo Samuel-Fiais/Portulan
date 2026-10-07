@@ -6,28 +6,24 @@ Atualize este arquivo quando o ranking mudar. Não reexplore o repo inteiro para
 
 ## Ranking atual
 
-Pedido avulso (14 set. 2026), fora da leva 2. Rumo #1 (16 set. 2026): `realtime-transversal`.
+Pedido avulso (14 set. 2026), fora da leva 2. Item vigente: `realtime-transversal`.
 
 | # | ID | Melhoria | Superfície | I | C | E | Score | Estado |
 |---|---|---|---|---|---|---|---|---|
-| — | rumo-lances | Rumo como Feature: Lances, Kanban, identificador inteiro, Contexto unificado | Rumo | 8 | 8 | 4 | 25.6 | entregue |
-| — | bordo-feed | Feed único de Conversas de bordo com fio de discussão e menção sem e-mail | Rumo | 7 | 8 | 5 | 28.0 | entregue |
-| — | delegar-manobra | Delegar responsável (humano ou agente) com cascata em Lances sem dono | Rumo | 8 | 8 | 6 | 38.4 | entregue |
 | — | auth-password | Cadastro com senha, mescla GitHub e modal da conta | Conta | 8 | 9 | 5 | 36.0 | entregue |
 | — | portos | Portos (workspaces) com tripulação, convite por link, visibilidade em três níveis, tema do porto e léxico náutico | Workspace | 9 | 9 | 4 | 32.4 | entregue |
-| — | dev-context | Contexto de desenvolvimento: Expedições, Rumos versionados, Manobras com lease, Agentes de Bordo, MCP e CLI `portulan init` | Expedição / MCP | 9 | 8 | 2 | 14.4 | entregue (correção 15 set. 2026) |
 | — | realtime-transversal | Colaboração ao vivo transversal (presença, operações em conteúdo mutável, atividade) e auditoria completa de MCP sem segredos | Colaboração / MCP | 9 | 8 | 2 | 14.4 | planejado (contrato escrito; fase 1 em andamento) |
 
 ## Escopo (realtime-transversal)
 
 - Presença e atividade ao vivo em todos os artefatos do porto, com sala autorizada por porto + entidade + papel.
-- Coedição por operações em conteúdo mutável (carta, gabarito, Rumo em rascunho/revisão, plano). Comandos atômicos para publicação, visibilidade, aprovação, lease, bloqueio e aceite.
+- Coedição por operações em conteúdo mutável (carta e gabarito). Comandos atômicos para publicação e visibilidade.
 - Agentes visíveis com identidade e intenção; auditoria de toda chamada MCP sem token, anexo ou Markdown integral.
 - Postgres continua fonte de snapshots, releases, autorização e auditoria.
 
-Fora: CRDT como fonte de verdade; editar release ou Rumo aprovado ao vivo; realtime que contorne permissão, lease, aprovação, publicação ou aceite; gravar segredo no Diário.
+Fora: CRDT como fonte de verdade; editar release ao vivo; realtime que contorne permissão ou publicação; gravar segredo na auditoria.
 
-Contrato de produto (não re-explorar o repo para recriar): domínio de sala, presença, intenção, evento versionado, operação, comando atômico, idempotência, revogação, atividade e handoff em `docs/product/dominio.md`; invariantes `RN-119` a `RN-125`; capacidades `F-presenca`, `F-coedicao`, `F-atividade-viva`, `F-handoff` e `F-mcp-auditoria`; jornadas, fases de migração e plano de verificação em `docs/product/fluxos.md`.
+Contrato de produto (não re-explorar o repo para recriar): domínio de sala, presença, intenção, evento versionado, operação, comando atômico, idempotência, revogação e atividade em `docs/product/dominio.md`; invariantes `RN-119` a `RN-125`; capacidades `F-presenca`, `F-coedicao`, `F-atividade-viva` e `F-mcp-auditoria`; jornadas, fases de migração e plano de verificação em `docs/product/fluxos.md`.
 
 Entrega por fases (ordem obrigatória: autorização → presença → atividade → coedição → auditoria completa). Cada fase é desligável: sem canal, a superfície cai para leitura e comando normais.
 
@@ -35,54 +31,29 @@ Entrega por fases (ordem obrigatória: autorização → presença → atividade
 |---|---|---|
 | 0 | Contrato de produto | escrito |
 | 1 | Sala + presença com intenção; revogação encerra presença | `F-presenca` parcial |
-| 1a | Base durável da sala no servidor (Manobra #9 / Lance #61): assunto único por porto, log de eventos com posição e `opId` idempotente por sala, sessão de presença com intenção e revogação, redaction de payload. Sem canal, rota nem UI | entregue |
-| 2 | Atividade ao vivo e linha do tempo correlacionada ao Diário | `F-atividade-viva` parcial |
+| 1a | Base durável da sala no servidor: assunto único por porto, log de eventos com posição e `opId` idempotente por sala, sessão de presença com intenção e revogação, redaction de payload | entregue |
+| 2 | Atividade ao vivo e linha do tempo do artefato | `F-atividade-viva` parcial |
 | 3 | Coedição de carta e gabarito (`opId`, `baseVersion`, reconexão por `seq`) | `F-coedicao` parcial |
-| 4 | Coedição de Rumo, plano, Manobra e Lance + handoff | `F-coedicao`, `F-handoff` |
-| 5 | Auditoria de toda chamada MCP, com busca, redaction, retenção e limites | `F-mcp-auditoria` |
+| 4 | Auditoria de toda chamada MCP, com redaction | `F-mcp-auditoria` |
 
 Nenhuma fase fecha sem teste automatizado e telemetria para concorrência, idempotência, reconexão, autorização/revogação, redaction, recuperação e custo (tabela em `docs/product/fluxos.md`).
-
-## Escopo (dev-context)
-
-- Expedição no porto, Embarcação lógica (N:N com papel e paths relativos), sem path absoluto no servidor.
-- Rumo com ciclo `draft/review/approved/superseded`, validade à parte, revisão imutável na aprovação.
-- Cartas-fonte com release imutável; nova edição da carta sinaliza `needs_review` sem invalidar o Rumo antigo.
-- Plano opcional e Manobras com lease atômico, relatório e aceite humano. Sem Kanban, prazo, pontos ou alocação.
-- Conversas de bordo (domínio separado dos comentários de carta) e Diário de bordo.
-- Agente de Bordo com modos `context_and_coordination`, `local_implementation` e `review`; chave ligada a humano + identidade + porto.
-- MCP: bootstrap, contexto, brief, claim/renew/release, relatórios e coordenação. Chaves MCP unificadas em Instrumentos (identidade + validade + ferramentas); catálogo completo de 49 ferramentas.
-- CLI `portulan init` / `doctor`: config sem segredo, `AGENT.md`, blocos gerenciados idempotentes.
-
-Fora: Kanban/sprints/prazos/alocação; execução de código no servidor; sync contínuo de Git; validação automática de PR; aprovação por IA; grafo visual; CRDT; e-mail; gravar token, segredo ou path absoluto no repositório.
-
-## Escopo (rumo-lances / bordo-feed / delegar-manobra)
-
-- Identificador inteiro único no porto (`#42`) para Rumo, Manobra, Lance, item, fonte, Marco, fio e recado.
-- Lance: um nível sob Manobra; lease na linha (Manobra ou Lance, mesmo com filhos); aceite na Manobra.
-- Kanban por estado (faixa = Manobra, cartão = Lance); sem drag de estado, prazo, pontos ou sprint.
-- Contexto unificado: contrato, Marcos, itens, fontes. Vistas Trabalho / Contexto / Atividade.
-- Delegar responsável (humano ou agente) com cascata só se pai e filhos estão sem dono. Delegar ≠ lease.
-- Feed de bordo: fio de discussão reutilizado; Maré própria; menção sem e-mail.
-
-Fora: nested Lances; prefixo `POR-123`; e-mail/inbox; Markdown rico no recado; comentários da carta; drag que muda estado.
 
 ## Escopo (auth-password)
 
 - Cadastro com handle, e-mail, nome e senha; login aceita handle ou e-mail.
 - Mescla: mesma conta com GitHub e/ou senha; ligar no modal ou no login GitHub com e-mail de conta sem GitHub.
-- Clique na foto abre modal (dados, métodos, tema, Instrumentos, sair).
+- Clique na foto abre modal (dados, métodos, chaves MCP, tema, sair).
 
 Fora: verificação de e-mail, “esqueci a senha”, upload de avatar, segundo provedor OAuth.
 
 ## Escopo (portos)
 
-- Porto inicial automático por conta; criar outros portos; porto ativo na sessão; seletor no topo do trilho.
+- Porto inicial automático por conta; criar outros portos; porto ativo na sessão; seletor no trilho quando há mais de um porto, e sempre na tela do Porto.
 - Tripulação com capitão / imediato / tripulante (RN-88); convite por link com papel, validade e limite de usos (RN-89); sair, transferir capitania e excluir porto vazio (RN-90, RN-91).
 - Visibilidade da carta em três níveis — camarote, porto, mar aberto (RN-17, RN-18) — e mover carta entre portos (RN-19). Selo de colaborador externo (RN-93).
 - Gabaritos e tokens MCP presos ao porto (RN-92, RN-55); `list_workspaces` no MCP.
 - Tema do porto aplicado no servidor, com sobrescrita local por navegador (RN-94).
-- Léxico náutico na UI: carta, cartoteca, gabarito, instrumentos, porto, tripulação, cartógrafo, frota, ponte.
+- Léxico náutico na UI: carta, cartoteca, gabarito, porto, tripulação, cartógrafo, frota, ponte.
 
 Fora: e-mail de convite, cobrança/plano por porto, domínio verificado, papéis por carta herdados do porto, tema por pessoa no servidor.
 
@@ -103,13 +74,13 @@ Fora: e-mail de convite, cobrança/plano por porto, domínio verificado, papéis
 |---|---|
 | Checklist living no servidor | `:::checklist` já existe; estado só em localStorage. Não pedido nesta leva. |
 | E-mail de convite | Exige provedor; o convite de porto por link e o convite nominal por e-mail já cobrem a entrada. |
-| CRDT como fonte de verdade | O Rumo #1 usa operações colaborativas com Postgres como snapshot; CRDT no lugar do banco continua fora. |
+| CRDT como fonte de verdade | A coedição usa operações com Postgres como snapshot; CRDT no lugar do banco continua fora. |
 | PDF anônimo em `/d` e `/p` | Puppeteer em rota pública: custo e abuso. Quem tem acesso baixa a versão no Histórico. |
 | Menções @ e notificação de comentário | Precisa de canal novo; o fio no editor já é o lugar da conversa. |
 
 ## Já existe (não listar de novo)
 
-Editor Markdown + prévia, catálogo de diretivas `:::`, gabaritos com paleta/logo, duplicar gabarito na UI, publicar com `/d/{slug}` e `/p/{id}`, visibilidade em três níveis (camarote / porto / mar aberto), compartilhar leitor/editor com selo de externo, MCP (cartas/gabaritos/componentes/shares/upload/portos/contexto de desenvolvimento), CLI `portulan init`, Expedições e Rumos versionados com Manobras e Agentes de Bordo, PDF do rascunho, PDF de versão publicada no Histórico, download do Markdown fonte (`.md`), duplicar carta na UI e no MCP, desativar carta/versão, upload de imagem (Blob), checklist living em localStorage, card `:::report`, diagramas Mermaid (` ```mermaid `), workspace autenticado com trilho (Ponte, Cartoteca, Gabaritos, Expedições, Embarcações, Rumos, Instrumentos, Porto) e seletor de porto, portos com tripulação e convite por link, tema do porto no servidor com sobrescrita local, mover carta entre portos, salvar rascunho (botão ou Cmd/Ctrl+S), slug UUID estável, filtro de status, busca no corpo, atalhos B/I/K, Tab/Shift+Tab para indentar, índice com âncoras, diff de versões, restaurar release no rascunho, comentários na prévia com respostas, login GitHub ou handle/e-mail + senha, cadastro com senha, mescla de métodos na mesma conta, modal da conta.
+Editor Markdown + prévia, catálogo de diretivas `:::`, gabaritos com paleta/logo, duplicar gabarito na UI, publicar com `/d/{slug}` e `/p/{id}`, visibilidade em três níveis (camarote / porto / mar aberto), compartilhar leitor/editor com selo de externo, MCP (cartas, gabaritos, componentes, shares, upload, portos), PDF do rascunho, PDF de versão publicada no Histórico, download do Markdown fonte (`.md`), duplicar carta na UI e no MCP, desativar carta/versão, upload de imagem (Blob), checklist living em localStorage, card `:::report`, diagramas Mermaid, workspace autenticado com trilho (Ponte, Cartoteca, Gabaritos, Porto) e seletor de porto quando há mais de um, portos com tripulação e convite por link, tema do porto no servidor com sobrescrita local, mover carta entre portos, salvar rascunho (botão ou Cmd/Ctrl+S), slug UUID estável, filtro de status, busca no corpo, atalhos B/I/K, Tab/Shift+Tab para indentar, índice com âncoras, diff de versões, restaurar release no rascunho, comentários na prévia com respostas, login GitHub ou handle/e-mail + senha, cadastro com senha, mescla de métodos na mesma conta, modal da conta com chaves MCP.
 
 ## Leva 1 — entregue (4 set. 2026)
 

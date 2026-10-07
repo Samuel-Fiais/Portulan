@@ -11,10 +11,7 @@ import {
 } from "@/lib/collab-rooms";
 import { authorizeCollabSubject, type CollabSubjectSnapshot } from "@/lib/collab-subjects";
 import { ensureCollabRoom, getCollabRoom } from "@/lib/db/collab-rooms";
-import { getContextPack, getImplementationPlan } from "@/lib/db/context-packs";
 import { getDocument, getDocumentAccessLevel } from "@/lib/db/documents";
-import { getImplementationTask } from "@/lib/db/implementation-tasks";
-import { getProject, getRepository } from "@/lib/db/projects";
 import { canManageTemplate, getTemplateForUser } from "@/lib/db/templates";
 
 export type CollabRoomAccessDenial = {
@@ -158,59 +155,6 @@ async function resolveSubject(input: {
           isBuiltin: template.isBuiltin,
           manageable: canManageTemplate(template, ctx),
         },
-      };
-    }
-    case "context_pack": {
-      const pack = await getContextPack(input.subjectId, workspaceId);
-      if (!pack) return null;
-      return {
-        subjectId: pack.id,
-        workspaceId,
-        snapshot: { subjectType: "context_pack", workspaceId: pack.workspaceId, status: pack.status },
-      };
-    }
-    case "implementation_plan": {
-      const plan = await getImplementationPlan(input.subjectId, workspaceId);
-      if (!plan) return null;
-      return {
-        subjectId: plan.id,
-        workspaceId,
-        snapshot: {
-          subjectType: "implementation_plan",
-          workspaceId: plan.workspaceId,
-          revisionId: plan.revisionId,
-        },
-      };
-    }
-    case "implementation_task": {
-      const task = await getImplementationTask(input.subjectId, workspaceId);
-      if (!task) return null;
-      return {
-        subjectId: task.id,
-        workspaceId,
-        snapshot: {
-          subjectType: "implementation_task",
-          workspaceId: task.workspaceId,
-          status: task.status,
-        },
-      };
-    }
-    case "project": {
-      const project = await getProject(input.subjectId, workspaceId);
-      if (!project) return null;
-      return {
-        subjectId: project.id,
-        workspaceId,
-        snapshot: { subjectType: "project", workspaceId: project.workspaceId },
-      };
-    }
-    case "repository": {
-      const repository = await getRepository(input.subjectId, workspaceId);
-      if (!repository) return null;
-      return {
-        subjectId: repository.id,
-        workspaceId,
-        snapshot: { subjectType: "repository", workspaceId: repository.workspaceId },
       };
     }
     case "workspace": {

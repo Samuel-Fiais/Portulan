@@ -50,8 +50,6 @@ import { applyMarkdownFormat, isMarkdownShortcut } from "@/lib/markdown-shortcut
 import { documentVisibilities, documentVisibilityMeta, type DocumentVisibility } from "@/lib/workspaces";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import { releaseSideId, type VersionDiffSideId } from "@/lib/version-diff";
-import { DocumentContextUsage } from "@/components/document-context-usage";
-
 type LinkableDocument = {
   id: string;
   slug: string;
@@ -80,8 +78,6 @@ export function DocumentEditor({
   collaborators = [],
   currentUserId,
   workspaces = [],
-  contextPacks = [],
-  projects = [],
 }: {
   initialDocument: DocumentRecord;
   initialReleases?: DocumentRelease[];
@@ -91,8 +87,6 @@ export function DocumentEditor({
   collaborators?: DocumentCollaborator[];
   currentUserId?: string | null;
   workspaces?: { id: string; name: string }[];
-  contextPacks?: { id: string; title: string }[];
-  projects?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [document, setDocument] = useState(initialDocument);
@@ -114,7 +108,6 @@ export function DocumentEditor({
   const [versionDiffLeft, setVersionDiffLeft] = useState<VersionDiffSideId>("draft");
   const [versionDiffRight, setVersionDiffRight] = useState<VersionDiffSideId>("draft");
   const [pending, startTransition] = useTransition();
-  const collabBootstrapRef = useRef(false);
   const markdownEditorRef = useRef<HTMLTextAreaElement>(null);
   const markdownSelectionRef = useRef({ start: 0, end: 0 });
   const pasteImageUploadingRef = useRef(false);
@@ -1027,13 +1020,6 @@ export function DocumentEditor({
                 <Field label="Frota"><Input value={document.team} onChange={(event) => patch("team", event.target.value)} readOnly={!canEdit} /></Field>
                 <Field label="Tags" className="metadata-field--full"><Input value={document.tags.join(", ")} onChange={(event) => patch("tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean))} placeholder="pagamentos, api, arquitetura" readOnly={!canEdit} aria-describedby="metadata-tags-hint" /><p id="metadata-tags-hint">Separe as tags por vírgula.</p></Field>
               </section>
-              <DocumentContextUsage
-                documentId={document.id}
-                documentTitle={document.title}
-                releaseId={releases[0]?.id ?? null}
-                packs={contextPacks}
-                projects={projects}
-              />
               {isOwner ? (
                 <section className="metadata-actions" aria-label="Ações da carta">
                   <div className="metadata-action-panel">

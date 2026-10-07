@@ -7,8 +7,6 @@ import {
   isDocumentOwner,
   listDocumentCollaborators,
   listDocumentReleases,
-  listPacksUsingDocument,
-  listProjects,
   listTemplates,
 } from "@/lib/db";
 import { documentAccessContext, templateAccessContext } from "@/lib/access-context";
@@ -50,9 +48,7 @@ export default async function DocumentPage({ params }: Props) {
   const isOwner = isDocumentOwner(document, ctx);
   const collaborators = await listDocumentCollaborators(document.id, document.userId);
   const templates = canEdit && ctx.userId ? await listTemplates(await templateAccessContext(ctx.userId)) : [];
-  const { workspaces, active } = await resolveWorkspaceContext(ctx.userId);
-  const contextPacks = active ? await listPacksUsingDocument(document.id, active.id) : [];
-  const projects = active ? await listProjects(active.id) : [];
+  const { workspaces } = await resolveWorkspaceContext(ctx.userId);
 
   return (
     <DocumentEditor
@@ -64,8 +60,6 @@ export default async function DocumentPage({ params }: Props) {
       collaborators={collaborators}
       currentUserId={session?.user?.id ?? null}
       workspaces={workspaces.map((workspace) => ({ id: workspace.id, name: workspace.name }))}
-      contextPacks={contextPacks.map((pack) => ({ id: pack.id, title: pack.title }))}
-      projects={projects.map((project) => ({ id: project.id, name: project.name }))}
     />
   );
 }

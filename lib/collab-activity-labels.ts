@@ -27,17 +27,6 @@ const COMMAND_LABELS: Record<string, string> = {
   "document.share.revoked": "Compartilhamento revogado",
   "document.published": "Carta publicada",
   "document.visibility_changed": "Visibilidade da carta alterada",
-  "task.claimed": "Comando assumido",
-  "task.released": "Comando solto",
-  "task.assigned": "Responsável alterado",
-  "task.status_changed": "Estado da Manobra alterado",
-  "task.result_reported": "Resultado registrado",
-  "task.accepted": "Aceite humano registrado",
-  "task.blocked": "Maré contrária aberta",
-  "task.unblocked": "Maré contrária resolvida",
-  "pack.approved": "Rumo aprovado",
-  "pack.submitted": "Rumo enviado para revisão",
-  "coordination.message": "Mensagem na Conversa de bordo",
   handoff: "Passagem de comando",
 };
 

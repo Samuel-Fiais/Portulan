@@ -179,55 +179,6 @@ export const accountSetPasswordSchema = z.object({
   password: accountPasswordSchema,
 });
 
-export const projectInputSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  objective: z.string().trim().max(4_000).default(""),
-});
-
-export const repositoryInputSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  kind: z.enum(["git", "local", "both"]).default("git"),
-  remoteUrl: z.string().trim().max(2_048).optional().nullable(),
-  notes: z.string().trim().max(2_000).default(""),
-});
-
-export const projectRepositoryLinkSchema = z.object({
-  repositoryId: z.string().uuid(),
-  role: z.enum(["primary", "dependency", "consumer", "infrastructure"]).default("primary"),
-  pathScopes: z.array(z.string().trim().min(1).max(240)).max(40).default([]),
-  notes: z.string().trim().max(2_000).default(""),
-});
-
-export const contextPackInputSchema = z.object({
-  projectId: z.string().uuid(),
-  title: z.string().trim().min(3).max(180),
-  objective: z.string().trim().max(8_000).default(""),
-  expectedOutcome: z.string().trim().max(8_000).default(""),
-  scope: z.string().trim().max(8_000).default(""),
-  outOfScope: z.string().trim().max(8_000).default(""),
-  documentId: z.string().min(1).optional(),
-  releaseId: z.string().min(1).optional(),
-});
-
-export const contextPackRecorteInputSchema = z.object({
-  expectedOutcome: z.string().trim().max(8_000).default(""),
-  scope: z.string().trim().max(8_000).default(""),
-  outOfScope: z.string().trim().max(8_000).default(""),
-  planSummary: z.string().trim().max(8_000).default(""),
-});
-
-export const agentIdentityInputSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  workMode: z
-    .enum(["context_and_coordination", "local_implementation", "review"])
-    .default("local_implementation"),
-  allowedMcpTools: z.array(z.string().trim().min(1)).min(1).optional(),
-});
-
-export const mcpTokenWithIdentitySchema = mcpTokenInputSchema.extend({
-  agentIdentityId: z.string().uuid().optional().nullable(),
-});
-
 /**
  * Publicar evento na sala. `idempotencyKey` é o `opId` do cliente (RN-125) e o payload
  * é rótulo curto — o Markdown integral nunca sobe (RN-122). Os nomes em `snake_case` do
@@ -294,9 +245,3 @@ export const collabEventInputSchema = z.preprocess(
       .transform((value) => value ?? null),
   }),
 );
-
-/** Nova chave MCP: cria identidade + primeira chave, ou emite chave adicional quando `agentIdentityId` vem preenchido. */
-export const mcpKeyCreateSchema = mcpTokenInputSchema.extend({
-  allowedMcpTools: z.array(z.string().trim().min(1)).min(1).optional(),
-  agentIdentityId: z.string().uuid().optional(),
-});

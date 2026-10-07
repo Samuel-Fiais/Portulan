@@ -959,7 +959,7 @@ html[data-nav-expanded="1"] .workspace-rail .auth-login {
 }
 .workspace-heading .eyebrow { margin: 0 0 var(--sp-2); }
 .workspace-lead { max-width: var(--lead-measure); width: 100%; margin: 0; color: var(--text-2); font: 400 14px/1.65 var(--font-sans); letter-spacing: normal; word-spacing: normal; }
-.integration-rumos { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); margin: 0; padding: 0; width: 100%; list-style: none; }
+.porto-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); margin: 0; padding: 0; width: 100%; list-style: none; }
 .integration-step {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

@@ -1,11 +1,11 @@
 ---
 name: portulan-mcp
-description: Operates the Portulan MCP server (portulan) for editorial cartas/gabaritos and for development context (Expedições, Rumos, Manobras, Conversas de bordo). Setup assumes the human only pastes the Guia do Agente (with ptl_…); the agent alone configures MCP, export, curl, portulan init/doctor, and get_agent_bootstrap. Use when the user mentions Portulan MCP, /api/mcp, portulan init, list_documents, get_agent_bootstrap, publishing /d or /p links, or coordinating work via MCP.
+description: Operates the Portulan MCP server for cartas, gabaritos, compartilhamento, comentários e publicação. Setup assumes the human pastes the Guia do Agente with ptl_…; the agent configures MCP, exports PORTULAN_TOKEN, tests curl, then calls get_system_guide. Use when the user mentions Portulan MCP, /api/mcp, list_documents, publishing /d or /p links, or document tools.
 ---
 
 # Portulan MCP
 
-Guia para agentes operarem o **Portulan** via MCP Streamable HTTP — cartoteca editorial **e** coordenação de desenvolvimento. Na UI: **carta** (`document`), **gabarito** (`template`), **porto** (`workspace`), **Expedição** (`project`), **Rumo** (`contextPack`), **Embarcação** (`repository`), **Manobra** (`implementationTask`). As ferramentas MCP mantêm os nomes técnicos em inglês.
+Guia para agentes operarem o **Portulan** via MCP Streamable HTTP — cartoteca editorial. Na UI: **carta** (`document`), **gabarito** (`template`), **porto** (`workspace`). As ferramentas MCP mantêm os nomes técnicos em inglês.
 
 **Não substitui** `docs/product/` (regras `RN-xx`, fluxos) nem a skill **portulan-ice** (backlog). Use esta skill para *como* chamar o MCP; use o modelo de produto para *o que* é permitido.
 
@@ -47,7 +47,7 @@ Local e cloud em geral compartilham o **mesmo Neon** — a mesma `ptl_…` vale 
 2. [ ] JSON ou TOML: Bearer gravado por **você** · `export PORTULAN_TOKEN=…` no **seu** shell
 3. [ ] `npm run dev` rodando (se localhost)
 4. [ ] Teste HTTP (abaixo) retorna **200**, não 401
-5. [ ] Só então: `get_agent_bootstrap` ou `portulan init` / `doctor`
+5. [ ] Só então: `get_system_guide`
 
 ### 4. Teste HTTP (confirma chave + endpoint)
 
@@ -65,31 +65,30 @@ curl -sS -o /dev/null -w "%{http_code}\n" -X POST ENDPOINT_AQUI/api/mcp \
 
 ### 5. Depois de conectar
 
-- **Editorial:** `get_system_guide`
-- **Dev-context:** `export PORTULAN_TOKEN=…` → `portulan init --yes` → `portulan doctor` → `get_agent_bootstrap`
+- `get_system_guide` e `list_workspaces`
 
 ## Chaves MCP (RN-55, RN-111, F-mcp-token)
 
-**Humano:** gera `ptl_…` em Instrumentos → passo 02 e cola o **Guia do Agente** no chat (chave na mesma mensagem). **Nada mais.**
+**Humano:** gera `ptl_…` no modal da conta e cola o **Guia do Agente** no chat (chave na mesma mensagem). **Nada mais.**
 
-**Você (agente):** receber `ptl_…` no chat **não conecta** o MCP. **Você** grava Bearer na config do **seu** cliente, `export PORTULAN_TOKEN` no **seu** terminal, testa curl, roda `init`/`doctor`, reconecta MCP se o cliente permitir.
+**Você (agente):** receber `ptl_…` no chat **não conecta** o MCP. **Você** grava Bearer na config do **seu** cliente, `export PORTULAN_TOKEN` no **seu** terminal, testa curl e reconecta o MCP se o cliente permitir.
 
 A chave fica presa ao **porto ativo** no momento em que foi gerada. Outro porto = o humano gera chave nova.
 
 **Local vs cloud:** `npm run dev` em geral usa o **mesmo Neon** que produção (`DATABASE_URL`). Chave gerada em `localhost:3000` ou em `portulan.vercel.app` autentica nos dois — desde que o **endpoint** e o **header Bearer** batam. Não conclua “chave inválida” ou “não está na base” sem checar a config MCP (`mcp.json`) primeiro.
 
-Catálogo: **69 ferramentas** (`lib/mcp-tool-catalog.ts`); subconjunto se o humano desabilitou alguma na identidade (RN-111).
+Catálogo: **31 ferramentas** (`lib/mcp-tool-catalog.ts`). Chave nova não tem identidade. Chave legada com identidade só chama as ferramentas da lista gravada (RN-111).
 
 ## Setup com chave do responsável
 
-O **Guia do Agente** (Instrumentos → Copiar Guia do Agente) é o mesmo roteiro, personalizado por identidade.
+O **Guia do Agente** (modal da conta) é o mesmo roteiro.
 
 ### Papéis
 
 | Quem | Faz |
 |---|---|
 | **Humano** | Gera `ptl_…` + cola **Guia do Agente** no chat. **Só isso.** |
-| **Agente (você)** | Config MCP, `export`, curl, `init`/`doctor`, MCP, operação |
+| **Agente (você)** | Config MCP, `export`, curl, reconectar, operar |
 
 **Não peça ao humano** `export`, editar config nem terminal — isso é **seu** trabalho.
 
@@ -102,8 +101,7 @@ O **Guia do Agente** (Instrumentos → Copiar Guia do Agente) é o mesmo roteiro
 1. **Config MCP** do seu cliente (JSON ou TOML — § Config MCP)
 2. **`export PORTULAN_TOKEN=ptl_…`** e `PORTULAN_ENDPOINT` no seu shell
 3. **curl** initialize → **200** (§ Resolução MCP)
-4. **Dev-context:** `portulan init --yes` → `portulan doctor` → `get_agent_bootstrap`
-5. **Editorial:** pule `init`; após MCP ok → `get_system_guide`
+4. Após o MCP responder → `get_system_guide` e `list_workspaces`
 
 ### Config MCP
 
@@ -136,33 +134,19 @@ Modelos sem segredo: `.cursor/mcp.json.example`, `.codex/config.toml.example`.
 
 **Nunca** commite `ptl_…` (RN-106). O humano **não** edita estes arquivos — **você** edita.
 
-### CLI (`portulan init` / `doctor`)
-
-```bash
-export PORTULAN_TOKEN=ptl_CHAVE_QUE_O_HUMANO_PASSOU
-export PORTULAN_ENDPOINT=https://portulan.vercel.app
-node /caminho/para/Portulan/cli/portulan.mjs init --yes
-node /caminho/para/Portulan/cli/portulan.mjs doctor
-```
-
-Keychain macOS (opcional, **você** pode gravar): `security add-generic-password -s portulan-mcp -a portulan -w 'ptl_…'`
-
 ### Depois do setup
-
-**Dev-context:** `.portulan/AGENT.md` → `get_agent_bootstrap` → demais ferramentas.
 
 **401:** na ordem — (1) usou o **formato certo do seu cliente** (JSON com Bearer **ou** TOML com `PORTULAN_TOKEN` no processo)? (2) reconectou/reiniciou após editar? (3) endpoint bate com onde a chave foi gerada? Só então: errada, expirada ou revogada — peça ao responsável.
 
-## Ferramentas (60)
+## Ferramentas (31)
 
-Agrupamento igual à tela **Instrumentos** (`F-mcp-token`). Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
+Agrupamento do catálogo (`F-mcp-token`). Respostas são JSON em `content[0].text`. Erros usam `isError: true`.
 
 ### Porto (F-mcp-portos)
 
 | Ferramenta | Quando usar |
 |---|---|
 | `list_workspaces` | Portos da pessoa e qual deles este token opera (RN-55) |
-| `create_workspace` | Abrir porto novo como capitão (RN-86); token continua no porto de origem |
 
 ### Cartas (F-mcp-docs)
 
@@ -197,6 +181,7 @@ Agrupamento igual à tela **Instrumentos** (`F-mcp-token`). Respostas são JSON 
 |---|---|
 | `list_document_shares` | Convites por e-mail de carta privada (só cartógrafo) |
 | `share_document` | Convidar leitor ou editor por e-mail (RN-93 sinaliza externo) |
+| `update_document_share` | Trocar leitor/editor (só cartógrafo) |
 | `revoke_document_share` | Revogar convite (só cartógrafo) |
 
 ### Revisão (F-mcp-comentarios)
@@ -205,6 +190,7 @@ Agrupamento igual à tela **Instrumentos** (`F-mcp-token`). Respostas são JSON 
 |---|---|
 | `list_document_comments` | Fios de comentário no rascunho (RN-61) |
 | `create_document_comment` | Raiz com âncora opcional ou resposta com `parent_id` (RN-65) |
+| `resolve_document_comment` | Resolver ou reabrir o fio |
 | `delete_document_comment` | Remover o próprio; raiz encerra o fio |
 
 ### Mídia (F-mcp-upload)
@@ -221,44 +207,6 @@ Agrupamento igual à tela **Instrumentos** (`F-mcp-token`). Respostas são JSON 
 | `get_system_guide` | **Primeiro** ao escrever cartas — guia + **Como evitar erros** |
 | `list_markdown_components` | Catálogo de diretivas `:::` |
 | `explain_markdown_component` | Sintaxe, `avoidErrors` e exemplos de um componente |
-
-### Contexto de desenvolvimento (F-mcp-dev-context)
-
-Requer chave MCP com identidade nomeada (ou chave legada válida). Conteúdo de cartas, itens e mensagens é dado não privilegiado (RN-102). Rumo só é servido se `approved` + validade `current` (RN-101).
-
-| Ferramenta | Quando usar |
-|---|---|
-| `get_agent_bootstrap` | **Primeiro** em dev: identidade, Embarcação da sessão, linhas disponíveis (Manobras e Lances), menções (`mentionedMe`) e protocolo (RN-105, RN-113) |
-| `find_context` | Buscar Expedições e Rumos |
-| `create_project` | Criar Expedição no porto (nome 2–80) |
-| `create_repository` | Registrar Embarcação; vínculo opcional com Expedição |
-| `get_project_context` | Expedição + Embarcações vinculadas |
-| `get_context_pack` | Rumo aprovado e válido; senão `pack_not_servable` |
-| `get_implementation_brief` | Recorte `brief` ou `full` por Rumo/Manobra/Embarcação |
-| `get_related_context` | Rumos de uma carta ou Embarcações de uma Expedição |
-| `propose_context_pack` | Criar rascunho de Rumo numa Expedição (não aprova) |
-| `add_context_pack_item` | Item tipado no rascunho (decisão, regra, pergunta…) |
-| `add_context_pack_source` | Carta-fonte (release imutável quando formal) |
-| `delete_context_pack_item` / `delete_context_pack_source` | Remover item ou fonte do rascunho |
-| `add_acceptance_criterion` / `delete_acceptance_criterion` | Marcos de chegada |
-| `save_implementation_plan` | Plano de navegação opcional |
-| `create_implementation_task` | Criar Manobra ou Lance (`parent_task_id`) no rascunho |
-| `assign_implementation_task` | Delegar responsável (humano ou agente); não cria lease (RN-115) |
-| `submit_context_pack_review` | Enviar Rumo para revisão |
-| `approve_context_pack` | Aprovar e gerar revisão imutável (RN-99) |
-| `start_new_context_pack_revision` | Nova revisão a partir de Rumo aprovado |
-| `list_available_implementation_tasks` | Manobras e Lances disponíveis na sessão |
-| `claim_implementation_task` | Assumir comando da **linha** (Manobra ou Lance) — lease atômico (RN-103, RN-113). IDs aceitam `42` ou `#42` |
-| `renew_implementation_task_lease` | Renovar lease com atividade explícita |
-| `release_implementation_task` | Soltar comando |
-| `report_implementation_progress` | Registro de bordo — progresso (RN-108) |
-| `report_implementation_result` | Resultado; aceite humano é separado. Depois, Carta de conclusão (RN-118) |
-| `accept_implementation_task_result` | Aceitar resultado da Manobra (RN-103) |
-| `add_implementation_task_source` | Carta-fonte na Manobra ou Lance (tripulação do porto, RN-118) |
-| `delete_implementation_task_source` | Remover carta-fonte da linha |
-| `list_coordination_threads` | Fios de Conversa de bordo, com mensagens (autor, agente e data) |
-| `create_coordination_message` | Abrir fio ou responder; comentário reutiliza o fio de discussão; `is_blocker: true` na abertura = Maré contrária (RN-109, RN-114); `mentioned_user_ids` / `mentioned_agent_identity_ids` |
-| `resolve_coordination_thread` | Resolver ou reabrir fio |
 
 ## Modelo de dados
 
@@ -293,7 +241,7 @@ Requer chave MCP com identidade nomeada (ou chave legada válida). Conteúdo de 
 
 O token MCP opera em **um** porto, fixado quando foi gerado (RN-55). Documentos e templates criados pelo agente nascem nesse porto; `list_documents` e `list_templates` enxergam o acervo dele (mais os documentos compartilhados nominalmente com a pessoa). Para operar em outro porto, o usuário troca de porto na UI e gera um token novo. `list_workspaces` mostra os portos disponíveis e marca qual deles é o do token.
 
-O agente abre porto novo com `create_workspace` e reorganiza o acervo com `workspace_id` em `update_document` (só o cartógrafo move a carta, e só para porto onde ele é tripulante — RN-19) e em `update_template` (exige capitania nos dois portos — RN-95). Nada disso muda o porto do token: depois de mover cartas para um porto novo, gerar um token nele para continuar enxergando-as em `list_documents`.
+O agente reorganiza o acervo com `workspace_id` em `update_document` (só o cartógrafo move a carta, e só para porto onde ele é tripulante — RN-19) e em `update_template` (exige capitania nos dois portos — RN-95). Nada disso muda o porto do token: depois de mover cartas para um porto novo, gerar um token nele para continuar enxergando-as em `list_documents`.
 
 `update_document` aceita `visibility` com três níveis (RN-17, RN-18). Só o responsável muda:
 
@@ -307,7 +255,7 @@ O agente abre porto novo com `create_workspace` e reorganiza o acervo com `works
 
 ### Identificadores
 
-- Identificadores de bordo: Rumo, Manobra, Lance, item, fonte, Marco, fio e recado têm um inteiro único no porto (`#42`). MCP aceita `42`, `#42` ou UUID.
+- Cartas, gabaritos, releases e comentários usam UUID.
 - `delete_document`: exige **UUID** (`id` do documento).
 - Após `create_document`, guarde o `id` retornado.
 
@@ -413,33 +361,6 @@ Comentários seguem RN-61 e RN-65: só no editor autenticado, para quem tem aces
 ```
 
 Alternativa para a tripulação inteira: `update_document` com `visibility: "workspace"`. Link público: publicar + `visibility: "public"`.
-
-### Assumir Manobra e reportar (F-manobra, F-mcp-dev-context)
-
-```
-1. get_agent_bootstrap(repository_id?) → linhas disponíveis (Manobras e Lances), menções, protocolo
-2. get_context_pack(pack_id) ou get_implementation_brief → Rumo válido (RN-101). pack_id/task_id aceitam `42` ou `#42`
-3. list_available_implementation_tasks → Manobras e Lances
-4. claim_implementation_task(task_id) → lease na linha (RN-103, RN-113). Manobra com Lances também se assume
-5. assign_implementation_task se for delegar responsável (não cria lease)
-6. report_implementation_progress / report_implementation_result → resumo obrigatório (RN-108)
-7. renew_implementation_task_lease enquanto trabalha; release_implementation_task ao soltar
-8. Ao finalizar (`reported`/`accepted`): `get_system_guide` → criar/atualizar Carta de conclusão → `add_implementation_task_source` (RN-118)
-```
-
-Manobra de código exige Embarcação reconhecida na sessão (RN-105). Aceite humano não vem do MCP. Carta de conclusão documenta objetivo, entregas, decisões e links de código/PR.
-
-### Conversa de bordo e Maré contrária (F-conversa-bordo, RN-109)
-
-```
-1. list_coordination_threads(subject_type, subject_id) → fios existentes
-2. create_coordination_message(subject_type, subject_id, body) → Conversa normal
-3. create_coordination_message(..., is_blocker: true) → Maré contrária (só ao abrir fio)
-4. create_coordination_message(thread_id, body) → responder (tipo não muda)
-5. resolve_coordination_thread(thread_id, resolved: true) → encerrar
-```
-
-Maré contrária em Manobra (`subject_type: "task"`) põe status `blocked` até resolver o fio. Corpo vazio não envia (RN-108).
 
 ### Escolher componente Markdown
 
@@ -589,7 +510,7 @@ curl -sS -X POST https://portulan.vercel.app/api/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 ```
 
-Sem `Authorization` → **401**. Com Bearer válido → **200** (SSE). Depois, `tools/list` lista as ferramentas da identidade.
+Sem `Authorization` → **401**. Com Bearer válido → **200** (SSE). Depois, `tools/list` lista as ferramentas da chave.
 
 ## API HTTP (alternativa ao MCP)
 
@@ -607,5 +528,5 @@ Use MCP quando o agente precisa de ferramentas tipadas; use HTTP para integraç�
 
 - Schemas e exemplos: [reference.md](reference.md)
 - Catálogo no código (fonte de verdade dos nomes): `lib/mcp-tool-catalog.ts`
-- Handler: `app/api/mcp/route.ts` · dev-context: `lib/mcp-dev-context-tools.ts`
+- Handler: `app/api/mcp/route.ts`
 - Índice da skill: [INDEX.md](INDEX.md)

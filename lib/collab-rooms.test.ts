@@ -7,7 +7,7 @@ import {
   validateCollabSubject,
 } from "./collab-rooms.ts";
 
-const room = { workspaceId: "ws-1", subjectType: "context_pack" as const, subjectId: "pack-1" };
+const room = { workspaceId: "ws-1", subjectType: "template" as const, subjectId: "tpl-1" };
 
 test("sala só existe para assunto conhecido e artefato identificado", () => {
   assert.equal(validateCollabSubject({ subjectType: "document", subjectId: "doc-1" }).ok, true);
@@ -16,7 +16,7 @@ test("sala só existe para assunto conhecido e artefato identificado", () => {
 });
 
 test("a chave da sala junta porto, assunto e artefato", () => {
-  assert.equal(collabRoomKey(room), "porto:ws-1:context_pack:pack-1");
+  assert.equal(collabRoomKey(room), "porto:ws-1:template:tpl-1");
 });
 
 test("RN-96: sala de outro porto não abre", () => {

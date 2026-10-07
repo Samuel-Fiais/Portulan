@@ -125,36 +125,6 @@ test("porto com cartas não é excluído", () => {
   );
 });
 
-test("porto com Expedição, Embarcação ou Rumo não é excluído", () => {
-  assert.equal(
-    validateWorkspaceDeletion({
-      role: "owner",
-      isPersonal: false,
-      documentCount: 0,
-      projectCount: 1,
-    }).ok,
-    false,
-  );
-  assert.equal(
-    validateWorkspaceDeletion({
-      role: "owner",
-      isPersonal: false,
-      documentCount: 0,
-      repositoryCount: 1,
-    }).ok,
-    false,
-  );
-  assert.equal(
-    validateWorkspaceDeletion({
-      role: "owner",
-      isPersonal: false,
-      documentCount: 0,
-      packCount: 1,
-    }).ok,
-    false,
-  );
-});
-
 test("transferência de capitania exige alguém da tripulação", () => {
   assert.equal(
     validateCaptaincyTransfer({ actorId: "a", actorRole: "owner", targetId: "b", targetRole: null }).ok,

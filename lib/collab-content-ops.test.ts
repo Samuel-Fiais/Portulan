@@ -7,9 +7,7 @@ import {
   type CollabEventStore,
 } from "./collab-events.ts";
 import {
-  contextPackAcceptsContentOperation,
   parseCollabContentOpPayload,
-  parseCollabContextPackDynamicField,
   planOptimisticContentWrite,
   validateCollabContentBaseVersion,
 } from "./collab-content-ops.ts";
@@ -17,22 +15,6 @@ import {
 test("RN-120: baseVersion defasada recusa operação", () => {
   assert.deepEqual(planOptimisticContentWrite(3, 2), { action: "conflict" });
   assert.deepEqual(planOptimisticContentWrite(0, 0), { action: "write", nextVersion: 1 });
-});
-
-test("RN-99 / RN-120: Rumo aprovado recusa coedição; rascunho aceita recorte e itens", () => {
-  assert.equal(contextPackAcceptsContentOperation("approved"), false);
-  assert.equal(contextPackAcceptsContentOperation("draft"), true);
-  assert.equal(parseCollabContentOpPayload({ field: "scope", value: "x" }, "context_pack").ok, true);
-  const itemField = "item.550e8400-e29b-41d4-a716-446655440000.body";
-  assert.deepEqual(parseCollabContextPackDynamicField(itemField), {
-    kind: "item",
-    itemId: "550e8400-e29b-41d4-a716-446655440000",
-  });
-  assert.equal(parseCollabContentOpPayload({ field: itemField, value: "texto" }, "context_pack").ok, true);
-  assert.equal(
-    parseCollabContentOpPayload({ field: "summary", value: "plano" }, "implementation_plan").ok,
-    true,
-  );
 });
 
 test("RN-120: operação de carta valida campo e baseVersion", () => {

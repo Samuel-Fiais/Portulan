@@ -18,7 +18,7 @@ export type CollabCommandAnnounceInput = {
   payload?: Record<string, unknown> | null;
   /** Chave de idempotência do comando atômico (RN-120). */
   idempotencyKey?: string;
-  /** Liga atividade ao Diário de bordo (RN-122). */
+  /** Liga atividade ao evento de auditoria (RN-122). */
   correlationId?: string | null;
 };
 

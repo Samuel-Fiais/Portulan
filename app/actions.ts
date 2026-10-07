@@ -17,8 +17,10 @@ import {
   listDocumentComments,
   listDocumentShares,
   listLinkableDocuments,
+  createMcpToken,
   listMcpTokens,
   publishDocument,
+  recordAuditEvent,
   restoreDocumentRelease,
   revokeDocumentShare,
   revokeMcpToken,
@@ -33,6 +35,7 @@ import {
   updateTemplate,
 } from "@/lib/db";
 import { documentAccessContext, templateAccessContext } from "@/lib/access-context";
+import { requireWorkspaceContext } from "@/lib/active-workspace";
 import {
   createDocumentCommentForAccess,
   deleteDocumentCommentForAccess,
@@ -316,8 +319,37 @@ export async function duplicateTemplateAction(id: string) {
 }
 
 export async function createMcpTokenAction(input: unknown) {
-  const { createMcpKeyAction } = await import("@/app/dev-context-actions");
-  return createMcpKeyAction(input);
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Faça login para gerar uma chave MCP." };
+  }
+
+  const parsed = mcpTokenInputSchema.safeParse(input ?? {});
+  if (!parsed.success) return { ok: false as const, error: "Dados da chave MCP inválidos." };
+
+  const { active } = await requireWorkspaceContext(session.user.id);
+  const result = await createMcpToken(
+    session.user.id,
+    parsed.data.name,
+    parsed.data.expiration,
+    active.id,
+    null,
+  );
+  try {
+    await recordAuditEvent({
+      workspaceId: active.id,
+      userId: session.user.id,
+      agentIdentityId: null,
+      mcpTokenId: result.record.id,
+      action: "issue_mcp_key",
+      targetType: "mcp_token",
+      targetId: result.record.id,
+    });
+  } catch {
+    // A chave já foi emitida; falha de auditoria não invalida a emissão.
+  }
+  revalidatePath("/");
+  return { ok: true as const, token: result.token, record: result.record };
 }
 
 export async function listMcpTokensAction() {

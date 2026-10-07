@@ -139,17 +139,11 @@ export function validateWorkspaceDeletion(input: {
   role: WorkspaceRole | null;
   isPersonal: boolean;
   documentCount: number;
-  projectCount?: number;
-  repositoryCount?: number;
-  packCount?: number;
 }): PolicyResult {
   if (!isCaptain(input.role)) return deny("Só o capitão afunda o porto.");
   if (input.isPersonal) return deny("O porto inicial não pode ser excluído.");
   if (input.documentCount > 0) {
     return deny("Mova ou exclua as cartas do porto antes de excluí-lo.");
-  }
-  if ((input.projectCount ?? 0) > 0 || (input.repositoryCount ?? 0) > 0 || (input.packCount ?? 0) > 0) {
-    return deny("Mova ou exclua Expedições, Embarcações e Rumos do porto antes de excluí-lo.");
   }
   return ok;
 }

@@ -9,8 +9,8 @@ import { ensureCollabRoom } from "@/lib/db/collab-rooms";
 import { joinOrHeartbeatPresence } from "@/lib/db/presence-sessions";
 
 /**
- * Agente de bordo declara presença e intenção na sala do artefato (RN-123).
- * Chamado a partir do MCP quando o agente opera Manobra/Lance/Rumo.
+ * Agente declara presença e intenção na sala da carta, do gabarito ou do porto (RN-123).
+ * Chamado a partir do MCP quando a chave opera um desses assuntos.
  */
 export async function touchAgentCollabPresence(input: {
   workspaceId: string;

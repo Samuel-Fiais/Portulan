@@ -9,16 +9,10 @@ function deny(error: string): { ok: false; error: string } {
   return { ok: false, error };
 }
 
-/** Assuntos de sala: artefatos do porto que aceitam presença e atividade ao vivo (RN-119). */
+/** Assuntos de sala: carta, gabarito e o porto (tripulação e convites). */
 export const collabSubjectTypes = [
   "document",
   "template",
-  "context_pack",
-  "implementation_plan",
-  "implementation_task",
-  "project",
-  "repository",
-  /** Feed transversal do porto — tripulação, convites e espelho de comandos (RN-119). */
   "workspace",
 ] as const;
 
@@ -27,11 +21,6 @@ export type CollabSubjectType = (typeof collabSubjectTypes)[number];
 export const COLLAB_SUBJECT_TYPE_LABELS: Record<CollabSubjectType, string> = {
   document: "Carta",
   template: "Gabarito",
-  context_pack: "Rumo",
-  implementation_plan: "Plano de navegação",
-  implementation_task: "Manobra ou Lance",
-  project: "Expedição",
-  repository: "Embarcação",
   workspace: "Porto",
 };
 

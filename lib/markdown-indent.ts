@@ -18,7 +18,7 @@ export function applyMarkdownIndent(
   const lines = block.split("\n");
   let startDelta = 0;
   let endDelta = 0;
-  let cursorOffset = selectionStart - blockStart;
+  const cursorOffset = selectionStart - blockStart;
 
   const nextLines = lines.map((line, index) => {
     if (outdent) {

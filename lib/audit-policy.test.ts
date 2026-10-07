@@ -15,7 +15,7 @@ test("auditoria não registra token em texto puro", () => {
   assert.equal(sanitized!.summary, "ok");
 });
 
-test("Diário de bordo mostra responsável via Agente de Bordo", () => {
+test("auditoria mostra responsável humano, com agente quando a chave tem identidade", () => {
   assert.equal(actorDisplayName({ userName: "Samuel Fiais", agentName: "Claude Code" }), "Samuel Fiais via Claude Code");
   assert.equal(
     validateAuditEvent({
@@ -23,9 +23,9 @@ test("Diário de bordo mostra responsável via Agente de Bordo", () => {
       userId: "u",
       agentIdentityId: "a",
       mcpTokenId: "t",
-      action: "claim_implementation_task",
-      targetType: "task",
-      targetId: "task-1",
+      action: "publish_document",
+      targetType: "document",
+      targetId: "doc-1",
     }).ok,
     true,
   );

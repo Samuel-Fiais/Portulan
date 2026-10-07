@@ -3,7 +3,6 @@
 import "./account-settings-dialog.css";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { Github, LogOut } from "lucide-react";
@@ -16,6 +15,7 @@ import {
   startGitHubLinkAction,
   updateAccountProfileAction,
 } from "@/app/actions";
+import { McpTokensPanel } from "@/components/mcp-tokens-panel";
 import { ThemePicker } from "@/components/theme-picker";
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -356,6 +356,8 @@ export function AccountSettingsDialog({
           ) : null}
         </section>
 
+        <McpTokensPanel />
+
         <section className="account-dialog-section">
           <div className="account-section-heading">
             <p className="eyebrow">Tema</p>
@@ -366,11 +368,6 @@ export function AccountSettingsDialog({
 
         <div className="account-dialog-footer">
           <div className="account-dialog-footer-actions">
-            <Button asChild variant="outline">
-              <Link href="/integrations" onClick={() => onOpenChange(false)}>
-                Instrumentos
-              </Link>
-            </Button>
             <Button type="button" variant="ghost" className="account-sign-out" onClick={() => signOut()}>
               <LogOut />
               Sair
